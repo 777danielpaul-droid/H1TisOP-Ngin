@@ -99,9 +99,8 @@ export class Effects{
   if(t%10===0)ps.sparkle(f.x,70,{count:2,speed:.8,life:130,size:8,colors:[col,'#ffffff',FX_GOLD,'#7df9ff'],gravity:.025,dr:.99,angle:Math.PI/2,spread:.5,jx:900,jy:60,glint:1});
   // Blink: Glanzsterne blitzen an der Körperkontur auf
   if(t%36===6){const a=Math.random()*6.283;ps.glint(f.x+Math.cos(a)*62*sz,by+Math.sin(a)*110*sz,Math.random()<.5?'#ffffff':col,(36+Math.random()*34)*sz,15+((Math.random()*6)|0))}
-  // Charakter-Aura (Renderer zeichnet die Flammen-/Blitzform): hier die passenden Partikel
+  // Charakter-Aura: Nebel für alle zeichnet der Renderer (fog.js); nur H!T hat zusätzlich Blitz-Partikel
   if(f.char.id==='tiger'){if(t%6===0)ps.bolt(f.x+(Math.random()-.5)*110,f.y-30-Math.random()*170*sz,Math.random()<.5?'#7df9ff':'#ffffff',Math.random()*6.283,60+Math.random()*80,6);if(t%10===0)ps.sparkle(f.x,by,{count:5,speed:6,life:30,size:8,colors:['#ffffff','#7df9ff','#3fb8ff'],gravity:0,dr:.92})}
-  else if(t%8===0)ps.sparkle(f.x+(Math.random()-.5)*100,GROUND-6,{count:2,speed:3,life:64,size:8,colors:[col,'#ffe9a8','#ffffff'],gravity:-.05,dr:.98,angle:-Math.PI/2,spread:.8});
   if(t%40===8){ps.sparkleRing(f.x,GROUND-10,col,300,{count:40,life:42});ps.ring(f.x,GROUND-10,col,260);ps.shock(f.x,GROUND,col,330,30);ps.glint(f.x,by,FX_GOLD,70*sz,18);
    ps.sparkleBall(f.x,by,col,110,{count:34,life:60,size:10,colors:pal})}
  }

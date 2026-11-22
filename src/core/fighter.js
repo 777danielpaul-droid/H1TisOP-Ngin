@@ -1,4 +1,4 @@
-import{AIR,BARRIER,BOUNCE,GROUND,MELEE,PHYS,SPAM,STAMINA,WALL_L,WALL_R}from'./config.js';
+import{AIR,BARRIER,BOUNCE,COMBO_FINISH,GROUND,MELEE,PHYS,SPAM,STAMINA,WALL_L,WALL_R}from'./config.js';
 const K1={regen:1,delay:1,empty:1,rest:1};   // Ausdauer-Regler (Menü) – Standardfaktoren, siehe Game.stamTune
 import{Hitbox}from'./hitbox.js';
 import{buildMoves}from'./moves.js';
@@ -9,6 +9,10 @@ export const FACE_STATES=['idle','walk','crouch'];
 export const RANK={L:1,M:2,H:3};
 export let UID=0;
 // Zustände: idle walk crouch air dash airdash attack hit block airhit tumble knockdown wakeup ko win
+// Aufgeladene Version des Standard-Specials (Energiewelle/Feuer-Atem/…): mehr Schaden, größer, schneller, länger, Knockdown, kaum Combo-Abwertung. Wird je Basis-Move einmal berechnet.
+const FIN_MOVES=new WeakMap();
+function finisherOf(base){let m=FIN_MOVES.get(base);if(m)return m;const F=COMBO_FINISH,up=d=>({...d,dmg:Math.round(d.dmg*F.dmg),w:Math.round(d.w*F.size),h:Math.round(d.h*F.size),vx:d.vx*F.speed,life:Math.round(d.life*F.life),hs:(d.hs||16)+F.hs,bs:(d.bs||10)+F.hs,hard:true,launch:d.launch||{vx:2.2,vy:-9},minScale:.85,hstop:12,shake:9,cfin:1});
+ m={...base,label:'SUPER '+(base.label||'SPECIAL'),super:true,cfin:true,cost:0,rc:(base.rc||18)+12,glow:1,base,proj:[].concat(base.proj).map(up)};delete m.v;FIN_MOVES.set(base,m);return m}
 export class Fighter{
  constructor({char,x,facing,input}){this.id=UID++;this.char=char;this.skin=0;this.input=input;this.moves=buildMoves(char);
   this.maxHp=char.hp;this.startX=x;this.startFacing=facing;this.wins=0;this.meter=0;this.trail=[];this.comboShow={hits:0,dmg:0,t:0};this.reset()}
@@ -16,7 +20,7 @@ export class Fighter{
  reset(){Object.assign(this,{x:this.startX,y:GROUND,vx:0,vy:0,facing:this.startFacing,hp:this.maxHp,state:'idle',sf:0,mf:0,move:null,moveName:'',
   hitDone:false,contact:false,hitCd:0,stun:0,coyote:0,airJumps:this.maxAJ,airDashes:1,launched:false,chainLen:0,comboHits:0,comboDmg:0,juggle:0,pop:false,hard:false,landLag:0,dashDir:0,
   noGrav:false,hoverF:0,chase:0,chaseK:null,slam:false,slams:0,fresh:0,relaunch:0,airHits:0,kdFrames:0,blockCrouch:false,anim:'idle',animU:0,_mo:0,spam:{btn:'',n:0,t:999},
-  pct:0,stocks:0,dead:0,inv:0,hover:0,onStage:true,under:false,recUsed:false,st:this.stMax,stDelay:0,exh:false,stamFlash:0,stamOn:false,healed:0,restCd:0,stamK:K1});this.trail.length=0;this.comboShow={hits:0,dmg:0,t:0}}
+  pct:0,stocks:0,dead:0,inv:0,hover:0,onStage:true,under:false,recUsed:false,st:this.stMax,stDelay:0,exh:false,stamFlash:0,finDone:false,stamOn:false,healed:0,restCd:0,stamK:K1});this.trail.length=0;this.comboShow={hits:0,dmg:0,t:0}}
  // Kämpfer wechseln (Menü): neue Stats + Moves, danach Zurücksetzen
  setChar(char,skin=0){this.char=char;this.skin=skin|0;this.moves=buildMoves(char);this.maxHp=char.hp;this.reset()}
  get floor(){const T=this.terrain;return T?T.floorFor(this.x,this.y):GROUND}   // Standfläche an der aktuellen Stelle (Story-Terrain: Plateaus liegen höher, sonst GROUND)
@@ -191,7 +195,13 @@ export class Fighter{
  // Spam-Sperre: dieselbe Angriffstaste höchstens SPAM.max Mal in Folge (Hyper ausgenommen)
  spamLocked(b){const s=this.spam;return b!=='SUP'&&s.btn===b&&s.n>=SPAM.max&&s.t<SPAM.reset}
  noteSpam(b){if(!b||b==='SUP')return;const s=this.spam;if(s.btn===b&&s.t<SPAM.reset)s.n++;else{s.btn=b;s.n=1}s.t=0}
- tryAttack(game){const i=this.input;
+ // Combo-Finisher (Super-Spezial): läuft beim Gegner eine Combo mit mindestens COMBO_FINISH.hits Treffern, startet „Hyper“ (I) ohne Meter eine aufgeladene Version des Standard-Specials (je Combo einmal)
+ finisherReady(game){const o=this.foeRef;return !!o&&!game.melee&&!o.finDone&&o.comboHits>=COMBO_FINISH.hits&&o.hp>0&&this.hp>0&&!!this.moves.fireball&&!!this.moves.fireball.proj}
+ startFinisher(game){const o=this.foeRef,fm=finisherOf(this.moves.fireball);
+  o.finDone=true;if(o.state==='hit')o.stun=Math.max(o.stun||0,COMBO_FINISH.stun);   // der Gegner bleibt getroffen, bis die Welle ihn erwischt
+  if(this.moves.finisher!==fm)this.moves={...this.moves,finisher:fm};
+  this._btn='SUP';this.startMove('finisher',game);game.startFinisher(this)}
+ tryAttack(game){const i=this.input;if(i.pressed('SUP')&&this.finisherReady(game)){i.consume('SUP');this.startFinisher(game);return true}
   for(const b of['SUP','H','M','L','S']){if(!i.pressed(b))continue;if(this.spamLocked(b))continue;const n=this.select(b);
    if(n&&this.canUse(n)){i.consume(b);this.startMove(n,game);return true}
    if(n&&this.stamDenied(n)){i.consume(b);this.stamFlash=22}}return false}
@@ -226,6 +236,7 @@ export class Fighter{
  // Cancels (nur nach Kontakt): Chain mit steigendem Rang UND Stance-Wechsel (5L→2L→5M→2M→5H ...), Special-/Hyper-Cancel,
  // Jump-Cancel (Launcher), in der Luft Doppelsprung-/Air-Dash-Cancel für lange Mehrfach-Combos. chainLen begrenzt Endlos-Ketten.
  tryCancel(game){const i=this.input,m=this.move,B=PHYS.cancelBuffer;
+  if(i.pressed('SUP',B)&&this.finisherReady(game)){i.consume('SUP');this.startFinisher(game);return true}   // Combo-Finisher direkt nach dem Treffer
   if((m.jc||(m.launch&&!m.super&&!m.air&&!m.multi&&!game.melee))&&(i.dy<0||i.pressed('UP',B))&&this.grounded){i.consume('UP');this.move=null;const L=!!m.launch,C=L?AIR.chase:AIR.hop;
    this.vy=(L?AIR.chase.vy:PHYS.hopV)*(this.char.jump||1);this.vx=i.dx*PHYS.walk*1.2;   // Launcher: Super Jump (schnell + hoch, zieht zum Gegner); normale Treffer: Sprungabbruch in Reichweite des gefederten Gegners
    this.y=this.floor-1;this.chase=game.melee?0:C.frames;this.chaseK=C;this.hoverF=0;
@@ -245,7 +256,7 @@ export class Fighter{
   let nx=(t.rel==='opp'?opp.x:this.x)+this.facing*t.off;nx=Math.max(game.arena.l,Math.min(game.arena.r,nx));this.x=nx;if(t.flip)this.facing=-this.facing;
   game.fx.ps.ring(this.x,this.y-80,gl,90)}
  endMove(){this.move=null;this.noGrav=false;this.setState(this.grounded?'idle':'air')}
- endCombo(){if(this.comboHits>0)this.comboShow={hits:this.comboHits,dmg:this.comboDmg,t:100,air:this.airHits};this.comboHits=0;this.comboDmg=0;this.juggle=0;this.airHits=0;this.relaunch=0;this.slams=0;this.slam=false}
+ endCombo(){this.finDone=false;if(this.comboHits>0)this.comboShow={hits:this.comboHits,dmg:this.comboDmg,t:100,air:this.airHits};this.comboHits=0;this.comboDmg=0;this.juggle=0;this.airHits=0;this.relaunch=0;this.slams=0;this.slam=false}
  // ---------- Physik ----------
  physics(game){const M=game.melee;
   if(!this.noGrav&&(!this.grounded||this.vy<0)){let g=PHYS.gravity;

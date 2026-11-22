@@ -61,6 +61,7 @@ export class Renderer{
   if(game.story&&game.story.cfg.parkour&&!cbg)this.stage.skyAbove(g,t,cam.y-H/2/cam.z-80);   // Parkour: Himmel nach oben verlängern
   if(cbg){if(!game.melee&&!game.story)this.stage.draw(g,t,true)}else this.stage.draw(g,t,false,!!game.story);game.particles.drawFw(g);   // Feuerwerk: vor dem Himmel, hinter den Häusern
   const ML=!!game.melee,ST=!!game.story;if(ST)storyWorld(g,game,t);else if(ML){meleeStage(g,this.stage.theme,t,cbg);for(const f of game.fighters)meleeHalo(g,f,t)}else if(!cbg||this.bd.opts.houses)this.house(g,game,t);   // Melee: offene Plattform über dem Abgrund statt Gasse mit Häusern
+  if(game.finA>.01){g.save();g.setTransform(s,0,0,s,0,0);g.globalAlpha=Math.min(1,game.finA);g.fillStyle='#000';g.fillRect(0,0,W,H);g.restore()}   // Combo-Finisher: Hintergrund komplett schwarz (Figuren, Projektile, Effekte und HUD bleiben)
   for(const f of game.fighters)if(!ML||(f.onStage&&!f.under&&!(f.dead>0))){this.post.floorGlow(g,f,f.floor,t);this.post.hyperAura(g,f,f.floor,t)}
   this.celeb(g,game);
   for(const f of game.fighters)if(!(f.dead>0))drawTrail(g,f,t);
@@ -91,29 +92,16 @@ demoStam(g,f,t){if(!f.stamOn)return;const S=STAMINA,w=72,h=4,x=f.x-w/2,y=GROUND+
 drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);if(!this.bd.draw(g,W,H,'title',{dimAdd:0})){g.fillStyle='#020312';g.fillRect(0,0,W,H)}const cam=game.camera;g.save();cam.apply(g);game.particles.drawFw(g);this.celeb(g,game);for(const f of[...game.fighters].filter(f=>!(f.dead>0)).sort((a,b)=>drawPri(a)-drawPri(b)||a.y-b.y))drawFighter(g,f,game.frame/60,1,GROUND);for(const f of game.fighters)if(!(f.dead>0))this.demoStam(g,f,game.frame);this.celeb(g,game,true);for(const p of game.projectiles)this.projectile(g,p,p.owner);game.particles.draw(g,true);g.restore();if(this.useGL){this.glFinish({bloom:.3*GFX.bloom,ab:0,vc:[0,0,.02],va:.1,grain:GFX.grain?.03:0,t:game.frame})}else this.post.dust(g,this.cv,game.frame/60,'#55eaff',12,.18)}
  // Eigener Hintergrund im Kampf: weicher dunkler Verlauf ab der Fußlinie (Weltraum), damit die Figuren nicht im Bild schweben
  floorShade(g){const w=WORLD,gr=g.createLinearGradient(0,GROUND-60,0,GROUND+90);gr.addColorStop(0,'rgba(4,2,10,0)');gr.addColorStop(.45,'rgba(4,2,10,.34)');gr.addColorStop(1,'rgba(4,2,10,.62)');g.fillStyle=gr;g.fillRect(w.x0,GROUND-60,w.x1-w.x0,w.y1-GROUND+60)}
- // Spritesheet-Aura laden (window.__AURA__[id]={meta,atlas}); null solange das Bild noch lädt oder keine Aura-Sprites da sind
- auraSprite(id){const A=typeof window!=='undefined'&&window.__AURA__&&window.__AURA__[id];if(!A||typeof Image==='undefined')return null;if(!A.img){A.img=new Image();A.img.onload=()=>{A.ok=true};A.img.src=A.atlas}return A.ok?A:null}
- // Sieger-Finale: Kampfaura (Anime-Power-up) hinter dem Gewinner, additiv, Welt-Raum. Standard = Flammen-Aura in der Figurenfarbe;
- // H!T (tiger) = Blitzaura, alle anderen = Flammenaura. Aufsteigende Energie-Streifen, Boden-Glühen + Druckringe, pulsierende Flammenzungen.
- // Zwei Durchgänge: front=false hinter der Figur (große Flammen, Glühen), front=true davor (halbtransparente Innenflammen mit Kontur, Streifen, Blitze, vordere Ringhälfte) -> die Figur steht IN der Aura.
- celeb(g,game,front){const c=game.celeb;if(!c)return;const SK=.72;   // Gesamtgröße der Flammenaura (1 = alt): Flammenschichten und Zungen-Ansatzpunkte rücken enger zusammen, die einzelnen Zacken/Zungen behalten ihre Originalgröße
-  const f=c.f,id=f.char.id,AS=null,kind=id==='tiger'?'bolt':'fog',k=Math.min(1,c.t/30),T=c.t/60,sz=f.char.size||1,cx=f.x,gy=f.y,bh=210*sz,bw=62*sz,fx=Math.max(.35,GFX.rays);
+ // Sieger-Finale: Kampfaura hinter/vor dem Gewinner, Welt-Raum. ALLE Figuren: Neon-Nebel (render/fog.js) in der Figurenfarbe + Boden-Glühen/Druckringe + Funkelsterne.
+ // H!T (tiger) bekommt zusätzlich seine Blitzaura (Blitze, Kern-Blinken). Die alten Flammen-/Spritesheet-Auren gibt es nicht mehr.
+ // Zwei Durchgänge: front=false hinter der Figur (dichter Nebel, Glühen), front=true davor (dünner Nebel, Blitze, vordere Ringhälfte) -> die Figur steht IN der Aura.
+ celeb(g,game,front){const c=game.celeb;if(!c)return;const SK=.72;   // Streubreite der Funkelsterne bei Nicht-Blitz-Figuren (1 = so breit wie bei H!T)
+  const f=c.f,id=f.char.id,kind=id==='tiger'?'bolt':'fog',k=Math.min(1,c.t/30),T=c.t/60,sz=f.char.size||1,cx=f.x,gy=f.y,bh=210*sz,bw=62*sz,fx=Math.max(.35,GFX.rays);
   const gl=f.char.glow||'#ffffff',P=kind==='bolt'?{o:'#2a8cff',m:'#5fd0ff',i:'#d8fbff',c:'#ffffff',s:['#3fe0ff','#ffffff','#7df9ff']}
-   :{o:gl,m:gl,i:AS?AS.meta.i:'#ffe9a8',c:'#ffffff',s:[gl,AS?AS.meta.i:'#ffd23f','#ffffff']};
+   :{o:gl,m:gl,i:'#ffe9a8',c:'#ffffff',s:[gl,'#ffd23f','#ffffff']};
   const H=n=>{const v=Math.sin(n*12.9898)*43758.5453;return v-Math.floor(v)};
   // Flackern: Aura pulsiert unregelmäßig und fällt ab und zu fast aus (nicht dauernd voll sichtbar)
   const fl=Math.max(.12,.6+.4*Math.sin(T*21)*Math.sin(T*6.1+1))*(H(Math.floor(T*14)*1.7)<.16?.25:1);
-  // Einzelne Flammenzungen: wachsen aus der Körperkontur, züngeln nach oben, verlöschen und tauchen an anderer Stelle neu auf
-  const tongue=(x,y,tx,ty,w,seed,c0,c1,al,st)=>{const mx=(x+tx)/2+Math.sin(T*9+seed)*w*.9,my=(y+ty)/2;g.beginPath();g.moveTo(x-w,y);g.quadraticCurveTo(mx-w*.9,my,tx,ty);g.quadraticCurveTo(mx+w*.9,my+w*.3,x+w,y);g.closePath();
-   const gr=g.createLinearGradient(x,y,tx,ty);gr.addColorStop(0,c0);gr.addColorStop(.5,c1);gr.addColorStop(1,c1+'00');g.globalAlpha=Math.min(1,al);g.fillStyle=gr;g.fill();if(st){g.globalAlpha=Math.min(1,al*st);g.strokeStyle=P.i;g.lineWidth=1.8*sz;g.lineJoin='round';g.stroke()}};
-  const licks=(N,sd,sc,al,st,cA,cB)=>{for(let q=0;q<N;q++){const per=.45+H(q*3+sd)*.6,u=T/per+H(q*5+sd),cyc=Math.floor(u),ph=u-cyc,a=Math.sin(ph*Math.PI),th=H(q*7+cyc*3.3+sd)*6.283,ex=Math.cos(th),ey=Math.sin(th);
-    const x=cx+ex*bw*1.05*SK,y=gy-bh*.5+ey*bh*.48*SK,tp=Math.max(.3,1-.62*Math.max(0,(gy-y)/bh)),   // tp: Zungen werden nach oben hin kleiner (unten 1, am Kopf ≈ .45)
-     hh=(55+H(q*11+cyc+sd)*95)*sz*sc*tp*(.35+.65*a);tongue(x,y,x+ex*.55*hh*.7+Math.sin(T*6+q)*8*sz*tp,y-hh,(11+H(q*13+sd)*9)*sz*sc*(.45+.55*tp),q+cyc,cA,cB,al*k*fl*a,st)}};
-  // Flammen-/Aura-Silhouette: gezackte Kontur um den Körper, Spitzen flackern, Spitze schwankt
-  const flame=(x,by,w0,h0,seed,n,c0,c1,al,st,k=SK)=>{const w=w0*k,h=h0*k,L=[],R=[];for(let q=0;q<=n;q++){const u=q/n,base=w*Math.pow(1-u,1.1)*(.74+.5*Math.sin(Math.min(1,u*2.2)*1.5708)),sp=(q%2?.62:-.1)/k,fl=.65+.35*Math.sin(T*11+q*2.3+seed),y=by-u*h*(1+.05*Math.sin(T*7+seed));
-    L.push([x-base*(1+sp*fl),y]);R.push([x+base*(1+sp*(.65+.35*Math.sin(T*12+q*1.9+seed*2))),y])}
-   const tip=[x+Math.sin(T*5+seed)*w*.28,by-h*1.07];g.beginPath();g.moveTo(L[0][0],L[0][1]);for(const q of L)g.lineTo(q[0],q[1]);g.lineTo(tip[0],tip[1]);for(let q=R.length-1;q>=0;q--)g.lineTo(R[q][0],R[q][1]);g.closePath();
-   const gr=g.createLinearGradient(0,by,0,by-h);gr.addColorStop(0,c0+'99');gr.addColorStop(.2,c0);gr.addColorStop(.6,c1);gr.addColorStop(1,c1+'00');g.globalAlpha=al*k*fl;g.fillStyle=gr;g.fill();if(st){g.globalAlpha=st*k*fl;g.strokeStyle=P.i;g.lineWidth=2.2*sz;g.lineJoin='round';g.stroke()}};
   // Blitz: zackiger Pfad mit Glühen (breit, blau) + heller Kern
   const bolt=(x0,y0,ang,len,seed,wd,al=1,br=1)=>{const n=9;let px=x0,py=y0,a=ang,mx=x0,my=y0,ma=ang;g.beginPath();g.moveTo(x0,y0);for(let q=0;q<n;q++){a+=(H(seed+q*3.7)-.5)*2.2;px+=Math.cos(a)*len/n;py+=Math.sin(a)*len/n;g.lineTo(px,py);if(q===3){mx=px;my=py;ma=a}}
    g.lineJoin='round';g.lineCap='round';g.strokeStyle=P.m;g.globalAlpha=.45*k*al;g.lineWidth=wd*4.5;g.stroke();g.strokeStyle=P.c;g.globalAlpha=Math.min(1,k*al);g.lineWidth=wd;g.stroke();
@@ -128,16 +116,6 @@ drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTr
    for(let q=0;q<3;q++){const ph=(T*.9+q/3)%1;g.globalAlpha=k*(1-ph)*.7;g.strokeStyle=q%2?P.i:P.m;g.lineWidth=7*(1-ph)+1;g.beginPath();if(front)g.arc(0,0,(40+ph*230)*sz,0,Math.PI);else g.arc(0,0,(40+ph*230)*sz,Math.PI,6.283);g.stroke()}}g.restore();
   // Körper-Glühen hinter der Figur
   if(!front){const R0=bh*1.15*(kind==='bolt'?1:.85),rg=g.createRadialGradient(cx,gy-bh*.5,10,cx,gy-bh*.5,R0);rg.addColorStop(0,P.c+'88');rg.addColorStop(.3,P.m+'55');rg.addColorStop(1,P.o+'00');g.globalAlpha=k*(.5+.5*fl)*(.8+.2*Math.sin(T*8));g.fillStyle=rg;g.fillRect(cx-R0,gy-bh*.5-R0,R0*2,R0*2)}
-  // Aura-Körper: mehrere Flammenschichten (außen breit/dunkel → innen schmal/hell)
-  const by=gy+6;
-  {const nn=Math.max(8,Math.round(15*fx)),NL=Math.round(16*fx)+5,cA=P.m,cB=P.i;
-   if(kind==='aura'){   // Flammenkontur nur ohne Sprite-Aura (H!T = Blitzaura, Kitsune/ST3-G0 = Spritesheet-Aura): keine Flammen/Flammenzungen, nur Blitze (siehe unten) + Glühen + Energie-Streifen
-   if(!front){flame(cx,by,bw*1.6,bh*1.4,1,nn,P.o,P.m,.28);flame(cx,by,bw*1.2,bh*1.18,5,nn,P.m,P.i,.26);
-    licks(NL,0,1.15,.75,0,cA,cB);licks(Math.round(NL*.6),60,.9,.7,0,P.i,P.c)}
-   else{flame(cx,by,bw*.95,bh*1.0,13,nn,P.m,P.i,.16,.3);licks(Math.round(NL*.7),30,1,.5,.45,cB,P.c)}}}
-  // Sprite-Aura (Kitsune: Lila-Gold-Pixelflamme, ST3-G0: grüne Flamme): 4-Frame-Sheet, additiv, Ping-Pong-Schleife. Hinten voll, vorn schwach (Figur steht in der Flamme)
-  if(kind==='sprite'){const M=AS.meta,seq=M.seq,fi=seq[Math.floor(c.t*M.fps/60)%seq.length],s=bh*M.k/M.ay*.85*(1+Math.sin(T*5)*.015),dw=M.w*s,dh=M.h*s,al=front?M.front[fi]:1;
-   if(al>0){g.save();g.imageSmoothingEnabled=true;g.globalAlpha=Math.min(1,k*al*(.82+.18*fl));g.drawImage(AS.img,fi*M.w,0,M.w,M.h,cx-dw/2,gy+8-M.ay*s,dw,dh);g.restore()}}
   // Aufsteigende Funkelsterne (blinken wie die Feuerwerks-Sterne; nur wenige dünne Energie-Streifen bleiben als Hintergrund)
   for(let q=0,N=Math.round(9*fx)+2;q<N;q++){if((q%2===1)!==!!front)continue;const ph=(T*(.8+H(q)*.9)+H(q*3.1))%1,x=cx+(H(q*5.1)-.5)*bw*2.9*(kind==='bolt'?1:SK),y=gy-ph*bh*1.8,len=(30+H(q*2)*50)*sz;g.globalAlpha=k*Math.sin(ph*Math.PI)*.4;g.strokeStyle=P.s[q%3];g.lineWidth=(1+H(q*7)*1.4)*sz;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.sin(T*3+q)*4,y+len);g.stroke()}
   for(let q=0,N=Math.round(11*fx)+3;q<N;q++){if((q%2===1)!==!!front)continue;const sp=.55+H(q+40)*.9,ph=(T*sp+H(q*3.7))%1,x=cx+(H(q*5.9)-.5)*bw*2.7*(kind==='bolt'?1:SK)+Math.sin(T*2.4*sp+q)*7*sz,y=gy-ph*bh*1.7,

@@ -110,3 +110,7 @@ export const STAMINA={on:true,max:100,regen:.3,delay:40,emptyDelay:150,
 //   regen = Ausdauer-Regeneration, delay = Pause vor der Regeneration (0 = keine Pause), empty = Pause nach Erschöpfung, rest = HP-Tempo beim Verschnaufen.
 export const STAM_TUNE={regen:{min:.25,max:3},delay:{min:0,max:3},empty:{min:0,max:3},rest:{min:.25,max:3}};
 export const tuneClamp=(k,v)=>{const r=STAM_TUNE[k];v=+v;return Number.isFinite(v)?Math.min(r.max,Math.max(r.min,Math.round(v*100)/100)):1};
+// Combo-Finisher (Super-Spezial): nach `hits` Treffern in Folge (Combo läuft noch) löst „Hyper“ (I) OHNE Meter eine aufgeladene Version des Standard-Specials aus.
+// dmg/size/speed/life = Faktoren auf Schaden, Größe, Tempo und Lebensdauer der Energiewelle · hs = zusätzliche Trefferstarre · stun = so lange bleibt der Gegner mindestens getroffen
+// slow = Zeitlupe (Anteil der Normalgeschwindigkeit) · tail = Schritte Nachlauf nach dem Treffer · max = Notbremse (Schritte). Der Hintergrund wird für die Dauer schwarz.
+export const COMBO_FINISH={hits:10,dmg:4.6,size:1.9,speed:1.4,life:1.5,hs:16,stun:80,slow:.28,tail:10,max:120};

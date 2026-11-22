@@ -1,7 +1,7 @@
 import{Arena}from'./barrier.js';
 import{Camera}from'./camera.js';
 import{resolveCombat}from'./combat.js';
-import{CAMERA,EFFECT,GROUND,MELEE,METER,ROUND,W}from'./config.js';
+import{CAMERA,COMBO_FINISH,EFFECT,GROUND,MELEE,METER,ROUND,W}from'./config.js';
 import{Effects}from'./effects.js';
 import{meleeBlast,meleeRespawn,meleeWinnerOnTime}from'./melee.js';
 
@@ -16,7 +16,7 @@ export class Game{
  constructor(p1,p2){this.p1=p1;this.p2=p2;this.fighters=[p1,p2];this.particles=new ParticleSystem();this.fx=new Effects(this.particles);
   this.camera=new Camera();this.arena=new Arena();this.stageIndex=0;this.melee=null;this.meleeOn=false;this.meleeStocks=MELEE.stocks;   // melee = Regeln des laufenden Melee-Matches (oder null)
   this.arcade=null;this.debug=false;this.round=1;this.frame=0;this.flash=0;this.flashColor='#fff';
-  this.pops=[];this.kickX=0;this.kickY=0;this.aberr=0;this.impact=null;this.slow=0;this.timeScale=1;this.celeb=null;this.particles.onBoom=()=>this.sfx('fw_rocket',{vol:.65,rate:.92+Math.random()*.2});this.story=null;this.dummy={x:0,y:0,state:'idle',grounded:true,hp:1};this.stamPref=false;this.stamForce=null;this.tunePref={regen:1,delay:1,empty:1,rest:1};this.tuneForce=null;this.startRound()}
+  this.pops=[];this.kickX=0;this.kickY=0;this.aberr=0;this.impact=null;this.slow=0;this.timeScale=1;this.fin=null;this.finA=0;this.celeb=null;this.particles.onBoom=()=>this.sfx('fw_rocket',{vol:.65,rate:.92+Math.random()*.2});this.story=null;this.dummy={x:0,y:0,state:'idle',grounded:true,hp:1};this.stamPref=false;this.stamForce=null;this.tunePref={regen:1,delay:1,empty:1,rest:1};this.tuneForce=null;this.startRound()}
  // Ausdauer-System an? stamPref = Menü-Einstellung (main.js), stamForce = Online: der Gastgeber bestimmt (null = lokale Einstellung). Aus in Melee und Story.
  get stamOn(){if(this.melee||this.story)return false;return this.stamForce!==null?!!this.stamForce:!!this.stamPref}
  get restOn(){return!this.melee&&!this.story}   // Verschnaufen (HP-Regeneration) ist unabhängig vom Ausdauer-Schalter
@@ -26,7 +26,7 @@ export class Game{
  // Sound: game.audio (render/audio.js) ist im Test/headless null -> kein Ton. sfx() für einzelne Sounds, sfxList() für Listen aus core/sfx.js
  sfx(n,o){if(this.audio)this.audio.play(n,o)}
  sfxList(l){if(this.audio)for(const[n,o]of l)this.audio.play(n,o)}
- startRound(){this.cineW=0;this.cineT=0;this.arena.reset();this.pops=[];this.kickX=this.kickY=0;this.aberr=0;this.impact=null;this.celeb=null;this.slow=0;this.timeScale=1;this.sfx('ui_round_start',{vol:.8});this.projectiles=[];this.phase='intro';this.pf=0;this.timeFrames=ROUND.time*60;this.hitstop=0;this.superFlash=0;this.superOwner=null;this.shake=0;this.flash=0;this.winner=null;this.timedOut=false;
+ startRound(){this.cineW=0;this.cineT=0;this.arena.reset();this.pops=[];this.kickX=this.kickY=0;this.aberr=0;this.impact=null;this.celeb=null;this.slow=0;this.timeScale=1;this.fin=null;this.finA=0;this.sfx('ui_round_start',{vol:.8});this.projectiles=[];this.phase='intro';this.pf=0;this.timeFrames=ROUND.time*60;this.hitstop=0;this.superFlash=0;this.superOwner=null;this.shake=0;this.flash=0;this.winner=null;this.timedOut=false;
   for(const f of this.fighters){f.reset();f.input.clear()}
   if(this.story){this.story.begin();this.timeFrames=1e9}
   this.melee=this.meleeOn?{stocks:this.meleeStocks}:null;this.camera.melee=!!this.melee;   // Melee: Stocks statt Runden, keine Wände, offene Plattform
@@ -42,6 +42,8 @@ export class Game{
   this.aberr=Math.max(this.aberr,big?.9:power>=2?.45:.18);
   if(big){this.impact={t:7,t0:7,x,y,col,p:1,seed:Math.random()*99};this.flash=Math.max(this.flash,3);this.flashColor='#ffffff'}
 }
+ // Combo-Finisher: gleicher Freeze/Titel wie beim Hyper, danach kurze Zeitlupe; der Hintergrund bleibt schwarz, bis die Attacke vorbei ist (fin = Zustand, finA = weiches Ein-/Ausblenden)
+ startFinisher(f){this.fin={owner:f,t:0,tail:0};this.startSuper(f)}
  startSuper(f){this.aberr=1;this.camera.kick(.05);this.superName=(f.move&&f.move.label)||'';this.sfx('heavy_hit_impact');this.superFlash=SUPER_FRAMES;this.superOwner=f;this.shake=EFFECT.superShake;this.flash=EFFECT.screenFlash;this.flashColor=f.char.glow||'#fff';this.fx.ps.ring(f.x,f.y-80,'#ffffff',160)}
  knockout(victim,attacker){if(this.god&&victim===this.p1){victim.hp=victim.maxHp;return}   // Dev-Konsole "god": Spieler 1 ist unverwundbar
   if(this.story&&victim!==this.p1){this.story.mobDown(victim,attacker);return}
@@ -69,13 +71,15 @@ export class Game{
   if(this.celeb){this.celeb.t++;this.fx.celebrate(this.celeb.f,this.celeb.t,this.camera)}
   this.kickX*=.78;this.kickY*=.78;this.aberr*=.86;if(this.aberr<.01)this.aberr=0;if(this.impact&&--this.impact.t<=0)this.impact=null;
   for(const p of this.pops)p.age++;this.pops=this.pops.filter(p=>p.age<p.life);
-  if(this.slow>0){this.slow--;const u=1-this.slow/this.slowMax;this.timeScale=EFFECT.koSlowMin+(1-EFFECT.koSlowMin)*u*u}else this.timeScale=1;  // Zeitlupe beim K.O. (Hauptschleife teilt die Schrittlänge dadurch)
+  if(this.slow>0){this.slow--;const u=1-this.slow/this.slowMax;this.timeScale=EFFECT.koSlowMin+(1-EFFECT.koSlowMin)*u*u}else if(this.fin&&this.superFlash<=0)this.timeScale=COMBO_FINISH.slow;else this.timeScale=1;  // Zeitlupe beim K.O. bzw. beim Combo-Finisher (Hauptschleife teilt die Schrittlänge dadurch)
+  this.finA+=((this.fin?1:0)-this.finA)*.35;if(this.finA<.01)this.finA=0;
   this.cineCamera();
   this.camera.update(this.fighters); // läuft auch im Hitstop/Super-Flash weiter
   if(this.shake>0)this.shake=Math.max(0,this.shake-.4);
   if(this.flash>0)this.flash--;
   if(this.superFlash>0){this.superFlash--;return}
   if(this.hitstop>0){this.hitstop--;return}
+  if(this.fin){const F=this.fin,o=F.owner;F.t++;if((o.moveName==='finisher'&&o.state==='attack')||this.projectiles.some(p=>p.owner===o&&p.def.cfin))F.tail=0;else F.tail++;if(F.tail>COMBO_FINISH.tail||F.t>COMBO_FINISH.max||(this.phase!=='fight'&&this.phase!=='intro'))this.fin=null}
   switch(this.phase){
    case'intro':this.pf++;for(const f of this.fighters){f.sf++;f.updateAnim()}
     if(this.pf>=(this.story&&this.story.cp===0?260:ROUND.intro)){this.phase='fight';this.pf=0;for(const f of this.fighters)f.input.clear()}break;
