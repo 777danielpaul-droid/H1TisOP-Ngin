@@ -13,10 +13,10 @@ const mk=()=>{const ai=new AIController(1),p1=new Fighter({char:CHARACTERS.tiger
 assert(CHARACTERS.st3g0&&!ROSTER.includes('st3g0')&&!LADDER.includes('st3g0')&&UNLOCKABLE.includes('st3g0'),'ST3-G0 zu Beginn gesperrt, aber freischaltbar');
 assert.equal(CLEAR_UNLOCK.id,'st3g0');assert.equal(CLEAR_UNLOCK.n,3);
 console.log('  ✓ ST3-G0 ist kein Start-Kämpfer mehr');
-// ---- Endgegner: Kapitel 2 = ST3-G0, Kapitel 3 = A1LIEN, Kapitel 4 = Anubis ----
+// ---- Endgegner: Kapitel 1 = Leon, 2 = ST3-G0, 3 = URSUS, 4 = Anubis, 5 = A1LIEN ----
 assert.equal(CHAPTERS[1].enc.at(-1).boss,'st3g0Boss');assert.equal(CHARACTERS.st3g0Boss.name,'ST3-G0');assert(CHARACTERS.st3g0Boss.storyBoss&&!CHARACTERS.st3g0.storyBoss);
-assert.equal(CHAPTERS[2].enc.at(-1).boss,'cyberdemonBoss');assert.equal(CHAPTERS[3].enc.at(-1).boss,'anubisBoss');assert.equal(CHARACTERS.anubisBoss.name,'ANUBIS');assert(CHARACTERS.anubisBoss.storyBoss&&!CHARACTERS.anubis.storyBoss);
-console.log('  ✓ Kapitel 2: Endgegner ST3-G0, Kapitel 3: A1LIEN, Kapitel 4: Anubis');
+assert.equal(CHAPTERS[2].enc.at(-1).boss,'bearBoss');assert.equal(CHAPTERS[3].enc.at(-1).boss,'anubisBoss');assert.equal(CHAPTERS[4].enc.at(-1).boss,'cyberdemonBoss');assert.equal(CHARACTERS.anubisBoss.name,'ANUBIS');assert(CHARACTERS.anubisBoss.storyBoss&&!CHARACTERS.anubis.storyBoss);
+console.log('  ✓ Endgegner: Kapitel 2 ST3-G0, 3 URSUS, 4 Anubis, 5 A1LIEN');
 // ---- Shop ----
 assert(charPrice('st3g0')>0&&CHAR_SHOP.some(o=>o.id==='st3g0'),'im Shop');LOOT.coins=charPrice('st3g0');assert(canBuyChar('st3g0'));assert(buyChar('st3g0'));assert.equal(LOOT.coins,0);assert(ownsChar('st3g0')&&ROSTER.includes('st3g0'));
 console.log('  ✓ Shop-Kauf schaltet ST3-G0 frei');

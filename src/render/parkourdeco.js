@@ -37,7 +37,7 @@ const PD_DECO={
   for(let i=0;i<3;i++)pdBox(g,tx+tw+60+i*80,jy,70,60,'#555',.95);   // Gegengewichte
   const hx=x0-60+Math.sin(t*.9)*70;g.strokeStyle='#bbb';g.lineWidth=2;g.beginPath();g.moveTo(hx,jy+6);g.lineTo(hx,jy+210);g.stroke();pdBox(g,hx-24,jy+2,48,16,'#e6b422');g.strokeStyle='#ddd';g.lineWidth=5;g.beginPath();g.arc(hx,jy+222,13,-.5,Math.PI*1.1);g.stroke();   // Laufkatze, Seil, Haken
   g.restore();if(Math.sin(t*3)>0)pdGlow(g,tx+tw/2,y1-100,40,'#ff3030',1)},
- // ---- Kapitel 3, Der Kern: Reaktorzylinder (2,6 m breit) mit Ringen, Rohren, Dampf und Blitzen zu den Seiten-Pylonen ----
+ // ---- Der Kern (A1LIEN, Kapitel 5): Reaktorzylinder (2,6 m breit) mit Ringen, Rohren, Dampf und Blitzen zu den Seiten-Pylonen ----
  reactor(g,P,t,L,top,x0,x1){const cx=(x0+x1)/2+60,cw=260,y1=top-260,pul=.75+.25*Math.sin(t*3),acc=L.acc;
   for(const sx of[cx-cw/2-210,cx+cw/2+150]){pdLattice(g,sx,GROUND,y1+120,60,90,'#3a2a3a',3);pdGlow(g,sx+30,y1+120,36,acc,.7*pul)}   // Seiten-Pylone
   const gr=g.createLinearGradient(cx-cw/2,0,cx+cw/2,0);gr.addColorStop(0,'#16090d');gr.addColorStop(.5,'#3a1118');gr.addColorStop(1,'#16090d');g.fillStyle=gr;g.fillRect(cx-cw/2,y1,cw,GROUND-y1);
@@ -54,7 +54,7 @@ const PD_DECO={
    if(i%4===2)for(const sx of[-1,1]){const fx=cx+sx*(hw-14),fl=.7+.3*Math.sin(t*9+i);pdBox(g,fx-3,y+30,6,40,'#150d05');pdGlow(g,fx,y+24,46*fl,'#ff9a2a',.8)}}   // Fackeln
   const top2=GROUND-step*n;g.fillStyle='#e6b422';g.beginPath();g.moveTo(cx-60,top2);g.lineTo(cx,top2-110);g.lineTo(cx+60,top2);g.closePath();g.fill();pdGlow(g,cx,top2-40,160,'#ffd23f',.5+.2*Math.sin(t*2));   // Schlussstein
   const ox=x1+110;g.fillStyle='#2b200f';g.strokeStyle=acc;g.lineWidth=2;g.beginPath();g.moveTo(ox-46,GROUND);g.lineTo(ox-26,top-60);g.lineTo(ox,top-190);g.lineTo(ox+26,top-60);g.lineTo(ox+46,GROUND);g.closePath();g.fill();g.stroke()},   // Obelisk
- // ---- Kapitel 5, Bergtempel: Pagode mit Geschossen und geschwungenen Dächern, Laternen, Glocke, goldener Spitze ----
+ // ---- Bergtempel (URSUS, Kapitel 3): Pagode mit Geschossen und geschwungenen Dächern, Laternen, Glocke, goldener Spitze ----
  pagoda(g,P,t,L,top,x0,x1){const cx=(x0+x1)/2+40,TH=300,n=Math.ceil((GROUND-top+200)/TH),acc=L.acc;
   for(let i=0;i<n;i++){const y=GROUND-TH*(i+1),w=Math.max(150,430-i*26),rw=w+110;
    pdBox(g,cx-w,y+70,w*2,TH-70,i%2?'#2a0a14':'#32101a');for(let x=cx-w+30;x<cx+w-30;x+=110){pdBox(g,x,y+120,50,100,'#07040f');pdBox(g,x+5,y+125,40,90,acc,.2+.12*Math.sin(t*1.6+x+i))}   // Türen/Fenster mit Licht

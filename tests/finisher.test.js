@@ -30,13 +30,13 @@ function setup(id1='tiger',id2='wolf',gap=130){const i1=new InputBuffer(),i2=new
 // 4) Verlauf: Freeze (normal schnell) -> Zeitlupe -> Projektil trifft hart -> Ende, Zeitlupe/Schwarz weg
 {const{g,p1,p2,t,combo}=setup();p1.meter=0;combo(10);const hp0=p2.hp;t(['SUP']);
  let slow=0,black=0,proj=0,maxA=0,steps=0;
- while(g.fin&&steps++<600){t([]);if(g.superFlash<=0&&g.timeScale===F.slow)slow++;if(g.finA>.9)black++;maxA=Math.max(maxA,g.finA);if(g.projectiles.some(p=>p.owner===p1&&p.def.cfin))proj++;combo(Math.max(p2.comboHits,10))}
+ while(g.fin&&steps++<600){t([]);if(g.superFlash<=0&&g.timeScale===F.slow)slow++;if(g.finA>.9)black++;maxA=Math.max(maxA,g.finA);if(g.projectiles.some(p=>p.owner===p1&&p.def.cfin))proj++;p2.comboHits=Math.max(p2.comboHits,10)}
  assert.ok(!g.fin,'Finisher endet von selbst ('+steps+' Schritte)');assert.ok(slow>=10,'Zeitlupe während der Attacke ('+slow+' Schritte)');assert.ok(black>=3&&maxA>.95,'Hintergrund wird (fast) komplett schwarz');assert.ok(p2.state==='knockdown'||p2.state==='tumble'||p2.state==='airhit','die Welle trifft garantiert und wirft den Gegner um ('+p2.state+')');
  for(let k=0;k<40;k++)t([]);assert.equal(g.timeScale,1,'Zeitlupe vorbei');assert.equal(g.finA,0,'Schwarz weg');
  assert.ok(p2.hp<hp0-170,'Super-Spezial macht richtig Schaden: '+Math.round(hp0-p2.hp));ok('Zeitlupe '+slow+' Schritte, Schwarz an/aus, Welle trifft für '+Math.round(hp0-p2.hp)+' Schaden')}
 
 // 5) Nur einmal je Combo; nach neuer Combo wieder möglich
-{const{g,p1,p2,t,combo}=setup();p1.meter=0;combo(10);t(['SUP']);let s=0;while(g.fin&&s++<600){t([]);combo(Math.max(p2.comboHits,10));p2.finDone=true}
+{const{g,p1,p2,t,combo}=setup();p1.meter=0;combo(10);t(['SUP']);let s=0;while(g.fin&&s++<600){t([]);p2.comboHits=Math.max(p2.comboHits,10);p2.finDone=true}
  p1.setState('idle');p1.move=null;p1.moveName=null;const h=p2.hp;p2.finDone=true;combo(12);p2.finDone=true;t(['SUP']);assert.notEqual(p1.moveName,'finisher','in derselben Combo nicht noch einmal');
  p2.endCombo();assert.ok(!p2.finDone,'neue Combo: wieder frei');combo(10);t(['SUP']);assert.equal(p1.moveName,'finisher');ok('einmal je Combo, danach wieder verfügbar')}
 
@@ -49,5 +49,5 @@ for(const id of Object.keys(CHARACTERS)){const c=CHARACTERS[id];if(!c.sprites&&!
 ok('alle Figuren: aufgeladene Version des Standard-Specials (mehr Schaden, größer, schneller, länger, Knockdown)')
 
 // 8) Deterministisch (Lockstep-tauglich)
-{const run=()=>{const{g,p1,p2,t,combo}=setup();p1.meter=0;combo(10);const h=p2.hp;t(['SUP']);let s=0;while(g.fin&&s++<600){t([]);combo(Math.max(p2.comboHits,10));p2.finDone=true}return[Math.round(h-p2.hp),s,g.frame]};assert.deepEqual(run(),run());ok('deterministisch')}
+{const run=()=>{const{g,p1,p2,t,combo}=setup();p1.meter=0;combo(10);const h=p2.hp;t(['SUP']);let s=0;while(g.fin&&s++<600){t([]);p2.comboHits=Math.max(p2.comboHits,10);p2.finDone=true}return[Math.round(h-p2.hp),s,g.frame]};assert.deepEqual(run(),run());ok('deterministisch')}
 console.log('Finisher-Tests bestanden ('+n+')');

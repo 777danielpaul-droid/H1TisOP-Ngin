@@ -28,31 +28,33 @@ export const CHAPTERS=[
    {x:1800,n:2,boss:'leonBoss',at:0,title:'LEON',say:'Ein gewaltiges Brüllen erschüttert die Stadt – der Herrscher der Savanne fordert dich heraus!'}]},
  {id:2,name:'DER DÄMON ERWACHT',stage:2,capBase:3,cap:6,ledges:[{x0:860,x1:1100,h:90},{x0:910,x1:1040,h:170}],parkour:{deco:'crane',name:'FRACHT-SCHATZ',width:185,segs:'SSFSSDHSSLLSDSSNHB'},props:[{k:'barrel',x:-560},{k:'crate',x:-200},{k:'crate',x:420},{k:'barrel',x:900},{k:'sign',x:1250},{k:'crate',x:1600}],look:{ground:['#0c2a22','#030a07'],line:'#52ffa8',lamp:'120,255,200',acc:'#ff6a7a'},
   intro:['Der Schwarm war nur der Vorbote. Im Hafen regt sich etwas viel Größeres.','Mehr Krieger, härtere Wellen – und am Ende wartet er.'],
-  win:{title:'ST3-G0 BESIEGT',say:'Die Panzer-Echse bricht zusammen – der Weg in den Kern ist frei.'},
+  win:{title:'ST3-G0 BESIEGT',say:'Die Panzer-Echse bricht zusammen – der Weg hinauf in die Berge ist frei.'},
   enc:[
    {x:-300,n:4,title:'ERSTE WELLE',say:'Diesmal sind es gleich mehr.'},
    {x:150,n:5,title:'ZWEITE WELLE',say:'Aus den Containern kriechen sie hervor.'},
    {x:600,n:6,title:'DRITTE WELLE',say:'Der Schwarm ist gewachsen – lass dich nicht einkreisen!'},
    {x:1000,n:7,title:'VIERTE WELLE',say:'Sie kommen aus allen Richtungen. Der Boden bebt.'},
-   {x:1380,n:2,boss:'st3g0Boss',at:0,title:'ST3-G0',say:'Die Panzer-Echse versperrt den Weg zum Kern. Der Boden bebt unter ihren Schritten.'}]},
- // Kapitel 3: gemischte Wellen (mix = [[Figur, Anzahl], …], gleichmäßig durchgemischt) aus Mantis + Mini-A1LIEN, Finale: A1LIEN ('cyberdemonBoss' = Boss-Kopie mit den Original-Werten). Boss-Reihenfolge: Kap. 1 LEON ('leonBoss'), Kap. 2 ST3-G0 ('st3g0Boss'), Kap. 3 A1LIEN, Kap. 4 ANUBIS ('anubisBoss'), Kap. 5 URSUS ('bearBoss').
+   {x:1380,n:2,boss:'st3g0Boss',at:0,title:'ST3-G0',say:'Die Panzer-Echse versperrt den Weg in die Berge. Der Boden bebt unter ihren Schritten.'}]},
+ // Boss-Reihenfolge: Kap. 1 LEON ('leonBoss'), Kap. 2 ST3-G0 ('st3g0Boss'), Kap. 3 URSUS ('bearBoss'), Kap. 4 ANUBIS ('anubisBoss'), Kap. 5 A1LIEN ('cyberdemonBoss' = Boss-Kopie mit den Original-Werten).
+ // Jeder Boss hat SEIN Level-Paket (name, stage = Hintergrund, look = Farben, intro/win, parkour.deco + Schatzname, Wellen-Texte, Boss). Was an den KAPITELPLATZ gebunden ist (steigt von Kap. 1 bis 5): capBase/cap, Wellengrößen/-positionen, ledges, props, parkour.width/segs.
+ // Kapitel 3: gemischte Wellen (mix = [[Figur, Anzahl], …], gleichmäßig durchgemischt) aus Mantis + Mini-A1LIEN.
  // parkour = Kletterstrecke pro Kapitel (Generator core/parkour.js): deco = Kulisse (neon/crane/reactor/obelisk/pagoda, render/storyhud.js), name = Schatz, width = Plattformbreite, segs = Kürzel-Folge (S Stufe, L flach, H hoch, N schmal, D Doppelsprung-Lücke, F gerade, B Rast, M beweglich, C bröckelnd, T Wende). Je Kapitel höher, schmaler und mit mehr D/M/C. Daraus entstehen platforms + relic (Schatz oben: Leben voll, +100 Meter, +2 Booster). Zone x -300..800 (links der Händler, rechts vor den Kanten); solange man oben klettert (>110 px über dem Boden), startet keine Welle.
  // ledges = Kanten/Ebenen des Kapitels [{x0,x1,h}]: ein Plateau, h Pixel über dem Boden. Von unten stoppt die Kante (Wand) – man springt hinauf, läuft oben weiter und fällt am Ende wieder hinunter; sich überlappende Plateaus ergeben Treppen. Siehe core/terrain.js.
- {id:3,name:'DER KERN',stage:1,capBase:3,cap:7,look:{ground:['#2a0c14','#0a0206'],line:'#ff5a6e',lamp:'255,130,110',acc:'#ffb347'},
-  intro:['Der Hafen ist gefallen – doch das Glühen kommt von weiter unten, aus dem Kern der Stadt.','Zwischen den Wellen versperren Trümmer den Weg. Spring drüber – und halte dich bereit.'],
-  win:{title:'A1LIEN BESIEGT',say:'Das Glühen im Kern erlischt – doch tief unter den Trümmern öffnet sich ein Tor.'},
-  ledges:[{x0:860,x1:1120,h:90},{x0:960,x1:1090,h:170},{x0:1170,x1:1320,h:100}],parkour:{deco:'reactor',name:'KERNSPLITTER',width:160,segs:'LSFNFSLMMSMSSSDHDSDSNHSSB'},
+ {id:3,name:'DER BERGTEMPEL',stage:1,capBase:3,cap:7,look:{ground:['#2a1a0c','#0a0603'],line:'#e0a05a',lamp:'255,200,120',acc:'#e08a4a'},
+  intro:['Der Hafen ist gefallen – die Spur des Schwarms führt hinauf zum Bergtempel: Nebel, Stein und Kirschblüten.','Dort haust, was selbst den Schwarm erzittern lässt. Er lässt dich nicht kampflos vorbei.'],
+  win:{title:'URSUS BESIEGT',say:'Der Bär ist gefallen – der Berg schweigt. Doch unter dem Tempel öffnet sich ein Pfad hinab ins Totenreich.'},
+  ledges:[{x0:860,x1:1120,h:90},{x0:960,x1:1090,h:170},{x0:1170,x1:1320,h:100}],parkour:{deco:'pagoda',name:'DRACHENPERLE',width:160,segs:'LSFNFSLMMSMSSSDHDSDSNHSSB'},
   props:[{k:'crate',x:-640},{k:'barrel',x:-330},{k:'sign',x:-160},{k:'crate',x:260},{k:'barrel',x:520},{k:'sign',x:700},{k:'crate',x:940},{k:'barrel',x:1100},{k:'crate',x:1500},{k:'sign',x:1640}],
   enc:[
-   {x:-300,mix:[['mantis',3],['miniDemon',1]],title:'ERSTE WELLE',say:'Zwischen den Insekten tauchen kleine Dämonen auf.'},
-   {x:150,mix:[['mantis',3],['miniDemon',2]],title:'ZWEITE WELLE',say:'Das Glühen wird stärker.'},
-   {x:600,mix:[['mantis',2],['miniDemon',3]],title:'DRITTE WELLE',say:'Die kleinen Dämonen sind schneller als sie aussehen!'},
-   {x:1000,mix:[['mantis',3],['miniDemon',3]],title:'VIERTE WELLE',say:'Sie kommen von allen Seiten – spring, wenn es eng wird.'},
-   {x:1380,n:2,boss:'cyberdemonBoss',at:0,title:'A1LIEN',say:'Rotes Glühen unter der Haut – der Dämon des Kerns.'}]},
+   {x:-300,mix:[['mantis',3],['miniDemon',1]],title:'ERSTE WELLE',say:'Der Schwarm hat den Berg erreicht – zwischen den Insekten tauchen kleine Dämonen auf.'},
+   {x:150,mix:[['mantis',3],['miniDemon',2]],title:'ZWEITE WELLE',say:'Zwischen den Tempelsäulen regt sich etwas.'},
+   {x:600,mix:[['mantis',2],['miniDemon',3]],title:'DRITTE WELLE',say:'Der Nebel verschluckt die Gegner – und spuckt sie von allen Seiten wieder aus.'},
+   {x:1000,mix:[['mantis',3],['miniDemon',3]],title:'VIERTE WELLE',say:'Spring, wenn es eng wird – der Gipfel ist nah!'},
+   {x:1380,n:2,boss:'bearBoss',at:0,title:'URSUS',say:'Ein Brüllen lässt den Tempel beben – URSUS, der Bär vom Berg, stellt sich dir in den Weg.'}]},
  // Kapitel 4: Das Totenreich (Stage 3 = Labyrinth). Mehr Gegner als Kapitel 3, ein Alpha-Mantis in der Vorwelle, Finale: ANUBIS ('anubisBoss').
  {id:4,name:'DAS TOTENREICH',stage:3,capBase:4,cap:8,look:{ground:['#1f1507','#080501'],line:'#ffd45a',lamp:'255,190,90',acc:'#ffd45a'},
-  intro:['Unter dem Kern liegt das Totenreich – Fackeln, Stein und der Geruch von altem Staub.','Seine Wächter lassen niemanden vorbei. Am Ende wartet ihr Herr.'],
-  win:{title:'ANUBIS BESIEGT',say:'Der Wächter der Unterwelt ist gefallen – doch aus den Bergen dröhnt ein neues Brüllen.'},
+  intro:['Unter dem Bergtempel öffnet sich der Weg ins Totenreich – Fackeln, Stein und der Geruch von altem Staub.','Seine Wächter lassen niemanden vorbei. Am Ende wartet ihr Herr.'],
+  win:{title:'ANUBIS BESIEGT',say:'Der Wächter der Unterwelt ist gefallen – doch aus der Tiefe leuchtet ein rotes Glühen.'},
   ledges:[{x0:860,x1:1200,h:100},{x0:1320,x1:1650,h:90},{x0:1430,x1:1560,h:180}],parkour:{deco:'obelisk',name:'SKARABÄUS',width:140,segs:'SSSSSMLSMSSCLCDMNDCNSSFDFCMDCSB'},
   props:[{k:'barrel',x:-640},{k:'sign',x:-160},{k:'crate',x:240},{k:'barrel',x:520},{k:'sign',x:700},{k:'crate',x:960},{k:'barrel',x:1100},{k:'crate',x:1480},{k:'sign',x:1700},{k:'barrel',x:2000}],
   enc:[
@@ -62,19 +64,19 @@ export const CHAPTERS=[
    {x:1000,mix:[['mantis',4],['miniDemon',4]],title:'VIERTE WELLE',say:'Sie kommen aus allen Richtungen. Spring, wenn es eng wird!'},
    {x:1380,mix:[['mantis',3],['miniDemon',3]],boss:1,at:2,title:'DER ALPHA',say:'Der Alpha der Gruft führt die letzte Vorhut an.'},
    {x:1800,mix:[['miniDemon',2]],boss:'anubisBoss',at:0,title:'ANUBIS',say:'Das Tor zur Unterwelt öffnet sich – Anubis, der Wächter der Unterwelt, tritt hervor.'}]},
-  // Kapitel 5: Der Bergtempel (Stage 1 = Tempel), Finale: URSUS der Bär ('bearBoss'). Kapitel 5 ist das letzte Kapitel: Abschluss = Story durchgespielt (zählt als Durchlauf, schaltet LEON frei; URSUS nach 5 Durchläufen, siehe CLEAR_UNLOCKS).
-  {id:5,name:'DER BERGTEMPEL',stage:1,capBase:4,cap:9,look:{ground:['#2a1a0c','#0a0603'],line:'#e0a05a',lamp:'255,200,120',acc:'#e08a4a'},
-   intro:['Aus dem Totenreich führt ein Pfad hinauf zum Bergtempel – Nebel, Stein und Kirschblüten.','Dort haust, was selbst die Wächter der Gruft fürchten. Der Schwarm lässt dich nicht kampflos vorbei.'],
-   win:{title:'URSUS BESIEGT',say:'Der Bär ist gefallen – der Berg schweigt, und die Stadt ist endlich sicher.'},
-   ledges:[{x0:860,x1:1200,h:90},{x0:1300,x1:1650,h:120},{x0:1420,x1:1560,h:190}],parkour:{deco:'pagoda',name:'DRACHENPERLE',width:125,segs:'SSSNNFCDCLCDCMNMCMNSDSDMDSCLFMSMSNB'},
+  // Kapitel 5: Der Kern (Stage 1), Finale: A1LIEN ('cyberdemonBoss'). Kapitel 5 ist das letzte Kapitel: Abschluss = Story durchgespielt (zählt als Durchlauf, schaltet LEON frei und A1LIEN im Shop; URSUS nach 5 Durchläufen, siehe CLEAR_UNLOCKS).
+  {id:5,name:'DER KERN',stage:1,capBase:4,cap:9,look:{ground:['#2a0c14','#0a0206'],line:'#ff5a6e',lamp:'255,130,110',acc:'#ffb347'},
+   intro:['Das Totenreich liegt hinter dir – doch das Glühen kommt von noch weiter unten, aus dem Kern der Stadt.','Zwischen den Wellen versperren Trümmer den Weg. Spring drüber – und halte dich bereit.'],
+   win:{title:'A1LIEN BESIEGT',say:'Das Glühen im Kern erlischt – die Stadt ist endlich sicher.'},
+   ledges:[{x0:860,x1:1200,h:90},{x0:1300,x1:1650,h:120},{x0:1420,x1:1560,h:190}],parkour:{deco:'reactor',name:'KERNSPLITTER',width:125,segs:'SSSNNFCDCLCDCMNMCMNSDSDMDSCLFMSMSNB'},
    props:[{k:'barrel',x:-620},{k:'crate',x:-200},{k:'sign',x:180},{k:'barrel',x:560},{k:'crate',x:880},{k:'sign',x:1120},{k:'barrel',x:1400},{k:'crate',x:1700},{k:'sign',x:1980},{k:'barrel',x:2200}],
    enc:[
-    {x:-300,mix:[['mantis',4],['miniDemon',3]],title:'ERSTE WELLE',say:'Der Schwarm hat den Berg erreicht.'},
-    {x:150,mix:[['mantis',4],['miniDemon',4]],title:'ZWEITE WELLE',say:'Zwischen den Tempelsäulen regt sich etwas.'},
-    {x:600,mix:[['mantis',5],['miniDemon',4]],title:'DRITTE WELLE',say:'Der Nebel verschluckt die Gegner – und spuckt sie von allen Seiten wieder aus.'},
-    {x:1000,mix:[['mantis',4],['miniDemon',5]],title:'VIERTE WELLE',say:'Spring, wenn es eng wird – der Gipfel ist nah!'},
-    {x:1380,mix:[['mantis',4],['miniDemon',4]],boss:1,at:2,title:'DER ALPHA',say:'Der Alpha des Berges führt die letzte Vorhut an.'},
-    {x:1800,mix:[['miniDemon',2]],boss:'bearBoss',at:0,title:'URSUS',say:'Ein Brüllen lässt den Tempel beben – URSUS, der Bär vom Berg, stellt sich dir in den Weg.'}]}];
+    {x:-300,mix:[['mantis',4],['miniDemon',3]],title:'ERSTE WELLE',say:'Aus dem Kern strömen kleine Dämonen herbei.'},
+    {x:150,mix:[['mantis',4],['miniDemon',4]],title:'ZWEITE WELLE',say:'Das Glühen wird stärker.'},
+    {x:600,mix:[['mantis',5],['miniDemon',4]],title:'DRITTE WELLE',say:'Die kleinen Dämonen sind schneller als sie aussehen!'},
+    {x:1000,mix:[['mantis',4],['miniDemon',5]],title:'VIERTE WELLE',say:'Sie kommen von allen Seiten – spring, wenn es eng wird.'},
+    {x:1380,mix:[['mantis',4],['miniDemon',4]],boss:1,at:2,title:'DER ALPHA',say:'Der Alpha des Kerns führt die letzte Vorhut an.'},
+    {x:1800,mix:[['miniDemon',2]],boss:'cyberdemonBoss',at:0,title:'A1LIEN',say:'Rotes Glühen unter der Haut – der Dämon des Kerns.'}]}];
 for(const c of CHAPTERS)if(c.parkour)Object.assign(c.parkour,buildParkour(c.parkour));   // Strecke aus den Kürzeln erzeugen (platforms, relic, height)
 export const ENC=CHAPTERS[0].enc;   // Kapitel 1 (Rückwärtskompatibilität: Tests/HUD)
 // KI für Schwarm-Gegner: nur die nächsten 2-3 greifen an, der Rest kreist in Abstand (sonst Dauer-Überzahl)

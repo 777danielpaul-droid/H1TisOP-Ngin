@@ -79,7 +79,8 @@ export class Game{
   if(this.flash>0)this.flash--;
   if(this.superFlash>0){this.superFlash--;return}
   if(this.hitstop>0){this.hitstop--;return}
-  if(this.fin){const F=this.fin,o=F.owner;F.t++;if((o.moveName==='finisher'&&o.state==='attack')||this.projectiles.some(p=>p.owner===o&&p.def.cfin))F.tail=0;else F.tail++;if(F.tail>COMBO_FINISH.tail||F.t>COMBO_FINISH.max||(this.phase!=='fight'&&this.phase!=='intro'))this.fin=null}
+  if(this.fin){const F=this.fin,o=F.owner,fo=o.foeRef;F.t++;if(F.hp0===undefined)F.hp0=fo?fo.hp:0;if(fo&&fo.hp<F.hp0)F.hit=true;   // Zeitlupe/Schwarz enden kurz nach dem Treffer der Welle (nicht erst nach der langen Erholung des Moves)
+   if(!F.hit&&((o.moveName==='finisher'&&o.state==='attack')||this.projectiles.some(p=>p.owner===o&&p.def.cfin)))F.tail=0;else F.tail++;if(F.tail>COMBO_FINISH.tail||F.t>COMBO_FINISH.max||(this.phase!=='fight'&&this.phase!=='intro'))this.fin=null}
   switch(this.phase){
    case'intro':this.pf++;for(const f of this.fighters){f.sf++;f.updateAnim()}
     if(this.pf>=(this.story&&this.story.cp===0?260:ROUND.intro)){this.phase='fight';this.pf=0;for(const f of this.fighters)f.input.clear()}break;

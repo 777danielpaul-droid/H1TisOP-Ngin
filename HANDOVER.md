@@ -491,3 +491,18 @@
 - `Renderer.celeb()` (render/renderer.js): ALLE Figuren bekommen den Neon-Nebel (render/fog.js, Figurenfarbe + Standard-Cyan) um den Gewinner – hinten dicht gemalt (`fog.draw`), vorn nur schwach nachgelegt (`fog.blit`), die Figur steht im Nebel – plus Boden-Glühen/Druckringe und Funkelsterne. **H!T (tiger) behält zusätzlich seine Blitzaura.**
 - Gelöscht: Flammen-/Zungenkontur, Spritesheet-Aura (Kitsune/ST3-G0: `assets/aura`, `make-aura.py`, `auraSprite`, `window.__AURA__`), die Aufsteig-Partikel für Nicht-H!T in `Effects.celebrate`.
 - Test: `tests/celeb.test.js` (Nebel bei allen Figuren in der Figurenfarbe, keine Flammenkontur, H!T mit Blitzen, alte Auren weg).
+
+## Update: Boss-Reihenfolge der Story (LEON → ST3-G0 → URSUS → ANUBIS → A1LIEN)
+Jeder Boss hat sein eigenes **Level-Paket** (in `src/core/story.js`, `CHAPTERS`): Name, `stage` (Hintergrund-Theme), `look` (Farben), `intro`/`win`, `parkour.deco` + Schatzname, Wellen-Texte und Boss. Was am **Kapitelplatz** hängt und von Kap. 1 bis 5 steigt, bleibt dort: `capBase`/`cap`, Wellengrößen und -positionen, `ledges`, `props`, `parkour.width`/`segs`.
+| Kap. | Boss | Level | Stage | Parkour-Kulisse / Schatz |
+|---|---|---|---|---|
+| 1 | LEON (`leonBoss`) | Der Schwarm | 0 NEON CITY | neon · NEON-CHIP |
+| 2 | ST3-G0 (`st3g0Boss`) | Der Dämon erwacht (Hafen) | 2 TOXIC DOCKS | crane · FRACHT-SCHATZ |
+| 3 | URSUS (`bearBoss`) | Der Bergtempel | 1 CRIMSON TEMPLE | pagoda · DRACHENPERLE |
+| 4 | ANUBIS (`anubisBoss`) | Das Totenreich | 3 LABYRINTH | obelisk · SKARABÄUS |
+| 5 | A1LIEN (`cyberdemonBoss`) | Der Kern (Finale) | 1 CRIMSON TEMPLE | reactor · KERNSPLITTER |
+- Folgen: A1LIEN ist im Shop erst nach **Kapitel 5** kaufbar (`CHAR_REQ` in `loot.js`, Flag `storydone5`); der Hinweis „URSUS im Shop“ erscheint nach Kapitel 3, „A1LIEN im Shop“ nach dem Finale (`render/storyhud.js`). Nur die Boss-Varianten tragen `storyBoss` (nicht die spielbaren Figuren).
+- Alte Spielstände: Wer Kapitel 3 in der alten Reihenfolge (A1LIEN) geschafft hat, hat `storydone3`, braucht für den A1LIEN-Kauf aber jetzt `storydone5` (bereits gekaufte Figuren bleiben).
+- Hinweis: Kapitel 3 (Bergtempel) und Kapitel 5 (Kern) nutzen beide die Stage 1 (CRIMSON TEMPLE, Pagode/rote Mondscheibe). Ein eigener Kern-Hintergrund bräuchte ein 5. Theme in `render/stage.js` (+ `STAGE_NAMES` in `loot.js`, Stage-Auswahl/Shop).
+- Boss-Stärke ist unverändert (URSUS 1550 HP, ANUBIS 1450, A1LIEN 1350): der Endboss ist damit der schwächste Boss. Bei Bedarf Werte nach Kapitelplatz angleichen.
+- Tests: `tests/story3.test.js` (URSUS), `story4.test.js` (ANUBIS), `story5.test.js` (A1LIEN, Finale), `a1lien.test.js` (Shop-Voraussetzung Kapitel 5), `st3g0unlock.test.js`.

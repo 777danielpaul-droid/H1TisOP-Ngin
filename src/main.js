@@ -192,7 +192,7 @@ const sellMove=(dx,dy)=>{const u=renderer.lootUi,G=gridGeom(),n=CARDS.length;let
 const shopBuy=i=>{const u=renderer.lootUi;
  if(i>=SHOP.length){const c=CHAR_SHOP[i-SHOP.length];if(!c)return;u.sel=i;   // Kämpfer-Karte: einmaliger, dauerhafter Kauf
   if(ownsChar(c.id)){u.msg='Schon freigeschaltet!';u.msgOk=false;game.sfx('block_guard',{vol:.5})}
-  else if(!charReqMet(c.id)){u.msg=CHAR_REQ[c.id].txt+'!';u.msgOk=false;game.sfx('block_guard',{vol:.5})}   // z. B. A1LIEN: erst Kapitel 3 abschließen
+  else if(!charReqMet(c.id)){u.msg=CHAR_REQ[c.id].txt+'!';u.msgOk=false;game.sfx('block_guard',{vol:.5})}   // z. B. A1LIEN: erst Kapitel 5 abschließen
   else if(buyChar(c.id)){u.msg=CHARACTERS[c.id].name+' FREIGESCHALTET!';u.msgOk=true;game.sfx('fw_finale',{vol:.6})}
   else{u.msg='Zu wenig Coins!';u.msgOk=false;game.sfx('block_guard',{vol:.5})}u.msgAt=u.t;return}
  const o=SHOP[i];if(!o)return;u.sel=i;
