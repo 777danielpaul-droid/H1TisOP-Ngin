@@ -36,11 +36,11 @@ loadFonts();   // eingebettete Schriften registrieren (Canvas + Menü)
 const $=id=>document.getElementById(id);
 const load=(k,d)=>{try{return localStorage.getItem(k)||d}catch(e){return d}},save=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};   // Auswahl merken (falls Browser-Speicher verfügbar)
 let saved=Math.max(0,Math.min(AI_LEVELS.length-1,+load('tf_difficulty',0)||0));
-const kb=new KeyboardInput(window),ai=new AIController(saved);
+const kb=new KeyboardInput(window),ai=new AIController(saved),aiCpu1=new AIController(saved);
 const kbV1=new KeyboardInput(window,VS1_BUTTONS,VS1_DIRS),kbV2=new KeyboardInput(window,VS2_BUTTONS,VS2_DIRS);   // 2-Spieler-Modus: getrennte Tastaturhälften
 const clearInputs=()=>{for(const k of[kb,kbV1,kbV2]){k.keys.clear();k.pend.length=0;k.clear();k.syncPad()}};   // syncPad: gehaltene Controller-Tasten (z. B. ✕ zum Bestätigen) lösen nach dem Menü keinen Schlag aus
 const p1=new Fighter({char:CHARACTERS[ROSTER[0]],x:340,facing:1,input:kb}),p2=new Fighter({char:CHARACTERS.tiger,x:620,facing:-1,input:ai});
-const game=new Game(p1,p2),canvas=$('screen'),renderer=new Renderer(canvas),arcade=new Arcade(game,p1,p2,ai);arcade.difficulty=saved;
+const game=new Game(p1,p2),canvas=$('screen'),renderer=new Renderer(canvas),arcade=new Arcade(game,p1,p2,ai,aiCpu1);arcade.difficulty=saved;
 let menuOpen=false,speed=SPEED;
 // ---- Eigener Hintergrund (Bild/Video): Drag & Drop ins Fenster, Upload-Panel (Knopf links unten, Taste H, Pausenmenü → Optionen). Zeichnen: render/backdrop.js, Einhängepunkte im Renderer. ----
 const bgUi=new BgPanel(renderer.bd,{blocked:()=>studioIsOpen()||musicUi.isOpen,onOpen:()=>clearInputs(),onClose:()=>{clearInputs();canvas.focus()}});bgUi.mount();renderer.bd.init();
@@ -162,7 +162,7 @@ const SLOTS=()=>[...ROSTER,'custom'],CI=()=>ROSTER.length;
 const openStudio=()=>{clearInputs();
  studioOpen(r=>{canvas.focus();clearInputs();
   if(r&&r.saved){arcade.cursor=CI();if(r.fight)startFight(CI())}else if(r&&r.deleted)arcade.cursor=Math.min(arcade.cursor,CI())})};
-const useInputs=(versus,cpu)=>{const two=versus&&!cpu;p1.input=two?kbV1:kb;p2.input=two?kbV2:ai;clearInputs()};   // Melee gegen CPU: Spieler 1 spielt mit der normalen Belegung wie im Arcade
+const useInputs=(versus,cpu)=>{const aiFight=arcade.mode==='aivsai',two=versus&&!cpu&&!aiFight;p1.input=aiFight?aiCpu1:two?kbV1:kb;p2.input=aiFight?ai:two?kbV2:ai;clearInputs()};   // Melee gegen CPU: Spieler 1 spielt mit der normalen Belegung wie im Arcade
 const startVersus=()=>{if(renderer.sel.launching)return;const v=arcade.vs,ids=Arcade.slotIds(),cpu=arcade.mode==='melee'&&arcade.cpu;
  renderer.sel.launch(ids[v.c1],()=>{useInputs(true,cpu);arcade.vsStart()},(n,o)=>game.sfx(n,o),ids[v.c2])};   // erst Videos + Feuerwerk, dann Kampf
 const startFight=i=>{const id=SLOTS()[i];if(id==='custom'&&!CHARACTERS.custom){openStudio();return}if(renderer.sel.launching)return;useInputs(false);
@@ -218,6 +218,7 @@ function hoverTarget(){endHot=-1;const L=mouseL;if(!L||menuOpen||panelsOpen()||s
  if(st!=='select'){const bs=endBtns();for(let i=0;i<bs.length;i++){const r=endBtnRect(i,bs.length);if(inR(r,...L)){endHot=i;return r}}return null}
  if(start&&hitStartSel(...L))return startSelRect();
  if(!a.pvp&&lootCan()){if(hitShopSel(...L))return shopSelRect();if(inR(boosterRect(),...L))return boosterRect()}
+ if(a.state==='select'&&(a.mode==='versus'||a.mode==='aivsai')&&hitShopSel(...L))return shopSelRect();
  const md=hitMode(...L);if(md>=0)return{x:MODE_PILL.x+md*MODE_PILL.w/4,y:MODE_PILL.y,w:MODE_PILL.w/4,h:MODE_PILL.h};
  if(a.mode==='melee'&&a.vs.step===0&&!a.vs.locked[0]&&!a.vs.locked[1]){const mo=hitMeleeOpt(...L,a.cpu);if(mo>=0)return MELEE_OPTS[mo]}
  if(a.pvp){const v=a.vs;if(v.step===1){const j=hitStage(...L);return j>=0&&a.stageOpen(j)?stageRect(j):null}const h=hitVsCar(...L);return h?vcarRect(h.pl,h.off):null}
@@ -242,6 +243,7 @@ canvas.addEventListener('click',e=>{{const dl=game.story&&game.story.dealer;if(d
  if(arcade.state!=='select'&&canvasMenu()){const L=logical(e),bs=endBtns();for(let i=0;i<bs.length;i++)if(inR(endBtnRect(i,bs.length),...L)){bs[i].fn();return}return}
  if(arcade.state!=='select'||menuOpen||studioIsOpen()||renderer.sel.launching)return;const L=logical(e);
  const md=hitMode(...L);if(md>=0){arcade.setMode(['arcade','story','versus','melee'][md]);return}
+ if((arcade.mode==='versus'||arcade.mode==='aivsai')&&hitShopSel(...L)){arcade.setMode(arcade.mode==='versus'?'aivsai':'versus');return}
  if(arcade.mode==='melee'&&arcade.vs.step===0&&!arcade.vs.locked[0]&&!arcade.vs.locked[1]){const mo=hitMeleeOpt(...L,arcade.cpu);if(mo>=0){if(mo===0)arcade.toggleCpu();else if(mo===1)setDiff((arcade.difficulty+1)%AI_LEVELS.length);else if(mo===2)arcade.cycleStocks();return}}
  if(arcade.pvp){const v=arcade.vs;if(v.step===1){const j=hitStage(...L);if(j>=0&&arcade.stageOpen(j)){v.stage=j;startVersus()}}
   else{const h=hitVsCar(...L);if(h){if(h.off===0)arcade.vsConfirm(h.pl);else arcade.vsMove(h.pl,h.off)}}return}   // Seitenfigur = dieses Rondell eine weiter, Mitte = bestätigen
@@ -365,6 +367,7 @@ addEventListener('keydown',e=>{
  if(arcade.state==='select'&&arcade.pvp){const v=arcade.vs;
   if(renderer.sel.launching){e.preventDefault();return}   // Videos + Feuerwerk laufen: Eingaben sperren
   if(e.code==='Tab'){if(v.step===0&&!v.locked[0]&&!v.locked[1])arcade.cycleMode();e.preventDefault();return}
+  if((arcade.mode==='versus'||arcade.mode==='aivsai')&&v.step===0&&e.code==='KeyB'){arcade.setMode(arcade.mode==='versus'?'aivsai':'versus');e.preventDefault();return}
   if(arcade.mode==='melee'&&v.step===0&&!v.locked[0]&&!v.locked[1]){   // Melee-Optionen: B = Spieler 2 Mensch/CPU, T = Stocks, ▲▼ = CPU-Stärke
    if(e.code==='KeyB'){arcade.toggleCpu();e.preventDefault();return}
    if(e.code==='KeyT'){arcade.cycleStocks();e.preventDefault();return}

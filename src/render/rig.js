@@ -82,7 +82,19 @@ export function attackFx(g,f,fist,glow){const m=f.move;
    g.fillStyle=bg;g.fillRect(x0,fist[1]-h,BL,h*2);
    const eg=g.createLinearGradient(x0+BL-180,0,x0+BL,0);eg.addColorStop(0,'#fff0');eg.addColorStop(1,'#000f');g.globalCompositeOperation='destination-out';g.fillStyle=eg;g.fillRect(x0+BL-180,fist[1]-h-2,180,h*2+4)}
   g.restore()}
- if(f.state==='attack'&&m&&m.fx==='tails')tailsFx(g,f,m,glow);else if(f.state==='attack'&&m&&m.fx==='breath')breathFx(g,f,m);else if(f.state==='attack'&&m&&m.fx==='bolt')boltFx(g,f,m);else if(f.state==='attack'&&m&&m.fx==='swarm')swarmFx(g,f,m)}
+ if(f.state==='attack'&&m&&m.fx==='tails')tailsFx(g,f,m,glow);else if(f.state==='attack'&&m&&m.fx==='breath')breathFx(g,f,m);else if(f.state==='attack'&&m&&m.fx==='bolt')boltFx(g,f,m);else if(f.state==='attack'&&m&&m.fx==='swarm')swarmFx(g,f,m);else if(f.state==='attack'&&m&&m.super&&!m.fx)superFx(g,f,m,glow)}
+// Gemeinsamer Hyper-Fallback für Figuren ohne eigenen FX-Zweig (z. B. Leon/Ursus):
+// Die vorhandene Sprite-Pose bleibt sichtbar, bekommt aber dieselbe visuelle Wucht wie die übrigen Hypers.
+function superFx(g,f,m,glow){const t=f.mf,su=m.su,end=su+m.ac;if(t<su-14||t>end+14)return;
+ const grow=Math.min(1,Math.max(0,(t-su+14)/14)),fade=t>end?Math.max(0,1-(t-end)/14):1,pulse=.82+.18*Math.sin(t*.72),reach=Math.max(180,(m.box&&m.box[2]||300)*.58);
+ g.save();g.globalCompositeOperation='lighter';
+ if(t<su+8){const a=fade*(t<su?Math.min(1,grow):1)*.42,rx=54+24*pulse,ry=86+30*pulse;
+  const ag=g.createRadialGradient(0,-86,8,0,-86,ry*1.35);ag.addColorStop(0,'#fff');ag.addColorStop(.28,glow);ag.addColorStop(1,'#0000');g.globalAlpha=a;g.fillStyle=ag;g.beginPath();g.ellipse(0,-86,rx,ry,0,0,7);g.fill()}
+ if(t>=su-2){const a=fade*Math.min(1,(t-su+2)/8),cx=34,cy=-88;
+  for(const[o,w,al]of[[0,5,.32],[10,2.4,.7],[20,1,.95]]){g.globalAlpha=a*al;g.strokeStyle=glow;g.lineWidth=w;g.beginPath();g.arc(cx,cy,34+o+pulse*4,-.72,.72);g.stroke()}
+  const beam=g.createLinearGradient(cx,0,cx+reach,0);beam.addColorStop(0,'#ffffff');beam.addColorStop(.12,glow);beam.addColorStop(1,'#0000');g.globalAlpha=a*.38;g.fillStyle=beam;g.beginPath();g.moveTo(cx,cy-18);g.lineTo(cx+reach,cy-6);g.lineTo(cx+reach,cy+6);g.lineTo(cx,cy+18);g.closePath();g.fill();
+  g.globalAlpha=a*.6;g.strokeStyle='#fff';g.lineWidth=1.2;g.beginPath();g.arc(0,0,26+((t-su)*3%28),0,Math.PI);g.stroke()}
+ g.restore()}
 // Rabenschwarm (Korvus-Hyper): ein Schwarm dunkler Raben mit violettem Schweif stürmt über die Trefferbox nach vorn. Weltmaß wie tailsFx (Ursprung = Körpermitte, nach vorn = +x).
 function swarmFx(g,f,m){const t=f.mf,t0=m.su-6,t1=m.su+m.ac;if(t<t0||t>t1+14)return;
  const grow=Math.min(1,(t-t0)/10),fade=t>t1?Math.max(0,1-(t-t1)/14):1,L=(m.box?m.box[2]+m.box[0]:460)*.95,N=11,oy=-92,VIO='#b57cff',HOT='#ecd9ff';

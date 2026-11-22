@@ -283,7 +283,7 @@ export class SelectScreen{
   if(arcade.mode==='story'){const c=CHAPTERS[arcade.chapter-1],nx=CHAPTERS[arcade.chapter],lock=nx&&!arcade.chapterOpen(arcade.chapter+1);   // Kapitelwahl (K / Klick): Kapitel 2+ erst nach Abschluss des Vorgängers
    {const ft='K = KAPITEL '+arcade.chapter+':  '+c.name;this.tagPlate(g,ft,W-24,500,12,'right','#7dff9a');hud.lab(g,ft,W-24,500,12,'#7dff9a','right',2,'#7dff9a','800')}
    if(lock){const ft='KAPITEL '+(arcade.chapter+1)+' GESPERRT – schließe Kapitel '+arcade.chapter+' ab';this.tagPlate(g,ft,W-24,480,10,'right','#8f7bff');hud.lab(g,ft,W-24,480,10,'#a899e0','right',2,null,'600')}}}
- modePill(g,A,t){const m=MODE_PILL,hud=this.hud,k=['arcade','story','versus','melee'].indexOf(A.mode),sw=m.w/4;
+modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':A.mode,k=['arcade','story','versus','melee'].indexOf(shown),sw=m.w/4;
   ['ARCADE','STORY','2 SPIELER','MELEE'].forEach((n,i)=>{const on=i===k,x=m.x+i*sw+(i?3:0),w=sw-6;hud.kBtn(g,x,m.y,w,m.h,n,{col:i%2?'#b98bff':'#7fe8ff',on,dim:!on,t,size:12})});
   this.tagPlate(g,'TAB = Modus wechseln',m.x+6,m.y+m.h+14,10,'left','#6fdeeb',6,0);hud.txt(g,'TAB = Modus wechseln',m.x+6,m.y+m.h+14,10,'#a9b4f0','left')}
  title(g,t,W,sub,col='#9fe8ff'){const hud=this.hud;
@@ -292,14 +292,14 @@ export class SelectScreen{
    hud.fancy(g,'H!TisOP',W/2,64,40,['#ffffff','#bfb0ff'],'center','#8f6bff',t,false,false,900,4)});
   hud.kSub(g,sub,W/2,88,13,col,4,t)}
  // ---- 2-Spieler-Modus: Kämpferwahl (zwei Cursor) ----
- drawVs(g,A,t,W,H){const hud=this.hud,v=A.vs,M=A.mode==='melee';
+ drawVs(g,A,t,W,H){const hud=this.hud,v=A.vs,M=A.mode==='melee',AI=A.mode==='aivsai';
   // Beide Konsolen wie im Arcade-Menü: Bay links, Profil-Konsole rechts als exaktes Spiegelbild (consoleFrame)
   this.consoleFrame(g,BAY,false,'rgba(10, 10, 18, 0.56)');this.consoleFrame(g,PNL,true,'rgba(10, 10, 18, 0.72)');g.save();
   // Titel beide in der Bay (die Profil-Konsole rechts hat in der obersten Zeile „wählt …“ und keinen Platz für einen Titel)
-  hud.lab(g,'DUAL COMBAT LINK',BAY.x+18,122,9,'#78d8e7','left',2,null,'700');
-  hud.lab(g,'PLAYER SYNC',BAY.x+BAY.w-18,122,9,'#83dce9','right',2,null,'700');g.restore();this.modePill(g,A,t);
+  hud.lab(g,AI?'AI COMBAT LINK':'DUAL COMBAT LINK',BAY.x+18,122,9,'#78d8e7','left',2,null,'700');
+  hud.lab(g,AI?'AUTONOMOUS SYNC':'PLAYER SYNC',BAY.x+BAY.w-18,122,9,'#83dce9','right',2,null,'700');g.restore();this.modePill(g,A,t);
   if(v.step===1)return this.drawStagePick(g,A,t,W,H);
-  this.title(g,t,W,M?'MELEE – WÄHLT EURE KÄMPFER':'2 SPIELER – WÄHLT EURE KÄMPFER',M?'#bfe9ff':undefined);
+  this.title(g,t,W,AI?'KI VS KI – WÄHLT EURE KÄMPFER':M?'MELEE – WÄHLT EURE KÄMPFER':'2 SPIELER – WÄHLT EURE KÄMPFER',AI?'#7fe8ff':M?'#bfe9ff':undefined);
   if(M)this.meleeOpts(g,A,t,W);
   const slots=Arcade.slotIds();
   this.vsRondell(g,A,t,1,slots);this.vsRondell(g,A,t,2,slots);
@@ -310,9 +310,9 @@ export class SelectScreen{
   hud.kRule(g,PX+8,PX+PW-8,302,'#4e8290','r',.8);g.restore();
   this.vsProfile(g,A,t,1,slots[v.c1],104,P1C,M);this.vsProfile(g,A,t,2,slots[v.c2],304,P2C,M);
   // Fuß: Wartehinweis + Steuerung
-  const one=v.locked[0]!==v.locked[1],l1='P1:  A / D wählen · C Farbe · G bestätigen',l2=M&&A.cpu?'CPU (P2):  ◀ / ▶ wählt den Gegner · ENTER bestätigen':'P2:  ◀ / ▶ wählen · L Farbe · ENTER bestätigen',fw=Math.max(hud.mw(g,l1,11),hud.mw(g,l2,11))+24;
+  const one=v.locked[0]!==v.locked[1],l1=AI?'KI 1:  A / D wählen · C Farbe · G bestätigen':'P1:  A / D wählen · C Farbe · G bestätigen',l2=AI?'KI 2:  ◀ / ▶ wählen · L Farbe · ENTER bestätigen':M&&A.cpu?'CPU (P2):  ◀ / ▶ wählt den Gegner · ENTER bestätigen':'P2:  ◀ / ▶ wählen · L Farbe · ENTER bestätigen',fw=Math.max(hud.mw(g,l1,11),hud.mw(g,l2,11))+24;
   if(one)this.plate(g,26,474,Math.max(fw,300),66,'#8f7bff',9);else this.plate(g,26,502,fw,38,'#8f7bff',8);   // Lesefläche hinter Wartehinweis + Steuerung
-  if(one&&Math.sin(t*.14)>-.4)hud.fam(F_DISP,()=>hud.fancy(g,`WARTE AUF SPIELER ${v.locked[0]?2:1}`,34,496,22,['#ffffff','#9fe8ff'],'left','#8f7bff',t,false,false,400,2));
+  if(one&&Math.sin(t*.14)>-.4)hud.fam(F_DISP,()=>hud.fancy(g,`${AI?'WARTE AUF KI':'WARTE AUF SPIELER'} ${v.locked[0]?2:1}`,34,496,22,['#ffffff','#9fe8ff'],'left','#8f7bff',t,false,false,400,2));
   hud.txt(g,l1,34,516,11,P1C,'left');hud.txt(g,l2,34,532,11,P2C,'left');
   this.tagPlate(g,'ESC = ZURÜCK',W-24,516,10,'right','#8f7bff');hud.lab(g,'ESC = ZURÜCK',W-24,516,10,'#a899e0','right',2,null,'600')}
  // Ein Rondell im 2-Spieler-/Melee-Menü (pl = 1 oben, 2 unten): gleiche Logik wie carousel(), kleiner, mit Spielerfarbe, Name-Tag und ✔ bei Bestätigung
@@ -340,7 +340,7 @@ export class SelectScreen{
    if(sel)this.skinDots(g,ch,A.vsSkinOf(pl),cx,base+42,true);
    g.restore()}
   // Tag + Pfeile (Pfeile weg, sobald bestätigt)
-  const lab=(A.mode==='melee'&&A.cpu&&pl===2)?'CPU':'P'+pl;
+  const lab=A.mode==='aivsai'?'KI '+pl:(A.mode==='melee'&&A.cpu&&pl===2)?'CPU':'P'+pl;
   hud.fancy(g,'▼ '+lab+(lk?' ✔':''),VCAR.cx,y0+30,18,['#fff',pc],'center',pc,t);
   if(!lk){const pu=.5+.5*Math.sin(t*.14);g.save();g.fillStyle=pc;g.shadowColor=pc;g.shadowBlur=8;g.globalAlpha=.6+.4*pu;
    for(const sgn of[-1,1]){const x=VCAR.cx+sgn*(78+pu*3),y=base0+22;g.beginPath();g.moveTo(x+sgn*8,y);g.lineTo(x-sgn*5,y-9);g.lineTo(x-sgn*5,y+9);g.closePath();g.fill()}g.restore()}}
@@ -352,7 +352,7 @@ export class SelectScreen{
   if(!drawFullFrame(g,ch,px,py,ps,ph,A.vsSkinOf(pl))){g.fillStyle=col;g.font=`900 60px ${F_TECH}`;g.textAlign='center';g.fillText(ch.name[0],pcx,pcy+20)}
   g.restore();
   const tx=px+ps+16,rw=PX+PW-8;
-  hud.lab(g,(M&&A.cpu&&pl===2?'CPU':`SPIELER ${pl}`)+(skinCount(ch.sprites)>1?'  ·  '+skinName(ch.sprites,A.vsSkinOf(pl)).toUpperCase():''),tx,y0+20,11,pc,'left',2,pc,'800');
+  hud.lab(g,(A.mode==='aivsai'?'KI '+pl:(M&&A.cpu&&pl===2?'CPU':`SPIELER ${pl}`))+(skinCount(ch.sprites)>1?'  ·  '+skinName(ch.sprites,A.vsSkinOf(pl)).toUpperCase():''),tx,y0+20,11,pc,'left',2,pc,'800');
   hud.txt(g,lk?'✔ BEREIT':'wählt …',rw,y0+20,12,lk?'#9fe8ff':DIM,'right');
   hud.fam(F_DISP,()=>hud.fancy(g,ch.name,tx,y0+54,32,['#ffffff',col],'left',col,t,false,false,400,2));
   const parts=ch.desc.split(' · ');hud.lab(g,parts[0].toUpperCase(),tx,y0+74,11,TXT,'left',2,null,'700');if(parts[1])hud.lab(g,parts[1].toUpperCase(),tx,y0+90,11,col,'left',2,null,'700');
@@ -378,7 +378,7 @@ export class SelectScreen{
  drawStagePick(g,A,t,W,H){const hud=this.hud,v=A.vs,N=THEMES.length+1,slots=Arcade.slotIds();
   g.save();hud.kChamfer(g,24,108,912,302,20);g.fillStyle='rgba(10, 10, 18, 0.72)';g.fill();g.strokeStyle='rgba(96,210,226,.3)';g.stroke();hud.lab(g,'TACTICAL ENVIRONMENT SELECT  /  STAGE DATA',44,128,9,'#78d8e7','left',2,null,'700');g.restore();
   if(this.ln&&this.ln.vs)return this.drawVsLaunch(g,A,t,W,H,slots);
-  this.title(g,t,W,A.mode==='melee'?'MELEE – STAGE WÄHLEN':'STAGE WÄHLEN',A.mode==='melee'?'#bfe9ff':undefined);
+  this.title(g,t,W,A.mode==='aivsai'?'KI VS KI – STAGE WÄHLEN':A.mode==='melee'?'MELEE – STAGE WÄHLEN':'STAGE WÄHLEN',A.mode==='aivsai'?'#7fe8ff':A.mode==='melee'?'#bfe9ff':undefined);
   for(let i=0;i<N;i++){const r=stageRect(i,N),T=THEMES[i],sel=v.stage===i,pulse=.5+.5*Math.sin(t*.12),cx=r.x+r.w/2,col=T?T.lights[0]:'#9fe8ff';
    g.save();g.translate(cx,r.y+r.h/2);const sc=sel?1.06+.01*pulse:.96;g.scale(sc,sc);g.translate(-cx,-(r.y+r.h/2));g.globalAlpha=sel?1:.65;g.shadowColor=col;g.shadowBlur=sel?28:6;
    const gr=g.createLinearGradient(0,r.y,0,r.y+r.h);if(T){gr.addColorStop(0,T.sky[1]);gr.addColorStop(.55,T.sky[3]);gr.addColorStop(1,T.floor[0])}else{gr.addColorStop(0,'#1a1240');gr.addColorStop(1,'#0a0618')}
@@ -390,18 +390,18 @@ export class SelectScreen{
    const lk=!A.stageOpen(i);if(lk){g.save();g.globalAlpha=.62;g.fillStyle='#04020a';hud.kChamfer(g,r.x,r.y,r.w,r.h,14);g.fill();g.restore();hud.fancy(g,'GESPERRT',cx,r.y+r.h/2+8,20,['#ffffff','#8f7bff'],'center','#8f7bff',t)}
    hud.fancy(g,T?T.name:'ZUFALL',cx,r.y+r.h-30,T?17:20,['#ffffff',col],'center',col,t,true);hud.txt(g,lk?'per Booster freischalten':T?T.desc:'neu bei jeder Revanche',cx,r.y+r.h-12,11,lk?'#ffd23f':'#d6c8ff','center');g.restore()}
   hud.fancy(g,`${CHARACTERS[slots[v.c1]].name}`,W*.25,372,22,['#ffffff',P1C],'center',P1C,t);hud.fancy(g,'VS',W/2,372,26,['#ffffff','#9fe8ff'],'center','#8f7bff',t);hud.fancy(g,`${CHARACTERS[slots[v.c2]].name}`,W*.75,372,22,['#ffffff',P2C],'center',P2C,t);
-  hud.txt(g,'SPIELER 1',W*.25,390,11,'#9fe8ff','center');hud.txt(g,'SPIELER 2',W*.75,390,11,'#c9a0ff','center');
+  hud.txt(g,A.mode==='aivsai'?'KI 1':'SPIELER 1',W*.25,390,11,'#9fe8ff','center');hud.txt(g,A.mode==='aivsai'?'KI 2':'SPIELER 2',W*.75,390,11,'#c9a0ff','center');
   hud.txt(g,'A / D  oder  ◀ / ▶  Stage wählen',W/2,452,14,'#d6c8ff','center');
   if(Math.sin(t*.14)>-.4)hud.fancy(g,'ENTER / G / KLICK – KAMPF STARTEN',W/2,488,22,['#ffffff','#9fe8ff'],'center','#8f7bff',t);
   hud.txt(g,'ESC = zurück zur Kämpferwahl',14,530,11,'#7d6fb0','left')}
  // 2-Spieler/Melee-Start: statt der Stage-Karten laufen die beiden Kurzvideos nebeneinander, dazu das Feuerwerk; danach beginnt der Kampf
- drawVsLaunch(g,A,t,W,H,slots){const hud=this.hud,ln=this.ln,v=A.vs,M=A.mode==='melee';
-  this.title(g,t,W,M?'MELEE':'2 SPIELER',M?'#bfe9ff':undefined);
+ drawVsLaunch(g,A,t,W,H,slots){const hud=this.hud,ln=this.ln,v=A.vs,M=A.mode==='melee',AI=A.mode==='aivsai';
+  this.title(g,t,W,AI?'KI VS KI':M?'MELEE':'2 SPIELER',AI?'#7fe8ff':M?'#bfe9ff':undefined);
   const w=400,h=225,y=118,xs=[W*.25-w/2,W*.75-w/2],vv=[ln.vid,ln.vid2],ids=[ln.id,ln.id2],cols=[ln.col,ln.col2],al=Math.min(1,ln.t/10);
   for(let i=0;i<2;i++){if(vv[i]&&vv[i].paused&&!vv[i].ended&&vv[i].readyState>=2){try{vv[i].play()}catch(e){}}
    if(this.vidReady(vv[i])){this.vidPanel(g,vv[i],xs[i],y,w,h,cols[i],al,ln.flash);this.vidText(g,ids[i],xs[i]+18,y+h-50,38,cols[i],Math.min(1,Math.max(0,(ln.t-15)/20)),t)}
    else{this.vidPanel(g,null,xs[i],y,w,h,cols[i],al,ln.flash);const ch=CHARACTERS[ids[i]];g.save();g.globalAlpha=al;if(ch&&!drawFullFrame(g,ch,xs[i]+w/2-60,y+10,120,h-20,A.vsSkinOf(i+1))){g.fillStyle=cols[i];g.font=`900 80px ${F_TECH}`;g.textAlign='center';g.fillText(ch.name[0],xs[i]+w/2,y+h/2+28)}g.restore()}}
   hud.fancy(g,CHARACTERS[ids[0]].name,W*.25,372,26,['#ffffff',P1C],'center',P1C,t);hud.fancy(g,'VS',W/2,236,34,['#ffffff','#9fe8ff'],'center','#8f7bff',t);hud.fancy(g,CHARACTERS[ids[1]].name,W*.75,372,26,['#ffffff',P2C],'center',P2C,t);
-  hud.txt(g,M&&A.cpu?'CPU':'SPIELER 2',W*.75,392,11,'#c9a0ff','center');hud.txt(g,'SPIELER 1',W*.25,392,11,'#9fe8ff','center');
+  hud.txt(g,AI?'KI 2':M&&A.cpu?'CPU':'SPIELER 2',W*.75,392,11,'#c9a0ff','center');hud.txt(g,AI?'KI 1':'SPIELER 1',W*.25,392,11,'#9fe8ff','center');
   this.stepLaunch(t,W/2);if(this.fw)this.fw.draw(g);this._lt=t;void v}
 }

@@ -42,12 +42,14 @@ export class Renderer{
   if(this.useGL)this.glFinish({bloom:.5*GFX.bloom,ab:0,vc:[0,0,.03],va:0,grain:GFX.grain?.06:0,t:this.selT});else{this.post.bloom(g,this.cv,.5);this.post.grain(g,this.cv,.06)}
   const u=this.g;u.setTransform(s,0,0,s,0,0);if(!this.sel.launching){const h=this.hud,t=this.selT,pk=LOOT.packs>0,bb=boosterRect(),cb=coinsRect();   // Booster + Coins oben rechts (Anzahl der gesammelten)
    // Obere Leiste rechts = exaktes Spiegelbild der Modus-Leiste links (modePill in select.js): Schräge gespiegelt (flip), Farbwechsel cyan/violett spiegelbildlich, gleiche Schriftgröße
-   //   links:  ARCADE(cyan) · STORY(violett) · 2 SPIELER(cyan) · MELEE(violett)   rechts: STARTSEITE(violett) · SHOP(cyan) · BOOSTER(violett) · COINS(cyan)
+   //   links:  ARCADE(cyan) · STORY(violett) · 2 SPIELER(cyan) · MELEE(violett)   rechts: STARTSEITE(violett) · SHOP/KI-KAMPF(cyan) · BOOSTER(violett) · COINS(cyan)
    h.kBtn(u,bb.x,bb.y,bb.w,bb.h,'BOOSTER '+LOOT.packs,{col:'#b98bff',on:pk,dim:!pk,t,size:12,flip:true});
    h.kBtn(u,cb.x,cb.y,cb.w,cb.h,'COINS '+LOOT.coins,{col:'#7fe8ff',t,size:12,flip:true});
    {const r=startSelRect();h.kBtn(u,r.x,r.y,r.w,r.h,'STARTSEITE',{col:'#b98bff',t,size:12,flip:true})}   // 4. Knopf rechts: zurück zur Startseite (Demokampf)
    if(!A.pvp){const sb=shopSelRect();h.kBtn(u,sb.x,sb.y,sb.w,sb.h,'SHOP',{col:'#7fe8ff',t,size:12,flip:true});   // Shop-Knopf neben dem Booster-Zähler
-    this.sel.tagPlate(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'right','#6fdeeb',6,0);h.txt(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'#a9b4f0','right')}}
+    this.sel.tagPlate(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'right','#6fdeeb',6,0);h.txt(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'#a9b4f0','right')}
+   else if(A.mode==='versus'||A.mode==='aivsai'){const sb=shopSelRect(),ai=A.mode==='aivsai';h.kBtn(u,sb.x,sb.y,sb.w,sb.h,ai?'2 SPIELER':'KI-KAMPF',{col:'#7fe8ff',on:ai,t,size:12,flip:true});
+    this.sel.tagPlate(u,ai?'B – 2 SPIELER':'B – KI-KAMPF',cb.x+cb.w,cb.y+cb.h+16,10,'right','#6fdeeb',6,0);h.txt(u,ai?'B – 2 SPIELER':'B – KI-KAMPF',cb.x+cb.w,cb.y+cb.h+16,10,'#a9b4f0','right')}}
   drawLoot(u,this.hud,this.lootUi);this.hov.draw(u)}
  draw(game){if(this.useGL&&!this.glp.ok)this.applyGfx();if(game.arcade&&game.arcade.state==='select')return this.drawSelect(game);
   const g=this.gs,ui=this.g,s=this.scale,t=game.frame/60,cam=game.camera;this.stage=this.stages[(game.stageIndex||0)%this.stages.length];this.stage.camX=cam.x;for(const st of this.stages)if(st!==this.stage&&st!==this.stages[0]){st.cache=null;st.cacheT=null;st.cacheS=null} // Speicher sparen: nur aktuelles Level + Menü-Hintergrund halten

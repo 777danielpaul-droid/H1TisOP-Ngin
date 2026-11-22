@@ -13,12 +13,12 @@ export const MAX_DIFF=AI_LEVELS.length-1;   // höchste wählbare Schwierigkeit 
 // Arcade-Modus: Charakterwahl -> nacheinander gegen alle anderen spielbaren Figuren (je 2 Runden-Siege = Stage geschafft).
 // Zustände: select | fight | clear | gameover | victory. Rein logisch (kein DOM) -> testbar.
 export class Arcade{
- constructor(game,p1,p2,ai){this.game=game;this.p1=p1;this.p2=p2;this.ai=ai;this.state='select';this.cursor=0;this.difficulty=0;
+ constructor(game,p1,p2,ai,ai1=null){this.game=game;this.p1=p1;this.p2=p2;this.ai=ai;this.ai1=ai1;this.state='select';this.cursor=0;this.difficulty=0;
   this.opponents=[];this.stage=0;this.t=0;this.player=null;game.arcade=this;
-  this.skins={};this.newUnlock=null;this.chapter=1;this.chOpen=new Set([1]);this.refreshChapters();this.mode='arcade';this.cpu=true;this.stocks=MELEE.stocks;   // mode: arcade | versus | melee; cpu = Spieler 2 ist die KI (nur Melee); stocks = Leben im Melee
+  this.skins={};this.newUnlock=null;this.chapter=1;this.chOpen=new Set([1]);this.refreshChapters();this.mode='arcade';this.cpu=true;this.stocks=MELEE.stocks;   // mode: arcade | versus | aivsai | melee; cpu = Spieler 2 ist die KI (nur Melee); stocks = Leben im Melee
   this.vs={c1:0,c2:1,s1:0,s2:0,locked:[false,false],step:0,stage:0};this.vsStage=0;this.stageCount=4;this.online=false}
  get total(){return this.opponents.length}
- get pvp(){return this.mode==='versus'||this.mode==='melee'}   // Versus und Melee teilen sich die Kämpfer-/Stage-Wahl
+ get pvp(){return this.mode==='versus'||this.mode==='aivsai'||this.mode==='melee'}   // Versus, KI-Kampf und Melee teilen sich die Kämpfer-/Stage-Wahl
  opponentName(i=this.stage){const id=this.opponents[i];return id?CHARACTERS[id].name:''}
  static ladderFor(playerId){return[...LADDER.filter(x=>x!==playerId),...(playerId!==BOSS&&CHARACTERS[BOSS]?[BOSS]:[])]}   // alle anderen Kämpfer, zum Schluss der Endgegner
  isBoss(i=this.stage){return this.mode==='arcade'&&this.opponents[i]===BOSS}
@@ -45,15 +45,15 @@ export class Arcade{
  beginStage(){const g=this.game,oid=this.opponents[this.stage];this.p2.setChar(CHARACTERS[oid],this.skinOf(oid));this.applyDifficulty();
   {const own=ownedStages(this.stageCount);g.stageIndex=own[this.stage%own.length]}   // freigeschaltete Arenen der Reihe nach (bei mehr Gegnern als Arenen wiederholen sie sich)
   g.meleeOn=false;g.rematch();this.state='fight';this.t=0}
- applyDifficulty(){this.ai.setLevel(Math.min(MAX_DIFF,this.difficulty+(this.isBoss()?1:0)))}   // Endgegner: KI eine Stufe härter
+ applyDifficulty(){const d=Math.min(MAX_DIFF,this.difficulty+(this.isBoss()?1:0));this.ai.setLevel(d);if(this.ai1)this.ai1.setLevel(d)}   // Endgegner: KI eine Stufe härter
  setDifficulty(d){this.difficulty=Math.max(0,Math.min(MAX_DIFF,d|0));if(this.state!=='select')this.applyDifficulty()}
  retry(){this.game.rematch();this.state='fight';this.t=0}
  toSelect(){this.leaveStory();this.online=false;this.state='select';this.game.stageIndex=0;this.t=0;this.vsReset()}
  // ---- 2-Spieler-Modus (PvP): beide wählen einen Kämpfer, danach die Stage ----
  static slotIds(){return[...ROSTER,...(CHARACTERS.custom?['custom']:[])]}
- setMode(m){if(this.state!=='select')return;this.mode=m==='versus'||m==='melee'||m==='story'?m:'arcade';this.vsReset()}
+ setMode(m){if(this.state!=='select')return;this.mode=m==='versus'||m==='aivsai'||m==='melee'||m==='story'?m:'arcade';this.vsReset()}
  toggleMode(){this.setMode(this.mode==='versus'?'arcade':'versus')}
- cycleMode(){this.setMode({arcade:'story',story:'versus',versus:'melee',melee:'arcade'}[this.mode])}   // Tab im Menü: Arcade -> 2 Spieler -> Melee
+ cycleMode(){this.setMode({arcade:'story',story:'versus',versus:'melee',aivsai:'versus',melee:'arcade'}[this.mode])}   // Tab im Menü: Arcade -> 2 Spieler -> Melee
  // Melee-Optionen (nur im Auswahlbildschirm): Spieler 2 = KI, Anzahl Stocks (1-5)
  toggleCpu(){if(this.state!=='select'||this.mode!=='melee')return false;this.cpu=!this.cpu;return true}
  cycleStocks(){if(this.state!=='select'||this.mode!=='melee')return false;this.stocks=this.stocks>=5?1:this.stocks+1;return true}
@@ -66,9 +66,9 @@ export class Arcade{
  vsStageMove(dir){const v=this.vs;if(v.step!==1)return;const n=this.stageCount+1;let s=v.stage;for(let i=0;i<n;i++){s=(s+dir+n)%n;if(this.stageOpen(s))break}v.stage=s}   // gesperrte Stages werden übersprungen; letzte Karte = Zufall
  vsStart(){const v=this.vs,ids=Arcade.slotIds();if(v.step!==1)return false;const st=v.stage>=this.stageCount?-1:this.stageOpen(v.stage)?v.stage:0;if(this.mode==='melee')this.startMelee(ids[v.c1],ids[v.c2],st,this.vsSkinOf(1),this.vsSkinOf(2));else this.startVersus(ids[v.c1],ids[v.c2],st,this.vsSkinOf(1),this.vsSkinOf(2));return true}
  startMelee(id1,id2,stage=0,s1=0,s2=0){this.mode='melee';this.startVersus(id1,id2,stage,s1,s2)}
- startVersus(id1,id2,stage=0,s1=0,s2=0){this.leaveStory();if(this.mode!=='melee')this.mode='versus';this.player=id1;this.opponents=[];this.stage=0;this.vsStage=stage;this.p1.setChar(CHARACTERS[id1],s1);this.p2.setChar(CHARACTERS[id2],s2);this.beginVersus()}
+ startVersus(id1,id2,stage=0,s1=0,s2=0){this.leaveStory();if(this.mode!=='melee'&&this.mode!=='aivsai')this.mode='versus';this.player=id1;this.opponents=[];this.stage=0;this.vsStage=stage;this.p1.setChar(CHARACTERS[id1],s1);this.p2.setChar(CHARACTERS[id2],s2);this.beginVersus()}
  beginVersus(){const g=this.game,st=this.vsStage;{const own=ownedStages(this.stageCount);g.stageIndex=st<0?own[Math.floor(Math.random()*own.length)]:own.includes(st)?st:0}
-  g.meleeOn=this.mode==='melee';g.meleeStocks=this.stocks;if(g.meleeOn&&this.cpu)this.applyDifficulty();g.rematch();this.state='fight';this.t=0}
+  g.meleeOn=this.mode==='melee';g.meleeStocks=this.stocks;if((g.meleeOn&&this.cpu)||this.mode==='aivsai')this.applyDifficulty();g.rematch();this.state='fight';this.t=0}
  rematchVs(){this.beginVersus()}
  // Online-Kampf (core/netmatch.js): beide Geräte starten mit exakt denselben Angaben (Figuren, Farben, Stage), Zähler bei 0 -> gleicher Rechenstand. cfg = {ids:[P1,P2], skins:[s1,s2], stage}
  startOnline(cfg){this.leaveStory();this.mode='versus';this.online=true;this.player=cfg.ids[0];this.opponents=[];this.stage=0;this.vsStage=cfg.stage|0;
