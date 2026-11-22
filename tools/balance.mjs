@@ -27,6 +27,7 @@ function fight(a,b,seed,st){
  const att=(x,hp0,o)=>{const d=hp0-o.hp;if(d>0){const k=x.state==='attack'?x.moveName:'proj/sonst';const m=st.dmg[x.char.id]||(st.dmg[x.char.id]={});m[k]=(m[k]||0)+d}};
  const sa=(x)=>{const m=st.sta[x.char.id]||(st.sta[x.char.id]={fr:0,exh:0,ev:0,rest:0,sum:0,low:0,pe:0});m.fr++;m.sum+=x.st/x.stMax;if(x.exh){m.exh++;if(!x.pe)m.ev++}if(x.st<25)m.low++;if(x.state==='rest')m.rest++;x.pe=x.exh};
  while(g.phase!=='result'&&g.phase!=='match'&&f++<9000){const h1=p1.hp,h2=p2.hp;g.step();if(g.phase==='fight'||g.phase==='ko'){att(p1,h2,p2);att(p2,h1,p1)}if(g.phase==='fight'&&STAM){sa(p1);sa(p2)}}
+ for(const x of[p1,p2]){const m=st.sta[x.char.id]||(st.sta[x.char.id]={fr:0,exh:0,ev:0,rest:0,sum:0,low:0,pe:0});m.heal=(m.heal||0)+x.healed}
  return{a,b,w:g.winner?g.winner.char.id:null,frames:f,ko:!g.timedOut}}
 
 function hook(st){const o=Fighter.prototype.startMove;Fighter.prototype.startMove=function(n,...r){const m=st.mv[this.char.id]||(st.mv[this.char.id]={});m[n]=(m[n]||0)+1;return o.call(this,n,...r)}}
@@ -54,9 +55,9 @@ else{
   for(const a of IDS){const rounds=T[a].n||1,d=ST.dmg[a]||{},tot=Object.values(d).reduce((s,v)=>s+v,0),mv=ST.mv[a]||{};
    const top=Object.entries(d).sort((x,y)=>y[1]-x[1]).slice(0,8).map(([k,v])=>`${k} ${Math.round(v/rounds)}`).join(' · ');
    console.log(`${pad(a,10)} ${lp(Math.round(tot/rounds),4)} | ${top} | Hyper ${((mv.super||0)/rounds).toFixed(2)} Luft ${((mv.airsuper||0)/rounds).toFixed(2)}`)}
-  if(STAM){console.log('\nAusdauer je Figur: Ø Füllstand | Zeit erschöpft | Zeit <25 | Auspowern/Runde | Verschnaufen (s)/Runde');
+  if(STAM){console.log('\nAusdauer je Figur: Ø Füllstand | Zeit erschöpft | Zeit <25 | Auspowern/Runde | Verschnaufen (s)/Runde | HP geheilt/Runde');
    for(const a of IDS){const m=ST.sta[a]||{fr:1,exh:0,ev:0,rest:0,sum:0,low:0},rounds=T[a].n||1;
-    console.log(`${pad(a,10)} ${lp(Math.round(100*m.sum/m.fr),3)} % | ${lp((100*m.exh/m.fr).toFixed(1),5)} % | ${lp((100*m.low/m.fr).toFixed(1),5)} % | ${lp((m.ev/rounds).toFixed(2),5)} | ${lp((m.rest/60/rounds).toFixed(2),5)}`)}}
+    console.log(`${pad(a,10)} ${lp(Math.round(100*m.sum/m.fr),3)} % | ${lp((100*m.exh/m.fr).toFixed(1),5)} % | ${lp((100*m.low/m.fr).toFixed(1),5)} % | ${lp((m.ev/rounds).toFixed(2),5)} | ${lp((m.rest/60/rounds).toFixed(2),5)} | ${lp(((m.heal||0)/rounds).toFixed(0),4)}`)}}
   process.exit(0)};
  for(let k=0;k<W;k++){const c=fork(self,['--worker','--wi='+k,'--wn='+W,'--n='+N,'--level='+LEVEL,'--seed='+SEED,'--chars='+IDS.join(','),'--tune='+TUNE,'--stam='+(STAM?1:0)]);
   c.on('message',m=>{all.push(...m.res);merge(ST.dmg,m.st.dmg);merge(ST.mv,m.st.mv);merge(ST.sta,m.st.sta);if(++done===W)report()})}

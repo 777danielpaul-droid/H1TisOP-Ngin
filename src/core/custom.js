@@ -20,6 +20,7 @@ export const CUS_SHEETS=[
  {key:'dash',c:3,r:2,label:'Dash',hint:'Boden- und Luft-Dash'},
  {key:'claw',c:4,r:2,label:'Aufwärts-Special',hint:'Rising-Move'},
  {key:'special',c:4,r:2,label:'Energie-Special',hint:''},
+ {key:'hyper',c:4,r:2,label:'Hyper-Special',hint:'Super-Move, größer als der Energie-Special'},
  {key:'block',c:3,r:2,label:'Block',hint:''},
  {key:'down',c:4,r:2,label:'Knockdown / KO',hint:'Fliegen, Fallen, Liegen'},
  {key:'getup',c:3,r:2,label:'Aufstehen',hint:''},
@@ -36,7 +37,7 @@ export const CUS_ANIMS={
  punch:{parts:[['punch',[1,2,3,4,5]]]},heavy:{parts:[['heavy',[1,2,3,4,5]]]},kick:{parts:[['kick',[1,2,3,4,5]]]},
  cpunch:{parts:[['crouch_atk',[1,2,2]]]},ckick:{parts:[['crouch_atk',[3,4,4,5]]]},
  jpunch:{parts:[['air_atk',[1,2,2]]]},jkick:{parts:[['air_atk',[3,4,5]]]},jheavy:{parts:[['air_atk',[6,7,7]]]},
- upper:{parts:[['claw',[1,2,3,4,5,6,7]]]},special:{parts:[['special',[1,2,3,4,5,6,7]]]},
+ upper:{parts:[['claw',[1,2,3,4,5,6,7]]]},special:{parts:[['special',[1,2,3,4,5,6,7]]]},hyper:{parts:[['hyper',[1,2,3,4,5,6,7]]]},
  hit:{parts:[['hit',[1,2,3,4]]]},airhit:{parts:[['down',[1,2,3]]]},kd:{parts:[['down',[4,5,6,7]]]},wakeup:{parts:[['getup',[1,2,3,4,5]]]},
  block:{parts:[['block',[2]]]},win:{parts:[['win',[1,2,3,4,5]]],loop:1,fps:5}};
 // Namen für die Vorschau-Auswahl
@@ -196,7 +197,9 @@ export function cusMakeChar(profile,base){const p=cusClean(profile);
   pros:'Moves wie '+(CUS_TEMPLATES.find(t=>t[0]===p.template)||CUS_TEMPLATES[0])[1]+': '+(CUS_TEMPLATES.find(t=>t[0]===p.template)||CUS_TEMPLATES[0])[2],cons:'Balance liegt bei dir – Werte jederzeit im Editor änderbar (E)'}}
 
 // ---------- Prompts für Bild-KIs (Gemini): pro Sheet ein fertiger Text, Figurenbeschreibung kommt vom Nutzer ----------
+const CUS_HYPER_CELLS="Hyper special: the most powerful super move, bigger and more dramatic than the energy special, with intense glowing energy in the character's signature color. Cell 2: deep crouch gathering massive energy, glow at ground level. Cell 3: an aura erupts around the whole body, hair and cloth whipping upward. Cell 4: the body rises slightly, arms pulled back, energy swirling around the fists. Cell 5: thrusting both arms forward, releasing a huge blast (character only, no projectile). Cell 6: full extension in a wide stance, brightest glow. Cell 7: hold at maximum power, the glow starts to fade. Cell 8: relaxing out of the pose, back toward the neutral stance.";
 export const CUS_PROMPT_CELLS={
+ "hyper": CUS_HYPER_CELLS,
  "idle_1": "Looping idle / breathing animation in fighting stance, part 1 of 2. Cell 1 is the neutral stance. Cells 2-6: a smooth slow bounce – chest rising and falling, guard fists drifting slightly, weight shifting gently from the back foot to the front foot, tail, hair or cloth swaying. Each cell clearly different from the previous one but only by small movements.",
  "idle_2": "Looping idle / breathing animation in fighting stance, part 2 of 2 (continuing directly after part 1). Cell 1 is the neutral stance (calibration only). Cells 2-6: the bounce continues – chest, fists and weight moving back; cell 6 must flow seamlessly back into the neutral stance of cell 1 so the loop is smooth.",
  "walk_1": "Walk cycle moving forward (to the right) in a low fighting stance, part 1 of 2: cell 2 front foot contact, cell 3 weight shifts down, cell 4 passing pose (back leg swings through), cell 5 up pose pushing off, cell 6 opposite foot contact. Guard fists stay up, torso bobbing slightly, tail, hair or cloth swaying.",
@@ -217,15 +220,68 @@ export const CUS_PROMPT_CELLS={
  "block": "Blocking. Cell 2: arms raised, forearms crossed in front of the face, braced. Cell 3: guard hold, leaning slightly forward, tense. Cell 4: guard pushed backward by an impact. Cell 5: guard hold again with a different arm position. Cell 6: relaxing back toward the stance.",
  "win": "Victory poses. Cell 2: roaring with the head thrown back, fist raised. Cell 3: flexing both arms, muscles tensed. Cell 4: fist pump. Cell 5: arms crossed, proud stance. Cell 6: confident pose with a slight smile, hold."
 };
-export function cusPrompt(key,desc){const sh=CUS_SHEETS.find(x=>x.key===key);if(!sh)return'';const n=sh.c*sh.r,d=(desc||'').trim()||'the character shown in the attached reference image';
+// Gemeinsamer Prompt-Text: Raster c x r, cells = Beschreibung der Zellen 2..n (Zelle 1 = neutrale Haltung zur Kalibrierung)
+export function cusPromptBase(c,r,cells,desc){const n=c*r,d=(desc||'').trim()||'the character shown in the attached reference image';
  return`Reference: the attached image shows the exact character – ${d}. Keep face, proportions, colors and outfit identical in every cell. Ignore the background of the reference.
 
 Create a SPRITE SHEET for a 2D fighting game (Marvel vs. Capcom 2 style, hand-painted, crisp clean dark outlines, high detail – same character and rendering style as the reference, but sharper and more detailed).
 
-LAYOUT: exactly ${sh.c} columns x ${sh.r} rows = ${n} equally sized cells, reading order left to right, top to bottom, with clear empty space between all cells. No numbers, no text, no labels, no grid lines, no borders.
+LAYOUT: exactly ${c} columns x ${r} rows = ${n} equally sized cells, reading order left to right, top to bottom, with clear empty space between all cells. No numbers, no text, no labels, no grid lines, no borders.
 BACKGROUND: one perfectly flat, solid pure green (#00FF00) across the entire image. No gradient, no floor, no ground shadow, no vignette.
 CHARACTER: side view, facing RIGHT (3/4 view like in fighting games). In EVERY cell the character has the same scale (the neutral stance is about 65% of the cell height) and the lowest foot rests on the same invisible ground line near the bottom of the cell. The whole character including tail, hair, cape and glow effects stays completely inside its own cell and never touches the cell edge or a neighbouring cell.
 CELL 1 = the neutral fight stance exactly like in the reference (it is only used to calibrate the size).
-CELLS 2-${n}: ${CUS_PROMPT_CELLS[key]}
+CELLS 2-${n}: ${cells}
 
 Output in the highest resolution available.`}
+export function cusPrompt(key,desc){const sh=CUS_SHEETS.find(x=>x.key===key);return sh?cusPromptBase(sh.c,sh.r,CUS_PROMPT_CELLS[key],desc):''}
+
+// ---------- Sheets je Move (Move-Editor): empfohlenes Raster + fertiger Prompt für jeden der 24 Moves ----------
+// c x r = empfohlenes Raster (Zelle 1 = neutrale Haltung = Kalibrierung, danach die Frames des Moves); cells = Beschreibung der Zellen 2..n für die Bild-KI; air = Luft-Pose (Körpermitte verankert).
+const CUS_P=CUS_PROMPT_CELLS;
+export const CUS_MOVE_SPECS={
+ idle:{c:4,r:2,cells:"Looping idle / breathing animation in fighting stance. Cells 2-8: a smooth slow bounce – chest rising and falling, guard fists drifting slightly, weight shifting gently from the back foot to the front foot, tail, hair or cloth swaying. Each cell differs only slightly from the previous one; cell 8 must flow seamlessly back into the neutral stance of cell 1 so the loop is smooth."},
+ walk:{c:4,r:2,cells:"Walk cycle moving forward (to the right) in a low fighting stance, one full loop. Cell 2: front foot contact. Cell 3: weight shifts down. Cell 4: passing pose, back leg swings through. Cell 5: up pose pushing off. Cell 6: opposite foot contact. Cell 7: weight shifts down. Cell 8: passing pose, so the cycle can loop back to cell 2. Guard fists stay up, torso bobbing slightly, tail or hair swinging."},
+ air:{c:3,r:2,cells:CUS_P.jump},
+ crouch:{c:3,r:2,cells:"Crouching. Cell 2: going down into a crouch, knees bent, back leaning forward. Cell 3: deep crouch hold, fists up, low guard. Cell 4: the same crouch with a tiny breathing movement. Cell 5: the same deep crouch, slightly different arm position. Cell 6: the same deep crouch with a tiny breathing movement in the opposite direction. The character stays low in all cells."},
+ dash:{c:3,r:2,cells:"Ground dash. Cell 2: anticipation, body leaning forward, knees bent. Cells 3-6: fast forward dash, torso low and leaning far forward, legs stretched in a long stride (four slightly different running poses that can repeat as a cycle). The character stays on the ground line."},
+ airdash:{c:3,r:2,cells:"Air dash, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: anticipation in the air, body tilting forward. Cells 3-6: body almost horizontal, flying forward with the fist leading (four slightly different poses, small changes in arms and legs, clothing streaming backward)."},
+ punch:{c:3,r:2,cells:CUS_P.punch},
+ heavy:{c:3,r:2,cells:CUS_P.heavy},
+ kick:{c:3,r:2,cells:CUS_P.kick},
+ cpunch:{c:3,r:2,cells:"Crouching punch. Cell 2: windup, still crouching low. Cell 3: the fist shoots forward, low and straight. Cell 4: full extension, arm straight, clenched fist, body low. Cell 5: retracting the arm. Cell 6: back in the low crouch guard. The character stays low in all cells."},
+ ckick:{c:3,r:2,cells:"Crouching low sweep kick. Cell 2: chamber, still low, leg pulled in. Cell 3: the leg starts to sweep out. Cell 4: leg fully extended low along the ground, body leaning back for balance. Cell 5: sweep follow-through, hold. Cell 6: retracting the leg, back toward the crouch. The character stays low in all cells."},
+ jpunch:{c:3,r:2,cells:"Jumping punch, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, knees tucked. Cell 3: windup in the air. Cell 4: fist extended forward and diagonally downward, body leaning into the punch. Cell 5: hold at full extension. Cell 6: retracting the arm, falling pose."},
+ jkick:{c:3,r:2,cells:"Jumping kick, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, knees tucked high. Cell 3: knees tucked, body curled. Cell 4: the leg extends diagonally downward. Cell 5: full extension of the kick, hold. Cell 6: retracting the leg, falling pose."},
+ jheavy:{c:3,r:2,cells:"Jumping heavy overhead strike, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, striking arm raised high. Cell 3: windup, body arched back. Cell 4: explosive downward overhead strike, body curling forward. Cell 5: full extension of the strike, hold at the moment of impact. Cell 6: follow-through, falling."},
+ upper:{c:4,r:2,cells:CUS_P.claw},
+ special:{c:4,r:2,cells:CUS_P.special},
+ hyper:{c:4,r:2,cells:CUS_HYPER_CELLS},
+ hit:{c:3,r:2,cells:CUS_P.hit},
+ airhit:{c:3,r:2,air:1,cells:"Hit while airborne, launched into the air, drawn in mid-air (the character floats). Cell 2: just struck, body snapping backward. Cell 3: tumbling backward, body nearly horizontal. Cell 4: tumbling, head lower than the feet. Cell 5: falling, body rotated, limbs flailing. Cell 6: about to land, body stretched out. All cells are drawn in mid-air."},
+ block:{c:3,r:2,cells:CUS_P.block},
+ cblock:{c:3,r:2,cells:"Crouching block. Cell 2: dropping into a crouch with the forearms crossed in front of the face. Cell 3: deep crouch guard, hold. Cell 4: the guard pushed backward by an impact. Cell 5: guard hold with a different arm position. Cell 6: relaxing slightly. The character stays low in all cells."},
+ kd:{c:3,r:2,cells:"Slamming onto the ground and lying (knockdown). Cell 2: impact, body hitting the ground, back arched. Cell 3: bouncing slightly off the ground. Cell 4: sliding along the ground, lying on the back. Cell 5: lying flat, motionless. Cell 6: lying flat, slightly settled (hold pose). The body lies on the ground in cells 4-6."},
+ wakeup:{c:3,r:2,cells:CUS_P.getup},
+ win:{c:3,r:2,cells:CUS_P.win}};
+// Fertiger Prompt für einen Move (gleicher Aufbau wie bei den Sheets); '' bei unbekanntem Move
+export function cusMovePrompt(key,desc){const sp=CUS_MOVE_SPECS[key];return sp?cusPromptBase(sp.c,sp.r,sp.cells,desc):''}
+// Raster automatisch erkennen (Bild nach cusKeyOut): Zeilen und Spalten sind durch freie Streifen getrennt. -> {cols,rows} oder null
+export function cusDetectGrid(d,w,h){
+ const A=(x,y)=>d[(y*w+x)*4+3]>CUS_A_BODY;
+ const bands=(prof,size)=>{const gapMin=Math.max(4,Math.round(size*.012)),minLen=Math.max(6,Math.round(size*.04)),out=[];let s=-1,e=-1,gap=0;
+  for(let i=0;i<prof.length;i++){if(prof[i]>=2){if(s<0)s=i;e=i;gap=0}else if(s>=0&&++gap>=gapMin){if(e-s+1>=minLen)out.push([s,e]);s=-1}}
+  if(s>=0&&e-s+1>=minLen)out.push([s,e]);return out};
+ const rp=new Float64Array(h);for(let y=0;y<h;y++){let c=0;for(let x=0;x<w;x++)if(A(x,y))c++;rp[y]=c}
+ const rows=bands(rp,h);if(!rows.length||rows.length>8)return null;
+ const counts=rows.map(([y0,y1])=>{const cp=new Float64Array(w);for(let y=y0;y<=y1;y++)for(let x=0;x<w;x++)if(A(x,y))cp[x]++;return bands(cp,w).length});
+ const tally={};counts.forEach(c=>tally[c]=(tally[c]||0)+1);
+ let cols=0,best=-1;for(const c in tally){if(tally[c]>best||(tally[c]===best&&+c>cols)){best=tally[c];cols=+c}}   // häufigste Spaltenzahl (bei Gleichstand die größere: letzte Zeile darf unvollständig sein)
+ if(cols<1||cols>8||cols*rows.length<2)return null;
+ return{cols,rows:rows.length}}
+// Dateiname -> Move (z. B. „cpunch.png“, „Duck-Schlag.png“, „hyper_1.png“, „fussfeger.png“); null = nicht erkannt. So lassen sich mehrere Sheets auf einmal den richtigen Moves zuordnen.
+const cusNorm=t=>String(t).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'');
+const CUS_MOVE_ALIAS={faust:'punch',jab:'punch',jump:'air',sprung:'air',duck:'crouch',getup:'wakeup',aufstehen:'wakeup',ko:'kd',knockdown:'kd',sieg:'win',siegerpose:'win',victory:'win',gehen:'walk',laufen:'walk',run:'walk',luftdash:'airdash',duckblock:'cblock',duckschlag:'cpunch',fussfeger:'ckick',luftschlag:'jpunch',lufttritt:'jkick',luftueberkopf:'jheavy',lufttreffer:'airhit',aufwaertsspecial:'upper',energiespecial:'special',hyperspecial:'hyper',schlag:'punch',tritt:'kick',treffer:'hit'};
+export function cusMoveKeyFromName(name){const stem=cusNorm(String(name).replace(/\.[^.]+$/,'')).replace(/[0-9]+$/,'');if(!stem)return null;
+ for(const k of CUS_MOVE_KEYS)if(cusNorm(k)===stem)return k;
+ for(const k of CUS_MOVE_KEYS)if(cusNorm(CUS_ANIM_LABELS[k]||'')===stem)return k;
+ return CUS_MOVE_ALIAS[stem]||null}

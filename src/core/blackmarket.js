@@ -45,7 +45,8 @@ export const resetDealerMemory=()=>{metBefore=false};
 // Zeilenumbruch (Zeichen-Näherung, Schrift variabel): bricht an Wortgrenzen, max `n` Zeichen je Zeile
 export function wrapText(s,n=58){const out=[];let line='';for(const w of String(s).split(/\s+/)){if(line&&(line+' '+w).length>n){out.push(line);line=w}else line=line?line+' '+w:w}if(line)out.push(line);return out}
 export class Dealer{
- constructor(story,cfg={}){this.s=story;this.x=cfg.x===undefined?-480:cfg.x;this.reset()}
+ // cfg: x, y (Standfläche, Story: Oberkante der obersten Parkour-Plattform), fixed (bleibt stehen und sichtbar, duckt sich bei Wellen nicht weg)
+ constructor(story,cfg={}){this.s=story;this.x=cfg.x===undefined?-480:cfg.x;this.y=cfg.y===undefined?GROUND:cfg.y;this.fixed=!!cfg.fixed;this.reset()}
  get g(){return this.s.g}
  // Standort wechseln (Story: nach jeder Welle bzw. am Checkpoint steht er wieder vor dem Spieler, sonst war er nur am Level-Anfang erreichbar)
  place(x){this.x=x;this.near=false}
@@ -54,9 +55,9 @@ export class Dealer{
  get canTalk(){const s=this.s,p=s.g.p1;return s.state==='walk'&&s.g.phase==='fight'&&p.hp>0}
  get typing(){return this.shown<this.say.length}
  update(){this.t++;const p=this.g.p1,can=this.canTalk;
-  this.alpha=this.s.state==='walk'?Math.min(1,this.alpha+.06):Math.max(0,this.alpha-.1);   // Welle beginnt: er duckt sich weg
+  this.alpha=this.fixed||this.s.state==='walk'?Math.min(1,this.alpha+.06):Math.max(0,this.alpha-.1);   // Welle beginnt: er duckt sich weg (außer er steht fest oben auf dem Parkour)
   this.facing=p.x<this.x?-1:1;
-  this.near=can&&this.alpha>.9&&Math.abs(p.x-this.x)<DEALER.reach&&p.y>GROUND-70;
+  this.near=can&&this.alpha>.9&&Math.abs(p.x-this.x)<DEALER.reach&&p.y>this.y-70&&p.y<this.y+30;
   if(this.active&&(!can||!this.near))this.close(true);
   if(this.active&&this.typing){const b=Math.floor(this.shown);this.shown=Math.min(this.say.length,this.shown+1.15);if(Math.floor(this.shown)%3===0&&Math.floor(this.shown)!==b)this.g.sfx('combo_step_01',{vol:.12,rate:1.5+Math.random()*.5})}}
  // Frame (Name im Atlas assets/rabe) für Zeit t: Sprechen = Gesten wechseln, sonst Atmen
@@ -67,7 +68,7 @@ export class Dealer{
  // Gespräch
  open(){if(this.active||!this.near)return false;const p=this.g.p1;this.active=true;this.bought=0;p.facing=this.x>=p.x?1:-1;p.vx=0;
   this.g.sfx('ui_round_start',{vol:.4,rate:1.5});this.menu(metBefore?pickR(LINES.again):pickR(LINES.first),'talk');metBefore=true;this.greet=true;return true}
- close(silent){if(!this.active)return;this.active=false;this.node='menu';if(!silent){this.g.pop(this.x,GROUND-300,pickR(LINES.bye),'#d6b8ff',.9,{text:true,life:90});this.g.sfx('ui_round_start',{vol:.3,rate:1.2})}}
+ close(silent){if(!this.active)return;this.active=false;this.node='menu';if(!silent){this.g.pop(this.x,this.y-300,pickR(LINES.bye),'#d6b8ff',.9,{text:true,life:90});this.g.sfx('ui_round_start',{vol:.3,rate:1.2})}}
  speak(text,mood='talk'){this.say=text;this.shown=0;this.mood=mood}
  menu(text,mood){this.node='menu';this.sel=0;if(text)this.speak(text,mood||'talk');this.rebuild()}
  // Auswahlzeilen je Knoten: {label,sub,ok,fn}; ok=false -> ausgegraut (nicht genug Coins / schon besessen)
@@ -92,14 +93,14 @@ export class Dealer{
   o.fn();return true}
  // Käufe: Münzen/Booster/Heilung laufen über die vorhandenen Systeme (LOOT, saveLoot, buyPack, buyChar) -> sofort gespeichert
  buyBooster(i){const s=SHOP[i];if(!buyPack(i)){this.g.sfx('block_guard',{vol:.5});this.speak(pickR(LINES.poor),'cross');this.rebuild();return false}
-  this.bought++;this.g.sfx('fw_rocket',{vol:.6,rate:1.5});this.g.pop(this.x,GROUND-300,'+'+s.n+' BOOSTER','#ffd23f',1.1,{text:true});this.speak(pickR(LINES.bought),'wow');this.rebuild();return true}
+  this.bought++;this.g.sfx('fw_rocket',{vol:.6,rate:1.5});this.g.pop(this.x,this.y-300,'+'+s.n+' BOOSTER','#ffd23f',1.1,{text:true});this.speak(pickR(LINES.bought),'wow');this.rebuild();return true}
  buyItem(i){const it=ITEM_SHOP[i];if(LOOT.coins<it.price){this.g.sfx('block_guard',{vol:.5});this.speak(pickR(LINES.poor),'cross');this.rebuild();return false}
   LOOT.coins-=it.price;addItem(it.id);this.bought++;   // in den Beutel (gespeichert), Benutzung im Kampf mit Taste 1/2/3
   this.g.pop(this.g.p1.x,this.g.p1.y-190,'+1 '+it.name,'#ffd23f',1.1,{text:true});this.g.fx.ps.ring(this.g.p1.x,this.g.p1.y-80,'#ffd23f',110);this.g.sfx('ui_round_start',{vol:.5,rate:1.6});
   this.speak(pickR(LINES.bought),'wow');this.rebuild();return true}
  hire(){if(ownsChar(DEALER.id)){this.speak(LINES.owned,'cross');this.rebuild();return false}
   if(!buyChar(DEALER.id)){this.g.sfx('block_guard',{vol:.5});this.speak(pickR(LINES.poor),'cross');this.rebuild();return false}
-  this.bought++;this.g.sfx('fw_finale',{vol:.5});this.g.flash=Math.max(this.g.flash,8);this.g.flashColor=CHARACTERS[DEALER.id].glow;this.g.pop(this.x,GROUND-300,'KORVUS FREIGESCHALTET!','#d6b8ff',1.2,{text:true,life:120});
+  this.bought++;this.g.sfx('fw_finale',{vol:.5});this.g.flash=Math.max(this.g.flash,8);this.g.flashColor=CHARACTERS[DEALER.id].glow;this.g.pop(this.x,this.y-300,'KORVUS FREIGESCHALTET!','#d6b8ff',1.2,{text:true,life:120});
   this.speak(LINES.hired,'wow');this.rebuild();return true}
  // Eingabe (Tastaturcodes, auch vom Controller als synthetische Tasten). Rückgabe true = Taste verbraucht
  key(code){if(!this.active)return false;

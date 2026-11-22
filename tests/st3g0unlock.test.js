@@ -15,7 +15,7 @@ assert.equal(CLEAR_UNLOCK.id,'st3g0');assert.equal(CLEAR_UNLOCK.n,3);
 console.log('  ✓ ST3-G0 ist kein Start-Kämpfer mehr');
 // ---- Endgegner: Kapitel 2 = ST3-G0, Kapitel 3 = A1LIEN, Kapitel 4 = Anubis ----
 assert.equal(CHAPTERS[1].enc.at(-1).boss,'st3g0Boss');assert.equal(CHARACTERS.st3g0Boss.name,'ST3-G0');assert(CHARACTERS.st3g0Boss.storyBoss&&!CHARACTERS.st3g0.storyBoss);
-assert.equal(CHAPTERS[2].enc.at(-1).boss,'cyberdemon');assert.equal(CHAPTERS[3].enc.at(-1).boss,'anubisBoss');assert.equal(CHARACTERS.anubisBoss.name,'ANUBIS');assert(CHARACTERS.anubisBoss.storyBoss&&!CHARACTERS.anubis.storyBoss);
+assert.equal(CHAPTERS[2].enc.at(-1).boss,'cyberdemonBoss');assert.equal(CHAPTERS[3].enc.at(-1).boss,'anubisBoss');assert.equal(CHARACTERS.anubisBoss.name,'ANUBIS');assert(CHARACTERS.anubisBoss.storyBoss&&!CHARACTERS.anubis.storyBoss);
 console.log('  ✓ Kapitel 2: Endgegner ST3-G0, Kapitel 3: A1LIEN, Kapitel 4: Anubis');
 // ---- Shop ----
 assert(charPrice('st3g0')>0&&CHAR_SHOP.some(o=>o.id==='st3g0'),'im Shop');LOOT.coins=charPrice('st3g0');assert(canBuyChar('st3g0'));assert(buyChar('st3g0'));assert.equal(LOOT.coins,0);assert(ownsChar('st3g0')&&ROSTER.includes('st3g0'));

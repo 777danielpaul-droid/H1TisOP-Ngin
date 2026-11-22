@@ -81,24 +81,32 @@ export const GFX_PRESETS=[
 export const GFX={level:2,...GFX_PRESETS[2]};
 export const setGfx=l=>{l=Math.max(0,Math.min(2,l|0));Object.assign(GFX,{level:l},GFX_PRESETS[l]);return GFX};
 
-// ===== Ausdauer-System ("Stamina") =====
+// ===== Ausdauer-System ("Stamina") + Verschnaufen (HP) =====
 // Alle Werte sind hier einstellbar. Zeiten in Frames (60 = 1 s), Ausdauer in Punkten (max = volle Leiste). Gilt für Spieler UND Gegner gleichermaßen
-// (derselbe Kämpfer-Code, auch online). Aus in Melee und Story. Dokumentation: docs/AUSDAUER.md
+// (derselbe Kämpfer-Code, auch online). Ausdauer ist aus in Melee und Story. Dokumentation: docs/AUSDAUER.md
 //   on          Standardwert des Menü-Schalters (Optionen -> Ausdauer). Online bestimmt der Gastgeber für beide.
 //   max         volle Leiste (Figuren können das per char.stam skalieren, Standard 1).
-//   regen       Punkte pro Frame, wenn nichts verbraucht wird (0.36 = ~22/s -> leer bis voll in ~4,6 s).
+//   regen       Punkte pro Frame, wenn nichts verbraucht wird (0.3 = ~18/s). Keine Regeneration beim aktiven Blocken und beim Verschnaufen.
 //   delay       Pause nach JEDEM Verbrauch, bevor die Regeneration beginnt.
-//   emptyDelay  Pause, nachdem die Leiste auf 0 gefallen ist: deutlich länger -> wer sich auspowert, wird bestraft (immer eine Reserve behalten).
+//   emptyDelay  Pause, nachdem die Leiste auf 0 gefallen ist: deutlich länger, KEINERLEI Regeneration -> wer sich auspowert, wird bestraft (immer eine Reserve behalten).
 //   cost        Kosten je Aktion: L/M/H = leichte/mittlere/schwere Normals (auch in der Luft), special = je Move ("def" = alle anderen),
 //               dash/airdash = Dash/Air-Dash/Ausweichen, jump/airjump = Sprung/Doppelsprung. Hypers kosten keine Ausdauer (nur Hyper-Leiste).
-//   block       Blocken kostet Ausdauer pro geblocktem Treffer: base + Move-Schaden * perDmg. Beim aktiven Blocken (Block-Zustand oder gehaltene Rück-Taste) gibt es KEINE Regeneration.
+//   block       Blocken kostet Ausdauer pro geblocktem Treffer: base + Move-Schaden * perDmg (und der Chip-HP-Schaden steigt, wenn erschöpft).
+//   guard       Blocken hängt von der EIGENEN Ausdauer ab: unter `none` (25 %) gar nicht, ab `none` nur normale Angriffe,
+//               ab `special` (50 %) auch Spezialattacken (Specials, Projektile, Hypers).
 //   low         Unter diesem Wert ist die Leiste "knapp" (nur Anzeige).
-//   exhaust     Erschöpft (Leiste war auf 0): bis `until` aufgeladen. Schwere Normals, Specials, Dash und mittlere Normals gesperrt (leichte, Laufen, Springen, Blocken, Verschnaufen gehen immer),
+//   exhaust     Erschöpft (Leiste war auf 0): bis `until` aufgeladen. Schwere und mittlere Normals, Specials und Dash gesperrt (leichte, Laufen, Springen, Verschnaufen gehen immer),
 //               speed = Lauftempo, dmg = Schadensfaktor, chip = Faktor auf den Block-Schaden (HP), regen = Faktor auf die Regeneration.
-//   rest        Verschnaufen (Taste P / Shift / L2): regen = Punkte pro Frame, min = Mindestdauer bevor man abbrechen darf, max = längste Dauer,
-//               vuln = Schadensfaktor gegen den Verschnaufenden (er kann nicht blocken, wird bei jedem Treffer unterbrochen).
-export const STAMINA={on:true,max:75,regen:.36,delay:40,emptyDelay:94,
- cost:{L:3.5,M:7,H:13,special:{fireball:14,rush:12,rising:18,back:10,airsp:12,def:16},dash:8,airdash:10,jump:2.5,airjump:2.5},
- block:{base:2,perDmg:.05},low:25,
- exhaust:{until:25,regen:.85,speed:.82,dmg:.85,chip:1.5},
- rest:{regen:1.2,min:18,max:70,vuln:1.25}};
+//   rest        Verschnaufen (Taste P / Shift / L2): regeneriert langsam HP, KEINE Ausdauer; unabhängig vom Ausdauer-Schalter.
+//               hpPct = Anteil der Max-HP pro Frame, min = Mindestdauer bevor man abbrechen darf, max = längste Dauer, cooldown = Abklingzeit danach,
+//               cap = höchstens so viel (Anteil der Max-HP) Heilung pro Runde, vuln = Schadensfaktor gegen den Verschnaufenden
+//               (kein Block, bei jedem Treffer unterbrochen).
+export const STAMINA={on:true,max:100,regen:.3,delay:40,emptyDelay:150,
+ cost:{L:5,M:9,H:16,special:{fireball:15,rush:14,rising:20,back:11,airsp:13,def:17},dash:9,airdash:11,jump:3,airjump:3},
+ block:{base:2,perDmg:.05},guard:{none:.25,special:.5},low:25,
+ exhaust:{until:35,regen:.85,speed:.82,dmg:.7,chip:1.5},
+ rest:{hpPct:.0004,min:45,max:150,cooldown:90,cap:.2,vuln:1.15}};
+// Regler im Menü (Optionen): Faktoren auf STAMINA.regen / delay / emptyDelay / rest.hpPct (1 = Standard). Online gelten die Werte des Gastgebers.
+//   regen = Ausdauer-Regeneration, delay = Pause vor der Regeneration (0 = keine Pause), empty = Pause nach Erschöpfung, rest = HP-Tempo beim Verschnaufen.
+export const STAM_TUNE={regen:{min:.25,max:3},delay:{min:0,max:3},empty:{min:0,max:3},rest:{min:.25,max:3}};
+export const tuneClamp=(k,v)=>{const r=STAM_TUNE[k];v=+v;return Number.isFinite(v)?Math.min(r.max,Math.max(r.min,Math.round(v*100)/100)):1};

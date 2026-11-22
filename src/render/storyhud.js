@@ -6,6 +6,7 @@ import{LOOT,itemCount,ownsChar}from'../core/loot.js';
 import{CHAPTERS,LV}from'../core/story.js';
 
 import{drawPortrait,drawSpriteFrame}from'./sprites.js';
+import{drawParkourScene}from'./parkourdeco.js';
 // Story-Modus: Welt (Straße, Laternen), Lebensbalken der Mantis, HUD (Balken, Fortschritt, Wellen-Banner, Intro/Ende).
 export function storyWorld(g,game,t){const x0=LV.x0-400,x1=LV.x1+400,L=(game.story&&game.story.cfg||CHAPTERS[0]).look;g.save();
  const gr=g.createLinearGradient(0,GROUND,0,GROUND+90);gr.addColorStop(0,L.ground[0]);gr.addColorStop(1,L.ground[1]);g.fillStyle=gr;g.fillRect(x0,GROUND,x1-x0,100);
@@ -13,7 +14,7 @@ export function storyWorld(g,game,t){const x0=LV.x0-400,x1=LV.x1+400,L=(game.sto
  for(let x=-1200;x<=2200;x+=400){g.fillStyle='#1a1426';g.fillRect(x-3,GROUND-215,6,215);g.fillRect(x-3,GROUND-215,34,5);
   g.save();g.globalCompositeOperation='lighter';const rg=g.createRadialGradient(x+28,GROUND-208,4,x+28,GROUND-208,170);rg.addColorStop(0,`rgba(${L.lamp},.5)`);rg.addColorStop(1,`rgba(${L.lamp},0)`);g.fillStyle=rg;g.fillRect(x-150,GROUND-380,360,380);
   g.translate(x+28,GROUND+6);g.scale(1,.22);const pg=g.createRadialGradient(0,0,4,0,0,130);pg.addColorStop(0,`rgba(${L.lamp},.4)`);pg.addColorStop(1,`rgba(${L.lamp},0)`);g.fillStyle=pg;g.fillRect(-130,-130,260,260);g.restore()}
- g.restore();drawLedges(g,game,t,L);drawParkour(g,game,t,L);drawProps(g,game,t,L);drawDealer(g,game,t)}
+ g.restore();drawLedges(g,game,t,L);drawParkourScene(g,game,t,L);drawProps(g,game,t,L);drawDealer(g,game,t)}
 // Kanten/Ebenen (Kapitel-Config: ledges, core/terrain.js): Steinblock mit leuchtender Oberkante und Seitenkanten. Die Figuren stehen auf der Oberkante (Standfläche = GROUND - h).
 function drawLedges(g,game,t,L){const T=game.story&&game.story.terrain;if(!T)return;const G=L.ground||['#1b1430','#0a0714'];g.save();
  for(const l of[...T.ledges].sort((a,b)=>a.h-b.h)){const w=l.x1-l.x0,y=GROUND-l.h,bot=GROUND+16;
@@ -26,54 +27,6 @@ function drawLedges(g,game,t,L){const T=game.story&&game.story.terrain;if(!T)ret
   g.fillStyle=L.line;g.globalAlpha=.95;g.fillRect(l.x0-3,y,w+6,4);g.globalAlpha=.3;g.fillRect(l.x0-3,y+4,w+6,8);   // leuchtende Oberkante
   g.globalAlpha=.8;g.fillStyle=L.acc;g.fillRect(l.x0-3,y,3,bot-y);g.fillRect(l.x1,y,3,bot-y);g.globalAlpha=1}   // Seitenkanten
  g.restore()}
-// Parkour (Kapitel-Config parkour, core/terrain.js Plattformen): Kulisse je Kapitel (deco) hinter den Plattformen, die Plattformen selbst, Hinweisschild und der leuchtende Schatz oben.
-// Die Figuren stehen auf der Oberkante der Plattform (GROUND - h).
-const pkRand=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)};
-const PK_DECO={
- // Neon City: Hochhaus-Fassade mit Fenstern und Feuerleiter, oben ein Neonschild
- neon(g,P,t,L,top,x0,x1){const bx=x0-70,bw=x1-x0+130;g.fillStyle='#0b0716';g.globalAlpha=.88;g.fillRect(bx,top-80,bw,GROUND-top+80);g.globalAlpha=1;
-  for(let x=bx+10;x<bx+bw-14;x+=26)for(let y=top-60;y<GROUND-20;y+=34){const r=pkRand(x*3+y);if(r<.42){g.globalAlpha=.25+.3*Math.abs(Math.sin(t*.6+r*20));g.fillStyle=r<.2?L.acc:'#ffd23f';g.fillRect(x,y,14,20)}}
-  g.globalAlpha=.55;g.strokeStyle=L.line;g.lineWidth=2;g.beginPath();P.slice(0,3).forEach((q,i)=>{const cx=(q.x0+q.x1)/2;if(!i)g.moveTo(cx,GROUND);g.lineTo(cx,GROUND-q.h)});g.stroke();   // Feuerleiter
-  g.globalAlpha=.9;g.strokeStyle=L.acc;g.lineWidth=3;g.shadowColor=L.acc;g.shadowBlur=14;g.strokeRect(bx+bw*.55,top-70,bw*.4,34);g.shadowBlur=0;g.globalAlpha=1},
- // Hafen: Kran – Gitterturm unter der obersten Plattform, Ausleger nach links mit Haken; die unteren Plattformen sind Container
- crane(g,P,t,L,top,x0,x1){const last=P[P.length-1],tx=last.x1-34,ty=top-34;g.strokeStyle='#d4a82c';g.fillStyle='#d4a82c';g.globalAlpha=.9;g.lineWidth=3;
-  g.beginPath();g.moveTo(tx-12,GROUND);g.lineTo(tx-12,ty);g.moveTo(tx+12,GROUND);g.lineTo(tx+12,ty);g.stroke();g.lineWidth=1.5;g.beginPath();for(let y=GROUND;y>ty+30;y-=38){g.moveTo(tx-12,y);g.lineTo(tx+12,y-38);g.moveTo(tx+12,y);g.lineTo(tx-12,y-38)}g.stroke();
-  g.lineWidth=5;g.beginPath();g.moveTo(x0+30,ty);g.lineTo(tx+60,ty);g.stroke();g.lineWidth=1.5;g.beginPath();for(let x=x0+30;x<tx;x+=34){g.moveTo(x,ty);g.lineTo(x+17,ty-16);g.lineTo(x+34,ty)}g.stroke();   // Ausleger mit Fachwerk
-  g.fillRect(tx+30,ty-6,34,22);const sw=Math.sin(t*1.3)*6,hx=x0+60+sw;g.lineWidth=1.5;g.beginPath();g.moveTo(hx,ty);g.lineTo(hx,ty+90);g.stroke();g.lineWidth=3;g.beginPath();g.arc(hx,ty+98,8,-.4,Math.PI*1.1);g.stroke();   // Haken am Seil
-  g.globalAlpha=1},
- // Kern: glühender Reaktor-Zylinder in der Lücke, Rohre zu den Plattformen, zuckende Blitze
- reactor(g,P,t,L,top,x0,x1){const a=P[P.length-2],b=P[P.length-1],cx=(a.x1+b.x0)/2,pul=.75+.25*Math.sin(t*3);
-  const gr=g.createLinearGradient(cx-34,0,cx+34,0);gr.addColorStop(0,'#1a0a0e');gr.addColorStop(.5,L.acc);gr.addColorStop(1,'#1a0a0e');g.globalAlpha=.55*pul;g.fillStyle=gr;g.fillRect(cx-34,top-40,68,GROUND-top+40);g.globalAlpha=1;
-  g.save();g.globalCompositeOperation='lighter';const rg=g.createRadialGradient(cx,top+80,6,cx,top+80,190);rg.addColorStop(0,L.acc);rg.addColorStop(1,'#0000');g.globalAlpha=.35*pul;g.fillStyle=rg;g.fillRect(cx-190,top-110,380,380);g.restore();
-  g.strokeStyle='#2a2030';g.lineWidth=7;g.beginPath();for(const q of P){const px=q.x1<cx?q.x1:q.x0,y=GROUND-q.h+8;g.moveTo(cx+(px<cx?-34:34),y);g.lineTo(px,y)}g.stroke();
-  g.strokeStyle='#fff';g.globalAlpha=.55+.4*Math.sin(t*17);g.lineWidth=2;g.beginPath();let y=top+10;g.moveTo(a.x1,y);for(let i=1;i<=8;i++){g.lineTo(a.x1+(b.x0-a.x1)*i/8,y+(pkRand(i+Math.floor(t*9))-.5)*40)}g.stroke();g.globalAlpha=1},
- // Totenreich: Pyramide im Hintergrund, Obelisk neben dem Schatz
- obelisk(g,P,t,L,top,x0,x1){const cx=(x0+x1)/2,b=P[P.length-1],ox=(b.x0+b.x1)/2;
-  const gr=g.createLinearGradient(0,top-70,0,GROUND);gr.addColorStop(0,'#3a2a10');gr.addColorStop(1,'#120b04');g.fillStyle=gr;g.globalAlpha=.7;g.beginPath();g.moveTo(x0-170,GROUND);g.lineTo(cx,top-80);g.lineTo(x1+170,GROUND);g.closePath();g.fill();
-  g.globalAlpha=.4;g.strokeStyle=L.line;g.lineWidth=1.2;for(let y=top-30;y<GROUND;y+=34){const k=(y-(top-80))/(GROUND-(top-80));g.beginPath();g.moveTo(cx-(cx-(x0-170))*k,y);g.lineTo(cx+((x1+170)-cx)*k,y);g.stroke()}
-  g.globalAlpha=.95;g.fillStyle='#2b200f';g.strokeStyle=L.acc;g.lineWidth=2;g.beginPath();g.moveTo(ox-34,GROUND);g.lineTo(ox-18,top-10);g.lineTo(ox,top-64);g.lineTo(ox+18,top-10);g.lineTo(ox+34,GROUND);g.closePath();g.fill();g.stroke();g.globalAlpha=1},
- // Tempel: Pagode mit Dächern, Glocke über dem Schatz
- pagoda(g,P,t,L,top,x0,x1){const b=P[P.length-1],cx=(b.x0+b.x1)/2;g.fillStyle='#2a0a14';g.globalAlpha=.85;g.fillRect(cx-46,top+20,92,GROUND-top-20);g.globalAlpha=1;
-  for(let i=0;i<4;i++){const y=top+30+i*((GROUND-top-30)/4),w=70+i*26;g.fillStyle='#5e0f22';g.strokeStyle=L.acc;g.lineWidth=2;g.beginPath();g.moveTo(cx-w-14,y+16);g.quadraticCurveTo(cx-w,y,cx-w+22,y);g.lineTo(cx+w-22,y);g.quadraticCurveTo(cx+w,y,cx+w+14,y+16);g.lineTo(cx+w-10,y+14);g.lineTo(cx-w+10,y+14);g.closePath();g.fill();g.stroke()}
-  const sw=Math.sin(t*1.6)*.12;g.save();g.translate(cx,top-80);g.rotate(sw);g.fillStyle='#d9a521';g.beginPath();g.moveTo(-16,24);g.quadraticCurveTo(-18,-2,0,-10);g.quadraticCurveTo(18,-2,16,24);g.closePath();g.fill();g.restore();
-  g.strokeStyle='#d9a521';g.lineWidth=2;g.beginPath();g.moveTo(cx,top-100);g.lineTo(cx,top-90);g.stroke()}};
-function pkSlab(g,p,deco,i,t,L){const y=GROUND-p.h,w=p.x1-p.x0;g.save();g.shadowColor=L.acc;g.shadowBlur=12;
- if(deco==='crane'){g.shadowBlur=0;g.fillStyle=['#a93226','#1f618d','#b7950b','#117a65'][i%4];g.fillRect(p.x0,y,w,34);g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=2;for(let x=p.x0+10;x<p.x1;x+=16){g.beginPath();g.moveTo(x,y+4);g.lineTo(x,y+30);g.stroke()}g.fillStyle='#e6e1d0';g.fillRect(p.x0,y,w,4)}
- else if(deco==='neon'){g.fillStyle='#14102a';g.fillRect(p.x0,y,w,18);g.strokeStyle=L.acc;g.lineWidth=2;g.strokeRect(p.x0,y,w,18);g.shadowBlur=0;g.fillStyle=i%2?'#ffd23f':L.acc;g.globalAlpha=.6+.3*Math.sin(t*4+i);for(let x=p.x0+8;x<p.x1-14;x+=20)g.fillRect(x,y+6,12,5)}
- else if(deco==='reactor'){g.fillStyle='#1c1722';g.fillRect(p.x0,y,w,14);g.shadowBlur=0;g.strokeStyle='#4a3f58';g.lineWidth=1;for(let x=p.x0+6;x<p.x1;x+=10){g.beginPath();g.moveTo(x,y);g.lineTo(x-6,y+14);g.stroke()}g.fillStyle=L.acc;g.globalAlpha=.8;g.fillRect(p.x0,y,w,3)}
- else if(deco==='obelisk'){g.fillStyle='#2e2412';g.fillRect(p.x0,y,w,26);g.shadowBlur=0;g.fillStyle=L.acc;g.globalAlpha=.9;g.fillRect(p.x0,y,w,3);g.globalAlpha=.45;for(let x=p.x0+10;x<p.x1-10;x+=22)g.fillRect(x,y+10,10,3)}
- else{g.fillStyle='#5e0f22';g.beginPath();g.moveTo(p.x0-12,y+16);g.quadraticCurveTo(p.x0,y,p.x0+20,y);g.lineTo(p.x1-20,y);g.quadraticCurveTo(p.x1,y,p.x1+12,y+16);g.lineTo(p.x1-8,y+14);g.lineTo(p.x0+8,y+14);g.closePath();g.fill();g.shadowBlur=0;g.strokeStyle='#d9a521';g.lineWidth=2;g.stroke()}
- g.restore()}
-function drawParkour(g,game,t,L){const s=game.story,pk=s&&s.cfg.parkour;if(!pk)return;const P=pk.platforms,top=Math.min(...P.map(p=>GROUND-p.h)),x0=Math.min(...P.map(p=>p.x0)),x1=Math.max(...P.map(p=>p.x1));
- g.save();(PK_DECO[pk.deco]||PK_DECO.neon)(g,P,t,L,top,x0,x1);g.restore();
- P.forEach((p,i)=>pkSlab(g,p,pk.deco,i,t,L));
- g.save();{const hx=x0-92;g.fillStyle='#1a1426';g.fillRect(hx-2,GROUND-110,4,110);g.fillStyle='rgba(8,5,16,.9)';g.strokeStyle=L.acc;g.lineWidth=2;g.shadowColor=L.acc;g.shadowBlur=10;g.fillRect(hx-46,GROUND-168,92,56);g.strokeRect(hx-46,GROUND-168,92,56);g.shadowBlur=0;   // Hinweisschild: Doppelsprung
-  g.fillStyle=L.acc;g.globalAlpha=.65+.3*Math.sin(t*4);for(const dy of[0,12]){g.beginPath();g.moveTo(hx-14,GROUND-134-dy);g.lineTo(hx,GROUND-146-dy);g.lineTo(hx+14,GROUND-134-dy);g.lineTo(hx+14,GROUND-129-dy);g.lineTo(hx,GROUND-141-dy);g.lineTo(hx-14,GROUND-129-dy);g.closePath();g.fill()}
-  g.globalAlpha=1;g.font='700 9px Orbitron,Impact,sans-serif';g.textAlign='center';g.fillText('DOPPELSPRUNG',hx,GROUND-116)}g.restore();
- const r=s.relic;if(r&&!r.got){g.save();const bob=Math.sin(t*2.2)*5,x=r.x,y=r.y+bob;g.globalCompositeOperation='lighter';
-  const bm=g.createLinearGradient(0,y,0,y-440);bm.addColorStop(0,'rgba(255,210,63,.5)');bm.addColorStop(1,'rgba(255,210,63,0)');g.fillStyle=bm;g.fillRect(x-16,y-440,32,440);
-  const rg=g.createRadialGradient(x,y,2,x,y,64);rg.addColorStop(0,'rgba(255,236,150,.95)');rg.addColorStop(1,'rgba(255,210,63,0)');g.fillStyle=rg;g.fillRect(x-64,y-64,128,128);
-  g.globalCompositeOperation='source-over';const wv=Math.max(.25,Math.abs(Math.cos(t*2)))*15;g.fillStyle='#ffe27a';g.strokeStyle='#fff7cc';g.lineWidth=2;g.beginPath();g.moveTo(x,y-22);g.lineTo(x+wv,y);g.lineTo(x,y+22);g.lineTo(x-wv,y);g.closePath();g.fill();g.stroke();g.restore()}}
 // Ausschmückung (Kisten, Fässer, Neonschilder; Kapitel-Config: props) – Dinge im Bereich einer Kante entfallen
 function drawProps(g,game,t,L){const c=game.story&&game.story.cfg,T=game.story&&game.story.terrain;if(!c)return;const pp=c.parkour&&c.parkour.platforms,pz=pp?[Math.min(...pp.map(q=>q.x0))-80,Math.max(...pp.map(q=>q.x1))+80]:null;g.save();
  for(const o of c.props||[]){const x=o.x;if(T&&T.ledges.some(l=>x>l.x0-50&&x<l.x1+50))continue;if(pz&&x>pz[0]&&x<pz[1])continue;
@@ -83,8 +36,8 @@ function drawProps(g,game,t,L){const c=game.story&&game.story.cfg,T=game.story&&
  g.restore()}
 // ---------- Schwarzmarkthändler KORVUS (NPC): Marktstand + Rabe in der Welt, Dialog-Panel im HUD ----------
 // Welt (unter der Kamera, vor den Kämpfern gezeichnet): Kisten, violette Laterne, Tuch mit Raben-Auge; Rabe mit Sprech-Gesten (Frames aus assets/rabe: Dealer.frame()).
-export function drawDealer(g,game,t){const d=game.story&&game.story.dealer;if(!d||d.alpha<=.01)return;const x=d.x,a=d.alpha;
- g.save();g.globalAlpha=a;
+export function drawDealer(g,game,t){const d=game.story&&game.story.dealer;if(!d||d.alpha<=.01)return;const x=d.x,a=d.alpha,y0=d.y,sc=y0<GROUND?.6:1;   // oben auf dem Parkour: kleinerer Stand (die Plattform ist nur 3 m breit)
+ g.save();g.globalAlpha=a;g.save();g.translate(x,y0);g.scale(sc,sc);g.translate(-x,-GROUND);
  // Stand: Kisten + Tuch + Laterne (hinter dem Händler)
  g.fillStyle='#1b1428';g.fillRect(x-150,GROUND-46,64,46);g.fillRect(x-136,GROUND-84,46,38);g.fillStyle='#2a1f40';g.fillRect(x-150,GROUND-46,64,5);g.fillRect(x-136,GROUND-84,46,5);
  g.strokeStyle='#4a3b78';g.lineWidth=2;g.strokeRect(x-150,GROUND-46,64,46);g.strokeRect(x-136,GROUND-84,46,38);
@@ -93,9 +46,10 @@ export function drawDealer(g,game,t){const d=game.story&&game.story.dealer;if(!d
  g.fillStyle='#14101f';g.fillRect(x+108,GROUND-168,4,-16);
  {const fl=.8+.2*Math.sin(t*5+1);g.save();g.globalCompositeOperation='lighter';const rg=g.createRadialGradient(x-60,GROUND-120,2,x-60,GROUND-120,130);rg.addColorStop(0,`rgba(176,110,255,${.5*fl})`);rg.addColorStop(1,'rgba(176,110,255,0)');g.fillStyle=rg;g.fillRect(x-200,GROUND-260,280,260);g.restore();
   g.fillStyle='#d6b8ff';g.fillRect(x-66,GROUND-132,12,16)}   // Laterne
- drawSpriteFrame(g,DEALER.id,d.frame(game.frame),x,GROUND,d.facing,.96,a);
+ g.restore();
+ drawSpriteFrame(g,DEALER.id,d.frame(game.frame),x,y0,d.facing,.96,a);
  // Hinweis: E – ansprechen
- if(d.near&&!d.active&&a>.9){const bob=Math.sin(t*4)*3,bx=x,by=GROUND-262+bob;g.fillStyle='rgba(10,6,20,.82)';g.strokeStyle='#b98bff';g.lineWidth=2;g.beginPath();g.roundRect?g.roundRect(bx-74,by-16,148,28,8):g.rect(bx-74,by-16,148,28);g.fill();g.stroke();
+ if(d.near&&!d.active&&a>.9){const bob=Math.sin(t*4)*3,bx=x,by=y0-262+bob;g.fillStyle='rgba(10,6,20,.82)';g.strokeStyle='#b98bff';g.lineWidth=2;g.beginPath();g.roundRect?g.roundRect(bx-74,by-16,148,28,8):g.rect(bx-74,by-16,148,28);g.fill();g.stroke();
   g.fillStyle='#ffffff';g.font='700 15px Rajdhani, "Segoe UI", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('E  –  ANSPRECHEN',bx,by-1)}
  g.restore()}
 // Dialog-Panel (Bildschirmraum): Porträt, Name, Text (tippt sich ein), Auswahlzeilen rechts (Maus + Tasten), Coins/Booster oben.

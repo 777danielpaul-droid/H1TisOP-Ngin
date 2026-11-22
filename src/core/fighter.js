@@ -1,4 +1,5 @@
 import{AIR,BARRIER,BOUNCE,GROUND,MELEE,PHYS,SPAM,STAMINA,WALL_L,WALL_R}from'./config.js';
+const K1={regen:1,delay:1,empty:1,rest:1};   // Ausdauer-Regler (Menü) – Standardfaktoren, siehe Game.stamTune
 import{Hitbox}from'./hitbox.js';
 import{buildMoves}from'./moves.js';
 import{strike,swingSound}from'./sfx.js';
@@ -15,14 +16,15 @@ export class Fighter{
  reset(){Object.assign(this,{x:this.startX,y:GROUND,vx:0,vy:0,facing:this.startFacing,hp:this.maxHp,state:'idle',sf:0,mf:0,move:null,moveName:'',
   hitDone:false,contact:false,hitCd:0,stun:0,coyote:0,airJumps:this.maxAJ,airDashes:1,launched:false,chainLen:0,comboHits:0,comboDmg:0,juggle:0,pop:false,hard:false,landLag:0,dashDir:0,
   noGrav:false,hoverF:0,chase:0,chaseK:null,slam:false,slams:0,fresh:0,relaunch:0,airHits:0,kdFrames:0,blockCrouch:false,anim:'idle',animU:0,_mo:0,spam:{btn:'',n:0,t:999},
-  pct:0,stocks:0,dead:0,inv:0,hover:0,onStage:true,under:false,recUsed:false,st:this.stMax,stDelay:0,exh:false,stamFlash:0,stamOn:false});this.trail.length=0;this.comboShow={hits:0,dmg:0,t:0}}
+  pct:0,stocks:0,dead:0,inv:0,hover:0,onStage:true,under:false,recUsed:false,st:this.stMax,stDelay:0,exh:false,stamFlash:0,stamOn:false,healed:0,restCd:0,stamK:K1});this.trail.length=0;this.comboShow={hits:0,dmg:0,t:0}}
  // Kämpfer wechseln (Menü): neue Stats + Moves, danach Zurücksetzen
  setChar(char,skin=0){this.char=char;this.skin=skin|0;this.moves=buildMoves(char);this.maxHp=char.hp;this.reset()}
  get floor(){const T=this.terrain;return T?T.floorFor(this.x,this.y):GROUND}   // Standfläche an der aktuellen Stelle (Story-Terrain: Plateaus liegen höher, sonst GROUND)
  get grounded(){return this.y>=this.floor&&this.onStage&&!this.under}   // Melee: nur auf der Plattform (onStage), nicht darunter (under) -> sonst fällt man
  // Ausdauer (siehe STAMINA in config.js): Maximum, "aktives Blocken" (Block-Zustand oder gehaltene Rück-Taste -> keine Regeneration), Lauftempo-Faktor im erschöpften Zustand
  get stMax(){return STAMINA.max*(this.char.stam||1)}
- get guarding(){const s=this.state;if(s==='block')return true;return(s==='idle'||s==='walk'||s==='crouch'||s==='air')&&!!this.input&&this.input.dx*this.facing<0}
+ get guarding(){const s=this.state;if(s==='block')return true;   // aktives Blocken: Block-Zustand oder gehaltene Rück-Taste (nur wenn man überhaupt blocken darf)
+  return(s==='idle'||s==='walk'||s==='crouch'||s==='air')&&!!this.input&&this.input.dx*this.facing<0&&(!this.stamOn||this.st>=this.stMax*STAMINA.guard.none)}
  get wk(){return this.stamOn&&this.exh?STAMINA.exhaust.speed:1}
  get maxAJ(){const a=this.char.airJumps;return a===undefined?1:a} // Luft-Sprünge pro Luftphase (Figurenwert)
  // Schadensfaktor: Charakter-Wert x Schwierigkeits-Faktor der KI (falls die Eingabe eine KI ist)
@@ -46,6 +48,7 @@ export class Fighter{
   if(s==='attack'&&this.move&&this.move.inv&&this.mf>=this.move.inv[0]&&this.mf<=this.move.inv[1])return true;
   if(s==='dash'&&this.dashDir!==this.facing&&this.sf<6)return true;return false}
  isBlocking(m){const s=this.state;if(m.special&&this.char.noSpecialBlock)return false;   // Story-Mantis können Specials/Hypers nicht abwehren
+  if(this.stamOn){const p=this.st/this.stMax;if(p<STAMINA.guard.none||(p<STAMINA.guard.special&&(m.special||m.projectile)))return false}   // Ausdauer: <25 % kein Block, <50 % kein Special-Block
   if(!['idle','walk','crouch','air','block'].includes(s))return false;
   if(s==='block')return true;
   if(this.input.dx*this.facing>=0)return false; // Zurückhalten = Block
@@ -56,8 +59,10 @@ export class Fighter{
  update(opp,game){
   this.sf++;this.foeRef=opp;
   this.stamOn=!!game.stamOn&&!this.char.noStamina;   // Ausdauer-System aktiv? (aus: Leiste bleibt voll)
+  this.stamK=game.stamTune||K1;
   if(this.stamOn)this.stamTick();else if(this.exh||this.st<this.stMax){this.exh=false;this.st=this.stMax;this.stDelay=0}
   if(this.stamFlash>0)this.stamFlash--;
+  if(this.restCd>0)this.restCd--;
   if(this.inv>0)this.inv--;
   if(this.hover>0){const i=this.input;this.hover--;if(i&&(i.dx||i.dy||(i.buf&&i.buf.length)))this.hover=0;   // Respawn: schwebt auf der Plattform, bis er sich bewegt/angreift (oder die Zeit abläuft)
    if(this.hover>0){this.noGrav=true;this.vy=0;this.vx*=.85}else this.noGrav=false}
@@ -143,15 +148,15 @@ export class Fighter{
  // ---------- Ausdauer ----------
  // Pro Frame (nur wenn aktiv): Verzögerungs-Timer, dann Regeneration. KEINE Regeneration beim Angreifen, Dashen und beim aktiven Blocken.
  stamTick(){const S=STAMINA,mx=this.stMax;if(this.stDelay>0)this.stDelay--;
-  if(this.state==='rest'){this.st=Math.min(mx,this.st+S.rest.regen*(this.char.stam||1));if(this.exh&&this.st>=S.exhaust.until)this.exh=false;return}   // Verschnaufen ignoriert die Pause
+  if(this.state==='rest')return;   // Verschnaufen regeneriert KEINE Ausdauer (nur HP)
   if(this.stDelay>0)return;
   const s=this.state;if(s==='attack'||s==='dash'||s==='airdash'||s==='recover'||s==='block'||s==='ko'||this.guarding)return;
-  this.st=Math.min(mx,this.st+S.regen*(this.exh?S.exhaust.regen:1)*(this.char.stam||1));
+  this.st=Math.min(mx,this.st+S.regen*this.stamK.regen*(this.exh?S.exhaust.regen:1)*(this.char.stam||1));
   if(this.exh&&this.st>=S.exhaust.until)this.exh=false}
  // Verbrauch: Leiste fällt nie unter 0. Danach Pause (kurz) bzw. bei leerer Leiste die lange Pause + erschöpft.
  // Die lange Pause greift beim ABSINKEN auf 0; wer bei leerer Leiste weiter leichte Angriffe macht, verlängert sie nicht (nur die normale Pause bleibt als Minimum).
  spendSt(c){if(!this.stamOn||!(c>0))return;const S=STAMINA,was=this.st;this.st=Math.max(0,this.st-c);
-  if(this.st<=0&&was>0){this.exh=true;this.stDelay=S.emptyDelay}else this.stDelay=Math.max(this.stDelay,S.delay)}
+  if(this.st<=0&&was>0){this.exh=true;this.stDelay=S.emptyDelay*this.stamK.empty}else this.stDelay=Math.max(this.stDelay,S.delay*this.stamK.delay)}
  // Dash/Air-Dash bezahlen: nur wenn nicht erschöpft und genug Ausdauer, sonst Hinweis-Blinken
  stamPay(kind){if(!this.stamOn)return true;const c=STAMINA.cost[kind];if(this.exh||this.st<c){this.stamFlash=22;return false}this.spendSt(c);return true}
  stamCost(n){const m=this.moves[n];if(!m||m.super)return 0;const C=STAMINA.cost;if(m.special){const s=C.special;return s[n]!==undefined?s[n]:s.def}return C[n.slice(-1)]||0}
@@ -160,13 +165,16 @@ export class Fighter{
   if(m.special)return!this.exh&&this.st>=this.stamCost(n);
   const r=n.slice(-1);if(r==='L')return true;if(r==='M')return!this.exh;return!this.exh&&this.st>=this.stamCost(n)}
  stamDenied(n){const m=this.moves[n];return!!m&&!(m.cost&&this.meter<m.cost)&&!(m.air&&this.grounded)&&!this.stamOK(n)}
- // Verschnaufen (Taste REST): am Boden kurz innehalten, deutlich schnellere Regeneration. Kein Block, bei jedem Treffer unterbrochen (combat.js), +Schaden gegen den Verschnaufenden.
- tryRest(game){const i=this.input;if(!this.stamOn||!i.pressed('REST',3))return false;i.consume('REST');
-  if(!this.grounded||!['idle','walk','crouch'].includes(this.state)||this.st>=this.stMax-1)return false;
-  this.vx=0;this.setState('rest');game.sfx('whoosh_light',{vol:.35,rate:.55});game.fx.ps.ring(this.x,this.y-70,'#5dffc2',60);return true}
- tickRest(game){const R=STAMINA.rest,i=this.input;this.vx*=.5;
+ // Verschnaufen (Taste REST): am Boden innehalten und HP langsam regenerieren (KEINE Ausdauer). Verwundbar (kein Block, +Schaden), jeder Treffer unterbricht es (combat.js).
+ // Unabhängig vom Ausdauer-Schalter, aber begrenzt: Abklingzeit + Gesamt-Heilung pro Runde (STAMINA.rest.cap).
+ canRest(game){const R=STAMINA.rest;return!!game.restOn&&this.grounded&&this.restCd<=0&&this.hp<this.maxHp-1&&this.healed<R.cap*this.maxHp-1&&(this.state==='idle'||this.state==='walk'||this.state==='crouch')}
+ tryRest(game){const i=this.input;if(!i.pressed('REST',3))return false;i.consume('REST');if(!this.canRest(game))return false;
+  this.vx=0;this.restCd=STAMINA.rest.max+STAMINA.rest.cooldown;this.setState('rest');game.sfx('whoosh_light',{vol:.35,rate:.55});game.fx.ps.ring(this.x,this.y-70,'#5dffc2',60);return true}
+ tickRest(game){const R=STAMINA.rest,i=this.input,mx=this.maxHp;this.vx*=.5;
+  const add=Math.max(0,Math.min(R.hpPct*this.stamK.rest*mx,R.cap*mx-this.healed,mx-this.hp));this.hp+=add;this.healed+=add;
   if(this.sf%16===4)game.fx.ps.ring(this.x,this.y-70-(this.sf%32)*.5,'#5dffc2',44+(this.sf%3)*8);
-  if(this.sf>=R.max||(this.sf>=R.min&&(this.st>=this.stMax||i.dx||i.dy<0||['L','M','H','S','SUP','DASH','UP'].some(b=>i.pressed(b,2)))))this.setState('idle')}   // Eingaben bleiben gepuffert -> sofort wieder handlungsfähig
+  const done=this.sf>=R.max||this.hp>=mx-.5||this.healed>=R.cap*mx-.5;
+  if(done||(this.sf>=R.min&&(i.dx||i.dy<0||['L','M','H','S','SUP','DASH','UP'].some(b=>i.pressed(b,2)))))this.setState('idle')}   // Eingaben bleiben gepuffert -> sofort wieder handlungsfähig
  // ---------- Moves ----------
  select(b){const i=this.input,g=this.grounded,rel=i.dx*this.facing;this._btn=b;
   if(b==='SUP')return g?'super':'airsuper';

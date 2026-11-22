@@ -11,7 +11,7 @@ import{openPack,buyPack,LOOT,SHOP,CHAR_SHOP,CHAR_REQ,charReqMet,CARDS,shopCount,
 import{NetClient,netServerUrl,connectPatient}from'./core/netclient.js';
 import{NetMatch}from'./core/netmatch.js';
 import{NetInput,NET,encInput}from'./core/netplay.js';
-import{STAMINA}from'./core/config.js';
+import{STAMINA,tuneClamp}from'./core/config.js';
 import{NetUi,netMessage}from'./render/netui.js';
 import{skinCount,skinName}from'./render/skins.js';
 import{THEMES}from'./render/stage.js';
@@ -73,7 +73,7 @@ const fillMoves=()=>{if(!ml)return;const c=p1.char;ml.innerHTML=`<tr><td colspan
 function showTab(i){tab=(i+names.length)%names.length;names.forEach((n,k)=>{const s=$('tab-'+n);if(s)s.classList.toggle('hidden',k!==tab);if(tabs[k])tabs[k].classList.toggle('on',k===tab)})}
 tabs.forEach((b,i)=>b.onclick=()=>showTab(i));showTab(0);
 let padFocus=null;   // vom Controller markiertes Element im Pausenmenü
-function setMenu(open){if(padFocus){padFocus.classList.remove('padfocus');padFocus=null}if(open){fillMoves();stamShow()}menuOpen=open;menu.classList.toggle('hidden',!open);clearInputs();if(!open)canvas.focus()}
+function setMenu(open){if(padFocus){padFocus.classList.remove('padfocus');padFocus=null}if(open){fillMoves();stamShow();tuneUi()}menuOpen=open;menu.classList.toggle('hidden',!open);clearInputs();if(!open)canvas.focus()}
 const fs=()=>{if(document.fullscreenElement)document.exitFullscreen();else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen()};
 canvas.addEventListener('dblclick',fs);
 const on=(id,fn)=>{const e=$(id);if(e)e.onclick=()=>fn(e)};
@@ -83,6 +83,12 @@ on('btn-meter',()=>{p1.meter=300});
 // Ausdauer-Schalter (Optionen). Online (netMatch) bestimmt der Gastgeber für beide -> Schalter gesperrt und zeigt nur den aktuellen Wert.
 function stamShow(){const b=$('btn-stam');if(!b)return;const net=!!netMatch,v=net?game.stamOn:game.stamPref;b.textContent=(v?'An':'Aus')+(net?' (Gastgeber)':'');b.classList.toggle('on',!!v);b.disabled=net}
 on('btn-stam',()=>{if(netMatch)return;game.stamPref=!game.stamPref;save('tf_stam',game.stamPref?'1':'0');stamShow()});
+// Regler (Optionen): Faktoren auf Ausdauer-Regeneration, Pausen (Delay) und Verschnaufen-Tempo. Gespeichert in localStorage tf_stamtune; online gelten die Werte des Gastgebers (Regler gesperrt).
+const TUNE_ROWS=[['regen','stam-regen'],['delay','stam-delay'],['empty','stam-empty'],['rest','rest-regen']];
+try{const t=JSON.parse(load('tf_stamtune','{}')||'{}');for(const[k]of TUNE_ROWS)game.tunePref[k]=tuneClamp(k,t[k]===undefined?1:t[k])}catch(e){}
+function tuneUi(){const net=!!netMatch,src=net?game.stamTune:game.tunePref;for(const[k,id]of TUNE_ROWS){const e=$(id);if(!e)continue;e.value=src[k];e.disabled=net;const l=$(id+'-val');if(l)l.textContent=src[k].toFixed(2)+'×'}const r=$('btn-stam-reset');if(r)r.disabled=net}
+for(const[k,id]of TUNE_ROWS){const e=$(id);if(e)e.oninput=()=>{if(netMatch)return;game.tunePref[k]=tuneClamp(k,e.value);save('tf_stamtune',JSON.stringify(game.tunePref));tuneUi()}}
+on('btn-stam-reset',()=>{if(netMatch)return;for(const[k]of TUNE_ROWS)game.tunePref[k]=1;save('tf_stamtune',JSON.stringify(game.tunePref));tuneUi()});
 on('btn-restart',()=>{if(arcade.pvp&&arcade.state!=='select')arcade.rematchVs();else game.rematch();setMenu(false)});
 on('btn-select',()=>{arcade.toSelect();setMenu(false)});
 on('btn-studio',()=>{arcade.toSelect();setMenu(false);arcade.cursor=CI();openStudio()});
@@ -284,7 +290,7 @@ async function netAct(a,v){switch(a){
  case'ready':if(netMatch)netMatch.setReady(!netMatch.me.ready);break;
  case'start':if(netMatch&&netMatch.canStart()){let st=v|0;if(st<0){const own=ownedStages(arcade.stageCount);st=own[Math.floor(Math.random()*own.length)]}else if(!arcade.stageOpen(st))st=0;netMatch.hostStart(st)}break}}
 function netPaired(c){if(netMatch)return;
- netMatch=new NetMatch({client:c,game,inputs:netInputs,valid:NET_OK,stam:()=>game.stamPref,sample:()=>{const s=kb.sample();return encInput(s.dx,s.dy,s.pressed)},
+ netMatch=new NetMatch({client:c,game,inputs:netInputs,valid:NET_OK,stam:()=>game.stamPref,tune:()=>TUNE_ROWS.map(([k])=>Math.round(game.tunePref[k]*100)),sample:()=>{const s=kb.sample();return encInput(s.dx,s.dy,s.pressed)},
   altSkin:(id,s)=>{const n=skinCount(CHARACTERS[id]&&CHARACTERS[id].sprites);return n>1?(s+1)%n:0},
   hooks:{onChange:()=>{netUi.render();netBarUpdate()},onLaunch:netLaunch,onStart:()=>{clearInputs();netBarUpdate()},onEnd:netEnded}});
  const first=ROSTER[Math.min(arcade.cursor,ROSTER.length-1)]||ROSTER[0];netMatch.pick(first,arcade.skinOf(first));netUi.say('');netUi.render()}

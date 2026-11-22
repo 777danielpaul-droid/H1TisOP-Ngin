@@ -1,6 +1,6 @@
 // Move-Editor der eigenen Figur (eigene Assets je Animation): reine Logik ohne DOM. node tests/custommoves.test.js
 import assert from'node:assert/strict';
-import{CUS_ANIMS,CUS_ANIM_LABELS,CUS_STAND_H,CUS_MOVE_GROUPS,CUS_MOVE_KEYS,CUS_MAX_MOVE_FRAMES,cusKeyOut,cusBuildAnims,cusCompleteAnims,cusCleanMoves,cusCleanProps,cusFrameGeom,cusMoveAnims,cusMoveImgs,cusMoveName,cusPlanImage,cusPlanMoveSheet,cusMvMove,cusMvRemove,cusMvInsert,cusMvReplace,cusNewId}from'../src/core/custom.js';
+import{CUS_MOVE_SPECS,CUS_SHEETS,cusMovePrompt,cusDetectGrid,cusMoveKeyFromName,CUS_ANIMS,CUS_ANIM_LABELS,CUS_STAND_H,CUS_MOVE_GROUPS,CUS_MOVE_KEYS,CUS_MAX_MOVE_FRAMES,cusKeyOut,cusBuildAnims,cusCompleteAnims,cusCleanMoves,cusCleanProps,cusFrameGeom,cusMoveAnims,cusMoveImgs,cusMoveName,cusPlanImage,cusPlanMoveSheet,cusMvMove,cusMvRemove,cusMvInsert,cusMvReplace,cusNewId}from'../src/core/custom.js';
 
 // Künstliches Sheet wie in custom.test.js: cols x rows Zellen, grüner Hintergrund, je Zelle ein „Kämpfer“ (Körper 100 breit, Höhe h, optional Arm)
 function sheet(cols,rows,{cw=600,ch=600,figs={},base=540}={}){const w=cols*cw,h=rows*ch,d=new Uint8ClampedArray(w*h*4);for(let i=0;i<w*h;i++){d[i*4+1]=255;d[i*4+3]=255}
@@ -76,4 +76,20 @@ const fr=(id,o={})=>({id,img:o.img||'img'+id,w:o.w||100,h:o.h||200,ox:o.ox==null
 
 // 9) Eigenschaften und IDs
 {assert.deepEqual(cusCleanProps({fps:0,loop:0,bob:99}),{fps:1,loop:0,bob:20});assert.ok(/^[a-z0-9]{8}$/.test(cusNewId())&&cusNewId()!==cusNewId())}
+
+// 10) Sheets je Move: empfohlenes Raster + fertiger Prompt für JEDEN Move, Raster-Erkennung, Dateiname -> Move
+{for(const k of CUS_MOVE_KEYS){const sp=CUS_MOVE_SPECS[k];assert.ok(sp&&sp.c>=1&&sp.r>=1&&sp.c*sp.r>=2&&sp.c*sp.r<=16&&sp.cells,'Spec '+k);
+  const t=cusMovePrompt(k,'a red panda monk');assert.ok(t.includes(sp.c+' columns x '+sp.r+' rows')&&t.includes('red panda monk')&&t.includes('CELL 1')&&t.includes('#00FF00')&&t.includes('CELLS 2-'+sp.c*sp.r+':'),'Prompt '+k)}
+ assert.equal(cusMovePrompt('gibtsnicht'),'');
+ assert.ok(CUS_SHEETS.some(x=>x.key==='hyper')&&CUS_ANIMS.hyper&&CUS_ANIMS.hyper.parts[0][0]==='hyper','Hyper-Special hat einen eigenen Sheet-Slot');
+ assert.equal(CUS_MOVE_SPECS.hyper.c*CUS_MOVE_SPECS.hyper.r,8);assert.ok(CUS_MOVE_SPECS.airhit.air&&!CUS_MOVE_SPECS.punch.air,'nur der Luft-Treffer wird in der Körpermitte verankert');
+ // Raster erkennen (künstliche Sheets): 3x2, 4x2, 4x2 mit unvollständiger letzter Zeile, 2x2, 3x3; Einzelbild -> null
+ for(const[c,r,figs,name]of[[3,2,{},'3x2'],[4,2,{},'4x2'],[4,2,{7:null},'4x2 mit 7 Frames'],[2,2,{},'2x2'],[3,3,{},'3x3']]){const{d,w,h}=sheet(c,r,{figs});assert.deepEqual(cusDetectGrid(d,w,h),{cols:c,rows:r},'Raster '+name)}
+ {const{d,w,h}=sheet(1,1);assert.equal(cusDetectGrid(d,w,h),null,'Einzelbild: kein Raster')}
+ // Zuschnitt mit erkanntem Raster ergibt alle Frames (Zelle 1 = Kalibrierung)
+ {const{d,w,h}=sheet(4,2),g=cusDetectGrid(d,w,h),pl=cusPlanMoveSheet(d,w,h,g.cols,g.rows,{calib:true});assert.equal(pl.frames.length,7,'4x2 -> 7 Frames nach der Kalibrierzelle')}
+ // Dateiname -> Move
+ for(const[n,k]of[['punch.png','punch'],['cpunch.PNG','cpunch'],['Hyper_1.png','hyper'],['hyper (2).webp','hyper'],['Duck-Schlag.png','cpunch'],['Fußfeger.png','ckick'],['Luft-Treffer.png','airhit'],['Siegerpose.jpg','win'],['aufstehen.png','wakeup'],['walk3.png','walk']])assert.equal(cusMoveKeyFromName(n),k,'Dateiname '+n);
+ for(const n of['sheet.png','Gemini_Generated_Image_x1y2.png','','.png','foto.jpg'])assert.equal(cusMoveKeyFromName(n),null,'kein Move: '+n);
+ for(const k of CUS_MOVE_KEYS)assert.equal(cusMoveKeyFromName(k+'.png'),k,'Schlüssel als Dateiname '+k)}
 console.log('Move-Editor-Tests (Logik) bestanden');

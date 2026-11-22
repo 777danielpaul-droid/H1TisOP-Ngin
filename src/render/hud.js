@@ -921,18 +921,17 @@ export class Hud {
       h = 4,
       sk = 4,
       exh = f.exh,
-      rest = f.state === "rest",
       low = f.st < S.low,
       flash = f.stamFlash > 0,
       pu = 0.5 + 0.5 * Math.sin(t * (exh ? 0.55 : 0.3)),
-      c1 = exh ? "#ff3b57" : rest ? "#35e8b0" : low ? "#ff9a3d" : "#ffc94d",
-      c2 = exh ? "#ff9aa8" : rest ? "#d6fff0" : low ? "#ffd8a8" : "#fff3c2";
+      c1 = exh ? "#ff3b57" : low ? "#ff9a3d" : "#ffc94d",
+      c2 = exh ? "#ff9aa8" : low ? "#ffd8a8" : "#fff3c2";
     g.save();
     g.lineWidth = 0.9;
-    g.strokeStyle = flash ? "#ff3b57" : exh ? "#ff6b82" : rest ? "#7dffd0" : ICE;
-    g.globalAlpha = flash || exh || rest ? 1 : 0.6;
-    if (flash || exh || rest) {
-      g.shadowColor = flash || exh ? "#ff3b57" : "#35e8b0";
+    g.strokeStyle = flash ? "#ff3b57" : exh ? "#ff6b82" : ICE;
+    g.globalAlpha = flash || exh ? 1 : 0.6;
+    if (flash || exh) {
+      g.shadowColor = "#ff3b57";
       g.shadowBlur = 6 + 6 * pu;
     }
     para(g, x - 1.5, y - 1.5, w + 3, h + 3, sk);
@@ -969,6 +968,12 @@ export class Hud {
       g.fillRect(x + (w * S.exhaust.until) / f.stMax + sk * 0.5 - 0.5, y, 1, h);
     }
     g.restore();
+    // Block-Schwellen: unter 25 % kein Block, unter 50 % kein Special-Block
+    g.save();
+    g.fillStyle = ICE;
+    g.globalAlpha = 0.85;
+    for (const th of [STAMINA.guard.none, STAMINA.guard.special]) g.fillRect(x + w * th + sk * 0.5 - 0.5, y - 2, 1, h + 4);
+    g.restore();
     g.save();
     dia(g, x - 8, y + h / 2, 2);
     g.fillStyle = c1;
@@ -977,14 +982,41 @@ export class Hud {
     g.fill();
     g.restore();
   }
+  // Hinweis-Text neben der Ausdauerleiste (bzw. beim Verschnaufen auch ohne Ausdauer-System)
   stamLabel(g, i, f, t) {
-    if (!this.stamShow) return;
-    const txt = f.stamFlash > 0 ? "KEINE AUSDAUER" : f.exh ? "ERSCHÖPFT" : f.state === "rest" ? "ATMEN" : "";
+    const rest = f.state === "rest";
+    if (!this.stamShow && !rest) return;
+    const pc = f.st / f.stMax;
+    let txt = "",
+      col = "#ff7b91";
+    if (rest) {
+      txt = "VERSCHNAUFEN  +HP";
+      col = "#7dffd0";
+    } else if (f.stamFlash > 0) txt = "KEINE AUSDAUER";
+    else if (f.exh) txt = "ERSCHÖPFT";
+    else if (pc < STAMINA.guard.none) {
+      txt = "KEIN BLOCK";
+      col = "#ffb347";
+    } else if (pc < STAMINA.guard.special) {
+      txt = "KEIN SPECIAL-BLOCK";
+      col = "#ffb347";
+    }
     if (!txt) return;
     const { W } = this,
-      mx = (v) => (i ? W - v : v),
-      col = f.stamFlash > 0 || f.exh ? "#ff7b91" : "#7dffd0";
+      mx = (v) => (i ? W - v : v);
     this.lab(g, txt, mx(HB.x + 2 + 190 + 14), HB.y + HB.h + 14, 8, col, i ? "right" : "left", 2, col, "700");
+  }
+  // Verschnaufen: mintgrüner Schein um den Lebensbalken (es werden HP regeneriert)
+  restGlow(g, t) {
+    const pu = 0.5 + 0.5 * Math.sin(t * 0.18);
+    g.save();
+    g.lineWidth = 1.2;
+    g.strokeStyle = "#7dffd0";
+    g.shadowColor = "#35e8b0";
+    g.shadowBlur = 8 + 8 * pu;
+    para(g, HB.x - 1.5, HB.y - 1.5, HB.w + 3, HB.h + 3, HB.sk);
+    g.stroke();
+    g.restore();
   }
   // ---------- Spieler-Block ----------
   player(g, i, f, t, noWins = false) {
@@ -1006,6 +1038,7 @@ export class Hud {
       g.scale(-1, 1);
     }
     this.hpBar(g, i, p, this.lag[i], t, alarm);
+    if (f.state === "rest") this.restGlow(g, t);
     this.stamBar(g, i, f, t);
     g.restore();
     this.stamLabel(g, i, f, t);

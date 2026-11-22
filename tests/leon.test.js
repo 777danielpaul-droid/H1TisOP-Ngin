@@ -24,8 +24,8 @@ ok('Leon: 7 Specials + Hyper');
 
 // 3) Leon (KI Stufe 2) gegen passiven Spieler: besiegt ihn in angemessener Zeit, ohne Fehler
 {const i1=new InputBuffer(),ai=new AIController(2),p1=new Fighter({char:CHARACTERS.tiger,x:340,facing:1,input:i1}),p2=new Fighter({char:CHARACTERS.leon,x:620,facing:-1,input:ai});
- const g=new Game(p1,p2);new Arcade(g,p1,p2,ai);let n=0;while(g.phase!=='match'&&n++<30000)g.step();assert.ok(p2.wins>=2&&p1.hp<=p1.maxHp,'Leon gewinnt gegen passiven Gegner');assert.equal(p2.maxHp,1040)}
-ok('Leon: KI-Kampf läuft durch, 1040 HP');
+ const g=new Game(p1,p2);new Arcade(g,p1,p2,ai);let n=0;while(g.phase!=='match'&&n++<30000)g.step();assert.ok(p2.wins>=2&&p1.hp<=p1.maxHp,'Leon gewinnt gegen passiven Gegner');assert.equal(p2.maxHp,1075)}
+ok('Leon: KI-Kampf läuft durch, 1075 HP');
 
 // 4) Spielbar ohne KI: alle Moves einmal auslösen
 {const i1=new InputBuffer(),p1=new Fighter({char:CHARACTERS.leon,x:340,facing:1,input:i1}),p2=new Fighter({char:CHARACTERS.tiger,x:620,facing:-1,input:new InputBuffer()});

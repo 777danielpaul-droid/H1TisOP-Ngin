@@ -35,32 +35,51 @@ const mk=(ch=1)=>{const d=new AIController(0),p1=new Fighter({char:CHARACTERS.ti
  assert.ok(moved>60,'Plattform bewegt sich');assert.ok(maxDrift<3,'Figur bleibt auf der beweglichen Plattform mitgetragen (Drift '+maxDrift.toFixed(2)+')');assert.equal(p1.y,top);ok('bewegliche Plattform trägt die Figur mit')}
 {const{game,s,p1,d}=mk();s.terrain=new Terrain([],[{x0:100,x1:300,h:150,kind:'crumble',hold:25,off:120}]);const T=s.terrain,pf=T.platforms[0],top=GROUND-150;
  const run=(n)=>{for(let i=0;i<n;i++){d.feed(0,0,[]);game.step();s.state='done'}};p1.x=200;p1.y=top;p1.vx=0;run(10);assert.equal(p1.y,top,'trägt zuerst');run(30);assert.ok(!pf.on&&p1.y>top,'bröckelt weg, die Figur fällt');run(160);assert.equal(p1.y,GROUND);run(5);assert.ok(pf.on,'Plattform kommt zurück');ok('bröckelnde Plattform: trägt kurz, fällt weg, kommt zurück')}
+// ---- Kamera folgt der Figur nach oben und wieder zurück zum Boden ----
+{const{game,s,p1,d}=mk();const T=new Terrain([],[{x0:-80,x1:320,h:1500}]);s.terrain=T;const run=n=>{for(let i=0;i<n;i++){d.feed(0,0,[]);game.step();s.state='done'}};
+ const base=game.camera.y;p1.x=100;p1.y=GROUND-1500;p1.vx=0;run(240);assert.ok(Math.abs(p1.y-(GROUND-1500))<1,'steht oben');
+ assert.ok(game.camera.y<-900,'Kamera ist mit nach oben gefahren (y='+Math.round(game.camera.y)+', Figur y='+Math.round(p1.y)+')');
+ p1.y=GROUND;p1.x=500;run(300);assert.ok(game.camera.y>150&&game.camera.y<320,'Kamera ist wieder unten bei der Bodenlinie (y='+Math.round(game.camera.y)+')');ok('Kamera: folgt der Figur beim Klettern nach oben und kehrt am Boden zurück')}
 // ---- Generator ----
 {const b=buildParkour({segs:'SLHDNMCB',width:200,name:'X'});assert.equal(b.platforms.length,9);assert.deepEqual(b.platforms.map(p=>p.seg).join(''),'0SLHDNMCB');
- assert.equal(b.platforms.at(-1).h,130+110+80+190+40+110+110+110+60,'Höhen addieren sich');assert.equal(b.relic.h,b.height);assert.equal(b.platforms.find(p=>p.seg==='D').need,'double');assert.equal(b.platforms.find(p=>p.seg==='N').x1-b.platforms.find(p=>p.seg==='N').x0,90);
+ assert.equal(b.platforms.at(-1).h,130+110+80+190+40+110+110+110+50,'Höhen addieren sich');assert.equal(b.relic.h,b.height);assert.equal(b.platforms.find(p=>p.seg==='D').need,'double');assert.equal(b.platforms.find(p=>p.seg==='N').x1-b.platforms.find(p=>p.seg==='N').x0,90);
  assert.deepEqual(buildParkour({segs:'SSSLHD',width:210}),buildParkour({segs:'SSSLHD',width:210}),'deterministisch');ok('Generator: Höhen, Kürzel, schmal, Doppelsprung-Markierung, deterministisch')}
 // ---- Machbarkeit mit der echten Physik für JEDE Stufe jedes Kapitels ----
-const reachPair=(ch,i)=>{const{game,s,p1,d}=mk(ch),P=CHAPTERS[ch-1].parkour.platforms,T=s.terrain,tgt=P[i],src=i?P[i-1]:null;
- const tp=T.platforms[i],sp=src?T.platforms[i-1]:null;
+const reachPair=(ch,from,to,needDbl=true)=>{const{game,s,p1,d}=mk(ch),P=CHAPTERS[ch-1].parkour.platforms,T=s.terrain,tgt=P[to],src=from>=0?P[from]:null;
+ const tp=T.platforms[to],sp=src?T.platforms[from]:null;
  const per=(tp.kind==='move'?tp.per:(sp&&sp.kind==='move'?sp.per:1));const phases=(tp.kind==='move'||(sp&&sp.kind==='move'))?[0,.2,.4,.6,.8].map(k=>Math.round(k*per)):[0];
  const cx=q=>(q.x0+q.x1)/2,dirTo=()=>Math.sign((cx(tp)+tp.ox)-(sp?cx(sp)+sp.ox:cx(tp)-1));
+ // Landung: auf welcher Plattform (Index) landet die Figur? (-1 = Boden/keine)
+ const land=()=>P.findIndex((q,k)=>Math.abs(GROUND-q.h-p1.y)<1&&p1.x>=q.x0+T.platforms[k].ox&&p1.x<=q.x1+T.platforms[k].ox);
  const attempt=(ph,sx,sy,dir,k2)=>{T.shift=ph;for(const q of T.platforms){q.on=true;q.tm=0;q.gone=false}
   p1.reset();p1.x=sx;p1.y=sy;p1.vx=0;p1.vy=0;p1.airJumps=p1.maxAJ;
-  for(let f=0;f<200;f++){d.feed(dir,f===0||f===k2?-1:0,[]);game.step();s.state='done';if(f>3&&p1.grounded)return p1.y===GROUND-tgt.h&&p1.x>=tgt.x0+tp.ox&&p1.x<=tgt.x1+tp.ox}return false};
- let single=false,dbl=false;
- for(const ph of phases){T.shift=ph;T.tick(game.frame,[]);   // Plattformen in dieser Phase positionieren
+  for(let f=0;f<200;f++){d.feed(dir,f===0||f===k2?-1:0,[]);game.step();s.state='done';if(f>3&&p1.grounded){const idx=land();return{exact:idx===to,atLeast:idx>=to}}}return{exact:false,atLeast:false}};
+ let singleExact=false,singleAL=false,dblAL=false;const stop=()=>singleAL&&(!needDbl||dblAL||(tgt.need!=='double'));
+ for(const ph of phases){T.shift=ph;T.tick(game.frame,[]);
   const sx0=sp?sp.x0+sp.ox:0,sx1=sp?sp.x1+sp.ox:0,dir=dirTo(),xs=[];
   if(!sp){for(let x=tgt.x0-230;x<=tgt.x1+60;x+=25)xs.push(x)}else if(dir>0){for(let x=sx1;x>=Math.max(sx0,sx1-110);x-=14)xs.push(x)}else{for(let x=sx0;x<=Math.min(sx1,sx0+110);x+=14)xs.push(x)}
   const sy=src?GROUND-src.h:GROUND;
-  for(const x of xs){if(!single&&attempt(ph,x,sy,dir||1,-1))single=true;if(!dbl&&(tgt.need==='double'||!single))for(let k=4;k<=46&&!dbl;k+=3)if(attempt(ph,x,sy,dir||1,k))dbl=true;if(single&&(dbl||tgt.need!=='double'))break}
-  if(single&&(dbl||tgt.need!=='double'))break}
- return{single,dbl}};
+  for(const x of xs){const r=attempt(ph,x,sy,dir||1,-1);if(r.exact)singleExact=true;if(r.atLeast)singleAL=true;
+   if(needDbl&&!dblAL&&(tgt.need==='double'||!singleAL))for(let k=4;k<=46&&!dblAL;k+=3)if(attempt(ph,x,sy,dir||1,k).atLeast)dblAL=true;
+   if(stop()&&(!singleExact||tgt.need!=='double'))break}
+  if(stop()&&(!singleExact||tgt.need!=='double'))break}
+ return{single:singleExact,singleAL,dbl:dblAL}};
 for(const c of CHAPTERS){const P=c.parkour.platforms,bad=[];
- for(let i=0;i<P.length;i++){const r=reachPair(c.id,i);
-  if(P[i].need==='double'){if(r.single)bad.push(`${i}(${P[i].seg}): auch mit Einfachsprung machbar`);if(!r.dbl)bad.push(`${i}(${P[i].seg}): auch mit Doppelsprung NICHT machbar`)}
-  else if(!r.single&&!(P[i].kind==='move'&&r.dbl))bad.push(`${i}(${P[i].seg}): mit Einfachsprung NICHT machbar`)}
+ for(let i=0;i<P.length;i++){const r=reachPair(c.id,i-1,i);
+  if(P[i].need==='double'){if(r.single)bad.push(`${i}(${P[i].seg}): auch mit Einfachsprung machbar`);if(i===P.length-1&&r.singleAL)bad.push(`${i}(${P[i].seg}): oberste Plattform per Einfachsprung erreichbar`);if(!r.dbl)bad.push(`${i}(${P[i].seg}): auch mit Doppelsprung NICHT machbar`)}
+  else if(!r.singleAL&&!(P[i].kind==='move'&&r.dbl))bad.push(`${i}(${P[i].seg}): mit Einfachsprung NICHT machbar`)}
  assert.deepEqual(bad,[],`Kapitel ${c.id}: ${bad.join('; ')}`)}
 ok('Alle '+CHAPTERS.length+' Kapitel: jede Stufe mit der echten Physik machbar (Einfachsprung; D-Lücken nur mit Doppelsprung)');
+// ---- keine Abkürzung: nur mit Einfachsprüngen kommt man NICHT ganz nach oben (jeder Weg braucht mindestens einen Doppelsprung) ----
+for(const c of CHAPTERS){const P=c.parkour.platforms,n=P.length,span=p=>[p.x0-(p.amp||0),p.x1+(p.amp||0)],gapx=(a,b)=>{const A=span(a),B=span(b);return Math.max(0,A[0]-B[1],B[0]-A[1])};
+ const memo=new Map(),edge=(i,j)=>{const k=i+'>'+j;if(memo.has(k))return memo.get(k);const a=i>=0?P[i]:{x0:-2000,x1:2000,h:0,amp:0},b=P[j];let ok=false;
+  if(j===i)ok=false;else if(b.h<=a.h){ok=i>=0&&gapx(a,b)<=260}   // runter/seitlich: Abspringen oder Herunterfallen
+  else if(b.h-a.h<=330&&(i<0?gapx(a,b)<=1e9:gapx(a,b)<=300))ok=reachPair(c.id,i,j,false).single;
+  memo.set(k,ok);return ok};
+ const seen=new Set([-1]),par={},q=[-1];while(q.length){const i=q.shift();for(let j=0;j<n;j++){if(seen.has(j))continue;if(i<0&&P[j].h>330)continue;if(edge(i,j)){seen.add(j);par[j]=i;q.push(j)}}}
+ const path=[];for(let x=n-1;x in par;x=par[x])path.unshift(x+'<'+par[x]);
+ assert.ok(!seen.has(n-1),`Kapitel ${c.c||c.id}: Abkürzung! Die oberste Plattform ist ohne Doppelsprung erreichbar (Weg: ${path.join(' ')})`)}
+ok('Keine Abkürzung: ohne Doppelsprung ist die oberste Plattform in keinem Kapitel erreichbar');
 // ---- Kapitel-Daten: realistische Maße, Schwierigkeit steigt ----
 {const info=CHAPTERS.map(c=>{const P=c.parkour.platforms;return{id:c.id,h:c.parkour.height,n:P.length,d:P.filter(p=>p.need==='double').length,m:P.filter(p=>p.kind==='move').length,c:P.filter(p=>p.kind==='crumble').length,w:Math.max(...P.filter(p=>p.seg==='S').map(p=>p.x1-p.x0)),narrow:P.filter(p=>p.seg==='N').length}});
  for(const c of CHAPTERS){const pk=c.parkour;assert.ok(pk.platforms.length>=12&&pk.relic&&pk.deco,'Kapitel '+c.id+': Parkour');assert.ok(['neon','crane','reactor','obelisk','pagoda'].includes(pk.deco));
@@ -72,6 +91,15 @@ ok('Alle '+CHAPTERS.length+' Kapitel: jede Stufe mit der echten Physik machbar (
  for(let i=1;i<info.length;i++){const a=info[i-1],b=info[i];assert.ok(b.h>a.h,`Höhe steigt (${a.h} -> ${b.h})`);assert.ok(b.n>a.n,'mehr Plattformen');assert.ok(b.d>=a.d&&b.m>=a.m&&b.c>=a.c&&b.narrow>=a.narrow,'mehr Doppelsprung-Lücken/bewegliche/bröckelnde/schmale Plattformen');assert.ok(b.w<a.w,`Plattformen werden schmaler (${a.w} -> ${b.w})`)}
  assert.equal(info[0].m+info[0].c,0,'Kapitel 1: nur feste Plattformen');assert.ok(info[2].m>0&&info[3].c>0,'beweglich ab Kapitel 3, bröckelnd ab Kapitel 4');
  ok('Daten: Höhen '+info.map(i=>(i.h/100).toFixed(1)+' m').join(' / ')+', Plattformen '+info.map(i=>i.n).join('/')+', Schwierigkeit steigt in jedem Kapitel')}
+// ---- Händler KORVUS: nur oben am Ende des Parcours, sonst nirgends ----
+{const{Dealer}=await import('../src/core/blackmarket.js');
+ for(const c of CHAPTERS){const{game,s,p1}=mk(c.id),pk=c.parkour,top=pk.platforms.at(-1),d=s.dealer;
+  assert.equal(top.seg,'B','Kapitel '+c.id+': oben liegt die breite Rast');assert.equal(top.x1-top.x0,300);assert.ok(d instanceof Dealer&&d.fixed,'Händler vorhanden');
+  assert.equal(d.y,GROUND-pk.height,'steht auf der obersten Plattform');assert.ok(d.x>top.x0+120&&d.x<top.x1-30,'steht auf der Plattform');assert.ok(Math.abs(d.x-s.relic.x)>=100,'Schatz und Händler überlappen nicht');assert.ok(s.relic.x>top.x0&&s.relic.x<top.x1);
+  assert.ok(c.npc===undefined,'kein Händler-Standort am Boden mehr in der Config');const x0=d.x,y0=d.y;
+  s.engage(s.encs[0]);for(let i=0;i<40;i++)game.step();s.state='walk';for(let i=0;i<40;i++)game.step();assert.equal(d.x,x0,'bleibt an seiner Stelle');assert.equal(d.y,y0);assert.equal(d.alpha,1,'bleibt sichtbar');
+  p1.x=d.x-70;p1.y=GROUND;s.state='walk';d.update();assert.ok(!d.near,'unten nicht ansprechbar');p1.x=d.x-70;p1.y=d.y;s.state='walk';d.update();assert.ok(d.near,'oben ansprechbar')}
+ ok('Händler steht in jedem Kapitel nur ganz oben auf der letzten Plattform (neben dem Schatz), bleibt dort und ist nur oben ansprechbar')}
 // ---- Schatz einsammeln ----
 {const{game,s,p1}=mk(2);const r=s.relic,pk=CHAPTERS[1].parkour,top=GROUND-pk.relic.h;assert.ok(r&&!r.got&&r.y===top-34);
  p1.hp=100;p1.meter=0;const packs=LOOT.packs;p1.x=r.x+300;p1.y=top;game.step();assert.ok(!r.got,'weit weg: nichts');

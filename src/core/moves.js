@@ -45,7 +45,7 @@ export const MOVE_LIST=[
  ['Hyper','I (1 Balken)','Je Figur anders'],
  ['Dash / Air-Dash','O  oder  Doppeltipp ←/→','Auch in der Luft (1×)'],
  ['Doppelsprung','W/Space in der Luft','1× pro Luftphase'],
- ['Ausdauer','Leiste unter dem Lebensbalken','Angriffe, Dashes, Sprünge und Blocken kosten Ausdauer; leer = erschöpft (langsamer, schwächer). Optionen → Ausdauer schaltet es ab'],
- ['Verschnaufen','P  /  Shift','Kurz stehen bleiben, Ausdauer füllt sich schnell – kein Block, bei Treffer unterbrochen (+25 % Schaden)']];
+ ['Ausdauer','Leiste unter dem Lebensbalken','Angriffe, Dashes, Sprünge und Blocken kosten Ausdauer; leer = erschöpft (langsamer, schwächer, lange keine Regeneration). Unter 25 % kein Block, unter 50 % kein Special-Block. Optionen → Ausdauer schaltet es ab'],
+ ['Verschnaufen','P  /  Shift','HP regenerieren (keine Ausdauer): dauert lange, kein Block, bei Treffer unterbrochen (+15 % Schaden), mit Abklingzeit und Obergrenze pro Runde']];
 const ORDER_KEYS=['5L','5M','5H','2L','2M','2H','6M','6H','fireball','rising','rush','back','airsp','j8H','j2H','super','airsuper'];
 export function charMoves(char){const mv=buildMoves(char);return ORDER_KEYS.filter(k=>mv[k]).map(k=>[mv[k].label,mv[k].key,mv[k].info||''])}

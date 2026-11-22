@@ -23,7 +23,7 @@ let done=null;S.studioOpen(r=>{done=r});
 const m=document.getElementById('studio');
 const ok=(c,msg)=>{if(!c){console.error('FAIL:',msg);process.exitCode=1}else console.log('ok  ',msg)};
 ok(m&&!m.classList.contains('hidden')&&S.studioIsOpen(),'Editor offen');
-ok(m.querySelectorAll('.st-row').length===19,'19 Slots');
+ok(m.querySelectorAll('.st-row').length===20,'20 Slots');
 // Drop mehrerer Dateien (Name wird automatisch zugeordnet; „foto.png“ nicht)
 const drop=m.querySelector('#st-drop'),ev=new w.Event('drop',{bubbles:true,cancelable:true});ev.dataTransfer={files:[idle,punch,bad]};drop.dispatchEvent(ev);
 const wait=async(fn,ms=30000)=>{const t=Date.now();while(Date.now()-t<ms){if(fn())return true;await new Promise(r=>setTimeout(r,100))}return false};

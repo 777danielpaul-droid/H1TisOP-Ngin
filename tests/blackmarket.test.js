@@ -42,10 +42,10 @@ resetDealerMemory();
 const kb=new InputBuffer(),dummy=new AIController(0);
 const p1=new Fighter({char:CHARACTERS.tiger,x:340,facing:1,input:kb}),p2=new Fighter({char:CHARACTERS.tiger,x:620,facing:-1,input:dummy});
 const game=new Game(p1,p2),arc=new Arcade(game,p1,p2,dummy);arc.setMode('story');arc.startStory('tiger',1);
-const s=game.story,d=s.dealer;assert(d instanceof Dealer,'Händler im Kapitel 1');assert(s.cfg.npc.x<s.encs[0].x,'steht vor der ersten Welle');
+const s=game.story,d=s.dealer;assert(d instanceof Dealer,'Händler im Kapitel 1');{const pk=s.cfg.parkour,top=pk.platforms.at(-1);assert(d.fixed&&d.y===GROUND-pk.height&&d.x>top.x0&&d.x<top.x1,'steht ganz oben auf dem Parkour (letzte Plattform)')}
 const step=n=>{for(let i=0;i<n;i++){game.step();arc.update()}};
 step(300);assert.equal(game.phase,'fight');assert(!d.near&&!d.open(),'weit weg: nicht ansprechbar');
-p1.x=d.x-80;p1.y=GROUND;step(3);assert(d.near,'nah: ansprechbar');
+p1.x=d.x-80;p1.y=GROUND;d.update();assert(!d.near,'unten am Boden (unter dem Parkour): nicht ansprechbar');p1.x=d.x-80;p1.y=d.y;step(3);assert(d.near,'oben auf der Plattform: ansprechbar');
 assert(d.open()&&d.active,'E: Gespräch beginnt');assert(d.typing&&MOODS[d.mood],'Begrüßung wird getippt');
 // Spieler bleibt stehen, auch wenn Tasten gedrückt werden
 {const x0=p1.x;kb.feed(1,0,['L']);for(let i=0;i<40;i++){kb.dx=1;game.step()}assert(Math.abs(p1.x-x0)<1,'Spieler steht im Gespräch still');}
@@ -70,8 +70,8 @@ console.log('  ✓ Story: ansprechen, Dialog, Booster/Gegenstände kaufen, Spiel
 // Anheuern über den Händler bei frischem Spielstand (Preis aus CHAR_PRICE)
 {const fresh=await import('../src/core/loot.js?frisch');const fc=await import('../src/core/characters.js?frisch2');void fc;}
 // Welle: Händler duckt sich weg, Gespräch endet
-p1.x=d.x-60;step(3);d.open();assert(d.active);p1.x=s.encs[0].x+5;step(5);assert(!d.active,'Welle beginnt: Gespräch endet');assert.equal(s.state,'fight');step(60);assert(d.alpha<.2,'Händler weg während der Welle');
-console.log('  ✓ Welle beendet das Gespräch, Händler duckt sich weg');
+p1.x=d.x-60;p1.y=d.y;step(3);d.open();assert(d.active);s.engage(s.encs[0]);step(5);assert(!d.active,'Welle beginnt: Gespräch endet');assert.equal(s.state,'fight');step(60);assert.equal(d.alpha,1,'Händler bleibt oben stehen (sichtbar)');assert.equal(d.x,s.cfg.parkour.dealer.x,'bewegt sich nie von der Stelle');
+console.log('  ✓ Welle beendet das Gespräch, der Händler bleibt oben stehen');
 // ---- Wortumbruch ----
 assert(wrapText(LINES.first[0],44).every(l=>l.length<=48));
 // ---- Spielbarer Rabe im Kampf (Roster, KI-Match, Moves, Hyper) ----

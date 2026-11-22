@@ -21,8 +21,8 @@ for(const k of['fireball','rising','rush','back','airsp','6M','6H','super']){ass
 ok('Anubis: 7 Specials + Hyper');
 // 3) Anubis (KI Stufe 2) gegen passiven Spieler: besiegt ihn in angemessener Zeit, ohne Fehler
 {const i1=new InputBuffer(),ai=new AIController(2),p1=new Fighter({char:CHARACTERS.tiger,x:340,facing:1,input:i1}),p2=new Fighter({char:CHARACTERS.anubis,x:620,facing:-1,input:ai});
- const g=new Game(p1,p2);new Arcade(g,p1,p2,ai);let n=0;while(g.phase!=='match'&&n++<30000)g.step();assert.ok(p2.wins>=2&&p1.hp<=p1.maxHp,'Anubis gewinnt gegen passiven Gegner');assert.equal(p2.maxHp,1150)}
-ok('Anubis: KI-Kampf läuft durch, 1150 HP');
+ const g=new Game(p1,p2);new Arcade(g,p1,p2,ai);let n=0;while(g.phase!=='match'&&n++<30000)g.step();assert.ok(p2.wins>=2&&p1.hp<=p1.maxHp,'Anubis gewinnt gegen passiven Gegner');assert.equal(p2.maxHp,1043)}
+ok('Anubis: KI-Kampf läuft durch, 1043 HP');
 // 4) Spielbar ohne KI: Hoch+Special etc. werfen keine Fehler (alle Moves einmal auslösen)
 {const i1=new InputBuffer(),p1=new Fighter({char:CHARACTERS.anubis,x:340,facing:1,input:i1}),p2=new Fighter({char:CHARACTERS.tiger,x:620,facing:-1,input:new InputBuffer()});
  const g=new Game(p1,p2);new Arcade(g,p1,p2,new AIController(0));for(let i=0;i<120&&g.phase!=='fight';i++)g.step();

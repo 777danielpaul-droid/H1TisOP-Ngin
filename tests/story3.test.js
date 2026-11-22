@@ -6,7 +6,7 @@ const fail=m=>{throw new Error(m)};
 if(CHAPTERS.length<3)fail('Kapitel 3 fehlt');const c3=CHAPTERS[2];
 const md=CHARACTERS.miniDemon;if(!md||md.storyBoss||!(md.hp>CHARACTERS.mantis.hp&&md.hp<CHARACTERS.cyberdemon.hp)||!(md.size<1))fail('Mini-Cyberdämon-Daten');
 for(let i=0;i<4;i++){const m=c3.enc[i].mix;if(!m||!m.some(([id])=>id==='mantis')||!m.some(([id])=>id==='miniDemon'))fail('Welle '+(i+1)+' nicht gemischt')}
-if(c3.enc[4].boss!=='cyberdemon')fail('Kapitel 3 endet nicht mit A1LIEN');if(!CHARACTERS.cyberdemon.storyBoss)fail('A1LIEN muss storyBoss sein');
+if(c3.enc[4].boss!=='cyberdemonBoss')fail('Kapitel 3 endet nicht mit A1LIEN');if(!CHARACTERS.cyberdemonBoss.storyBoss)fail('A1LIEN-Boss muss storyBoss sein');
 if(c3.hurdles)fail('Hindernisse (hurdles) wurden entfernt');if(!c3.ledges||c3.ledges.length<3)fail('Kanten fehlen');
 console.log('Daten OK');
 const bot=new AIController(2),dummy=new AIController(0);
@@ -34,5 +34,5 @@ while(game.phase!=='fight'){bot.feed(0,0,[]);game.step()}
   p1.hp=Math.max(p1.hp,p1.maxHp*.6);game.step();arc2.update();
   for(const m of st.alive()){if(m.char.id==='miniDemon')sawMini=true;if(m.char.id==='mantis')sawMantis=true;if(m.char.storyBoss)boss=m}maxMobs=Math.max(maxMobs,st.alive().length)}
  console.log('state',arc2.state,'enc',st.enc,'kills',st.kills,'maxMobs',maxMobs,'frames',game.frame);
- if(!sawMini||!sawMantis)fail('Mini-Dämonen/Mantis nicht beide aufgetreten');if(!boss)fail('A1LIEN-Boss nie erschienen');if(boss.char.id!=='cyberdemon')fail('Falscher Boss in Kapitel 3: '+boss.char.id);
+ if(!sawMini||!sawMantis)fail('Mini-Dämonen/Mantis nicht beide aufgetreten');if(!boss)fail('A1LIEN-Boss nie erschienen');if(boss.char.id!=='cyberdemonBoss')fail('Falscher Boss in Kapitel 3: '+boss.char.id);
  if(arc2.state!=='victory')fail('Kapitel 3 nicht geschafft (state='+arc2.state+')');console.log('Kapitel 3 OK')}

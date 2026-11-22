@@ -50,7 +50,7 @@ const ok=n=>console.log('  ✓',n);
  {const{p1,t}=f();t(['L']);assert.equal(p1.state,'attack','leicht geht immer')}
  {const{p1,t}=f();t(['UP']);t([],6);assert.ok(!p1.grounded,'Springen geht immer')}
  {const e=f(),n=setup();e.t([],6,1);n.t([],6,1);assert.ok(e.p1.vx>0&&Math.abs(e.p1.vx/n.p1.vx-S.exhaust.speed)<.02,'Laufen geht, aber langsamer')}
- {const{p1,t}=f();t([],8,-1);assert.equal(p1.state,'walk','Zurückweichen/Blocken-Haltung geht');assert.ok(p1.guarding)}
+ {const{p1,t}=f();t([],8,-1);assert.equal(p1.state,'walk','Zurückweichen geht');assert.ok(!p1.guarding,'unter 25 %: kein Blocken mehr')}
  {const s=setup();s.p1.st=S.cost.H-1;s.t(['H']);assert.notEqual(s.p1.state,'attack','schwer nur mit genug Ausdauer');s.p1.stDelay=0;s.p1.st=S.cost.H;s.t(['H']);assert.equal(s.p1.state,'attack')}
  {const s=setup();s.p1.st=S.cost.dash;s.p1.stDelay=9999;s.t(['DASH']);assert.equal(s.p1.state,'dash');assert.equal(s.p1.st,0);assert.ok(s.p1.exh,'Dash bis 0 = erschöpft')}
  ok('Erschöpft/knapp: eingeschränkt, nie handlungsunfähig')}
@@ -59,18 +59,30 @@ const ok=n=>console.log('  ✓',n);
 {const{p1,t}=setup();t(['UP']);assert.equal(+(p1.stMax-p1.st).toFixed(3),S.cost.jump,'Sprung kostet');
  const s=setup();s.t(['S']);assert.ok(s.p1.state==='attack'&&s.p1.stMax-s.p1.st>=S.cost.special.back,'Special kostet');ok('Sprung/Special-Kosten')}
 
-// 8) Verschnaufen: schnelle Regeneration, verwundbar, bei Treffer unterbrochen (+Schaden)
-{const a=setup();a.p1.st=20;a.p1.stDelay=9999;a.t(['REST']);assert.equal(a.p1.state,'rest','REST startet Verschnaufen');
- a.t([],30);assert.ok(a.p1.st>20+S.rest.regen*25,'Verschnaufen füllt viel schneller (trotz Pause)');
- const b=setup();b.p1.st=20;b.p1.stDelay=0;b.t([],31);assert.ok(a.p1.st>b.p1.st+15,'deutlich schneller als normal');
- a.t([],S.rest.min,1);assert.notEqual(a.p1.state,'rest','nach Mindestdauer per Richtung abbrechbar');
- // Treffer: unterbricht + Extra-Schaden gegenüber stehendem Gegner
- const hitLoss=(rest)=>{const s=setup(60);s.p1.st=30;s.p1.stDelay=9999;if(rest)s.t(['REST']);let hp0=s.p1.hp,rs=null;
-  for(let k=0;k<50;k++){s.t([],1,0,0,k===3?['L']:[]);if(rs===null&&s.p1.state==='hit')rs=s.p1.state}
-  return{loss:hp0-s.p1.hp,state:s.p1.state,rest:s.p1.state==='rest'}};
- const R=hitLoss(true),N=hitLoss(false);assert.ok(N.loss>0&&R.loss>0,'beide wurden getroffen');
- assert.ok(!R.rest,'Treffer unterbricht das Verschnaufen');assert.ok(Math.abs(R.loss/N.loss-S.rest.vuln)<.12,`Extra-Schaden ×${S.rest.vuln} (gemessen ×${(R.loss/N.loss).toFixed(2)})`);
- const c=setup();c.p1.st=c.p1.stMax;c.t(['REST']);assert.notEqual(c.p1.state,'rest','bei voller Leiste kein Verschnaufen');ok('Verschnaufen: schnell, verwundbar, unterbrechbar')}
+// 8) Verschnaufen: regeneriert HP (keine Ausdauer), dauert lange, verwundbar, bei Treffer unterbrochen; Abklingzeit + Obergrenze; unabhängig vom Ausdauer-Schalter
+{const R=S.rest,a=setup();a.p1.hp=a.p1.maxHp-400;a.p1.st=40;a.p1.stDelay=0;const hp0=a.p1.hp,mx=a.p1.maxHp;a.t(['REST']);assert.equal(a.p1.state,'rest','REST startet Verschnaufen');const st0=a.p1.st;
+ a.t([],70);assert.equal(a.p1.state,'rest','dauert lange (deutlich mehr als eine kurze Bodenberührung)');assert.ok(a.p1.hp>hp0+10,'HP regenerieren');assert.ok(a.p1.hp-hp0<mx*.05,'...aber langsam');
+ assert.equal(a.p1.st,st0,'Verschnaufen regeneriert KEINE Ausdauer (auch nicht passiv währenddessen)');
+ a.t([],R.max+5);assert.equal(a.p1.state,'idle','Verschnaufen endet nach der Höchstdauer');
+ const gain=a.p1.hp-hp0;assert.ok(Math.abs(gain-R.hpPct*mx*R.max)<mx*.004,'Heilung = hpPct × Höchstdauer ('+gain.toFixed(0)+' HP)');
+ a.t(['REST']);assert.notEqual(a.p1.state,'rest','Abklingzeit');a.t([],R.cooldown+10);a.t(['REST']);assert.equal(a.p1.state,'rest','nach der Abklingzeit wieder möglich');
+ const c=setup();c.p1.hp=c.p1.maxHp-400;c.p1.healed=R.cap*c.p1.maxHp;c.t(['REST']);assert.notEqual(c.p1.state,'rest','Obergrenze pro Runde erreicht');
+ const d=setup();d.t(['REST']);assert.notEqual(d.p1.state,'rest','bei vollen HP kein Verschnaufen');
+ const e=setup();e.p1.hp=e.p1.maxHp-400;e.t(['REST']);e.t([],R.min-6);assert.equal(e.p1.state,'rest','vor der Mindestdauer nicht abbrechbar');e.t([],12,1);assert.notEqual(e.p1.state,'rest','danach per Richtung abbrechbar');
+ const f=setup(400,false);f.p1.hp=f.p1.maxHp-400;f.t(['REST']);assert.equal(f.p1.state,'rest','Verschnaufen geht auch ohne Ausdauer-System');
+ const hitLoss=(rest)=>{const s=setup(60);s.p1.hp=s.p1.maxHp-300;s.p1.stDelay=9999;if(rest)s.t(['REST']);const h0=s.p1.hp;
+  for(let k=0;k<50;k++)s.t([],1,0,0,k===3?['L']:[]);return{loss:h0-s.p1.hp,rest:s.p1.state==='rest'}};
+ const Rr=hitLoss(true),Nn=hitLoss(false);assert.ok(Nn.loss>0&&Rr.loss>0,'beide wurden getroffen');
+ assert.ok(!Rr.rest,'Treffer unterbricht das Verschnaufen');assert.ok(Math.abs(Rr.loss/Nn.loss-R.vuln)<.12,`Extra-Schaden ×${R.vuln} (gemessen ×${(Rr.loss/Nn.loss).toFixed(2)})`);ok('Verschnaufen: HP statt Ausdauer, lang, verwundbar, unterbrechbar, begrenzt')}
+
+// 8b) Blocken nach eigener Ausdauer: <25 % nichts, 25–50 % nur normale Angriffe, ab 50 % auch Spezialattacken (Specials, Projektile, Hypers)
+{const N={dmg:30,lv:'mid'},Sp={dmg:60,lv:'mid',special:true},Pj={dmg:50,lv:'mid',projectile:true};
+ const at=(pct,on=true)=>{const s=setup(400,on);s.p1.st=s.p1.stMax*pct;s.p1.stDelay=9999;s.t([],2,-1);return s.p1};
+ for(const[pct,n,sp]of[[.10,false,false],[.2499,false,false],[.2501,true,false],[.40,true,false],[.4999,true,false],[.5001,true,true],[.90,true,true]]){const q=at(pct);
+  assert.equal(q.isBlocking(N),n,`${(pct*100).toFixed(1)} %: normale Angriffe blocken = ${n}`);assert.equal(q.isBlocking(Sp),sp,`${(pct*100).toFixed(1)} %: Special blocken = ${sp}`);assert.equal(q.isBlocking(Pj),sp,`${(pct*100).toFixed(1)} %: Projektil blocken = ${sp}`)}
+ const off=at(0,false);assert.ok(off.isBlocking(N)&&off.isBlocking(Sp),'Ausdauer aus: immer blockbar');
+ const g1=setup();g1.p1.st=g1.p1.stMax*.1;g1.p1.stDelay=0;g1.t([],60,-1);assert.ok(g1.p1.st>g1.p1.stMax*.1+5,'unter 25 %: Rück-Taste ist kein Blocken mehr -> Regeneration läuft');
+ ok('Block nach Ausdauer: <25 % nichts, <50 % nur normale, ab 50 % alles')}
 
 // 9) Menü-Schalter: Aus = keine Kosten, keine Einschränkung; Melee/Story immer aus; Online-Vorgabe (stamForce) schlägt die lokale Einstellung
 {const{g,p1,t}=setup(400,false);p1.st=0;p1.exh=true;t(['H']);assert.equal(p1.state,'attack','Aus: schwer trotz leerer Leiste');t([],5);assert.equal(p1.st,p1.stMax,'Aus: Leiste bleibt voll');assert.ok(!p1.exh);
@@ -89,4 +101,15 @@ const ok=n=>console.log('  ✓',n);
   for(let k=0;k<1500;k++){const b=['L','M','H','S','DASH','UP','REST'];const pr=rnd()<.25?[b[(rnd()*7)|0]]:[];s.t(pr,1,(rnd()*3|0)-1,0,rnd()<.2?[b[(rnd()*4)|0]]:[])}
   return[s.p1.st,s.p2.st,s.p1.stDelay,s.p2.stDelay,s.p1.hp,s.p2.hp,+s.p1.exh,+s.p2.exh].join()};
  assert.equal(run(),run(),'zwei identische Läufe ergeben identische Ausdauer');ok('deterministisch (Lockstep-tauglich)')}
+// 12) Regler im Menü: Faktoren auf Regeneration, Pausen (Delay) und Verschnaufen-Tempo; online gelten die Werte des Gastgebers
+{const{tuneClamp}=await import('../src/core/config.js');
+ const mk=(o)=>{const x=setup();x.g.tunePref={regen:1,delay:1,empty:1,rest:1,...o};return x};
+ const reg=(k)=>{const x=mk({regen:k});x.p1.st=20;x.p1.stDelay=0;x.t([],50);return x.p1.st-20};
+ const r1=reg(1),r2=reg(2),r05=reg(.5);assert.ok(Math.abs(r2/r1-2)<.05&&Math.abs(r05/r1-.5)<.05,'Regeneration ×2 / ×0,5 ('+r1.toFixed(1)+' → '+r2.toFixed(1)+' / '+r05.toFixed(1)+')');
+ const dl=(k)=>{const x=mk({delay:k});x.p1.st=60;x.t(['H']);return x.p1.stDelay};assert.equal(dl(0),0,'Delay ×0 = keine Pause');assert.ok(Math.abs(dl(2)/dl(1)-2)<.01,'Delay ×2 = doppelte Pause');
+ const em=(k)=>{const x=mk({empty:k});x.p1.st=2;x.t(['L']);return x.p1.stDelay};assert.ok(Math.abs(em(2)/em(1)-2)<.01&&em(0)===0,'Erschöpfungs-Pause ×2 / ×0');assert.ok(em(1)>S.delay*2,'Standard bleibt deutlich länger');
+ const hl=(k)=>{const x=mk({rest:k});x.p1.hp-=400;const h0=x.p1.hp;x.t(['REST']);x.t([],60);return x.p1.hp-h0};const h1=hl(1),h2=hl(2);assert.ok(Math.abs(h2/h1-2)<.06,'Verschnaufen-Tempo ×2 ('+h1.toFixed(1)+' → '+h2.toFixed(1)+' HP)');
+ const x=mk({regen:.25});assert.equal(x.g.stamTune.regen,.25,'lokale Regler gelten offline');x.g.tuneForce={regen:3,delay:1,empty:1,rest:1};assert.equal(x.g.stamTune.regen,3,'online: Werte des Gastgebers überschreiben die lokalen');
+ assert.equal(tuneClamp('regen',100),3);assert.equal(tuneClamp('regen',0),.25);assert.equal(tuneClamp('delay',-5),0);assert.equal(tuneClamp('rest','x'),1,'ungültig -> Standard');
+ ok('Regler: Regeneration, Delay, Erschöpfungs-Delay, Verschnaufen-Tempo, Online-Vorgabe')}
 console.log('Ausdauer-Tests bestanden');

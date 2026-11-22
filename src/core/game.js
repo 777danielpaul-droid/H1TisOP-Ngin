@@ -16,9 +16,11 @@ export class Game{
  constructor(p1,p2){this.p1=p1;this.p2=p2;this.fighters=[p1,p2];this.particles=new ParticleSystem();this.fx=new Effects(this.particles);
   this.camera=new Camera();this.arena=new Arena();this.stageIndex=0;this.melee=null;this.meleeOn=false;this.meleeStocks=MELEE.stocks;   // melee = Regeln des laufenden Melee-Matches (oder null)
   this.arcade=null;this.debug=false;this.round=1;this.frame=0;this.flash=0;this.flashColor='#fff';
-  this.pops=[];this.kickX=0;this.kickY=0;this.aberr=0;this.impact=null;this.slow=0;this.timeScale=1;this.celeb=null;this.particles.onBoom=()=>this.sfx('fw_rocket',{vol:.65,rate:.92+Math.random()*.2});this.story=null;this.dummy={x:0,y:0,state:'idle',grounded:true,hp:1};this.stamPref=false;this.stamForce=null;this.startRound()}
+  this.pops=[];this.kickX=0;this.kickY=0;this.aberr=0;this.impact=null;this.slow=0;this.timeScale=1;this.celeb=null;this.particles.onBoom=()=>this.sfx('fw_rocket',{vol:.65,rate:.92+Math.random()*.2});this.story=null;this.dummy={x:0,y:0,state:'idle',grounded:true,hp:1};this.stamPref=false;this.stamForce=null;this.tunePref={regen:1,delay:1,empty:1,rest:1};this.tuneForce=null;this.startRound()}
  // Ausdauer-System an? stamPref = Menü-Einstellung (main.js), stamForce = Online: der Gastgeber bestimmt (null = lokale Einstellung). Aus in Melee und Story.
  get stamOn(){if(this.melee||this.story)return false;return this.stamForce!==null?!!this.stamForce:!!this.stamPref}
+ get restOn(){return!this.melee&&!this.story}   // Verschnaufen (HP-Regeneration) ist unabhängig vom Ausdauer-Schalter
+ get stamTune(){return this.tuneForce||this.tunePref}   // Regler aus dem Menü; online die Werte des Gastgebers (tuneForce)
  // Story-Modus: Gegner eines Kämpfers (Spieler -> nächster Mantis, Mantis -> Spieler)
  foe(f){if(!this.story)return f===this.p1?this.p2:this.p1;if(f!==this.p1)return this.p1;const n=this.story.nearest(f);if(n)return n;this.dummy.x=f.x+500;return this.dummy}
  // Sound: game.audio (render/audio.js) ist im Test/headless null -> kein Ton. sfx() für einzelne Sounds, sfxList() für Listen aus core/sfx.js

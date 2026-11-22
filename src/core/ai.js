@@ -7,7 +7,7 @@ import{MELEE,GROUND,STAMINA}from'./config.js';
 //  special/sup/dash = Anteil Specials / Hypers / Dashes            antiair = Chance auf Anti-Air   back = Chance auf Rückzug
 //  aerial = Luft-Angriffschance pro Frame in der Luft              dmg = Schadensfaktor der KI
 //  air    = Luftkampf-Können: Chance auf Launcher→Super Jump→Luft-Combo, Sky-Launcher, Meteor-Spike, Luft-Hyper und Steuerung in der Luft (0 = nur Hüpfen)
-//  rest   = Chance, bei knapper Ausdauer in sicherer Distanz zu verschnaufen (Ausdauer-System, siehe STAMINA in config.js)
+//  rest   = Chance, angeschlagen in sicherer Distanz zu verschnaufen (HP-Regeneration) und bei knapper Ausdauer Abstand zu suchen (siehe STAMINA in config.js)
 //  corner = Wie konsequent die KI einen Gegner an der Wand/in der Ecke bearbeitet (weniger Abwarten/Rückzug, Druck, Launcher) und selbst aus der Ecke ausbricht
 export const AI_LEVELS=[
  {name:'LEICHT',wait:[75,140],idle:.4,react:24,block:.05,combo:.08,maxChain:1,special:.06,sup:0,dash:.03,jump:.004,antiair:.1,back:.3,aerial:.01,dmg:.7,corner:.12,air:0,rest:.35},
@@ -68,7 +68,8 @@ export class AIController extends InputBuffer{
    this.wait=Math.round((P.wait[0]+(R()*(P.wait[1]-P.wait[0])|0))*(pin?1-.45*P.corner:1));this.chain=0;const r=R();
    if(R()<P.idle*(pin?1-.85*P.corner:1))walk(0,0,18);                                          // abwarten
    else if(!opp.grounded&&!opp.pop&&dist<170&&me.grounded){if(R()<P.antiair)go('S',fwd,0,4)}
-   else if(me.stamOn&&this.tired(me,opp,dist,fwd,go,walk)){}                                     // Ausdauer knapp: verschnaufen / Abstand suchen
+   else if(me.stamOn&&this.tired(me,opp,dist,fwd,go,walk)){}                                     // Ausdauer knapp: Abstand suchen / abwarten
+   else if(this.healRest(me,opp,dist,go,game)){}                                                   // angeschlagen + sicher: verschnaufen (HP)
    else if(opp.state==='knockdown'||opp.state==='wakeup'){if(dist>100)walk(fwd,0,16);else go(r<.5?'M':'L')}
    else if(this.corner(me,opp,dist,fwd,go,walk,game)){}                                 // Ecke: Druck machen bzw. ausbrechen
    else if(this.tool(me,dist,fwd,go)){}                                  // figurentypische Moves (char.ai)
@@ -86,11 +87,16 @@ export class AIController extends InputBuffer{
   if(btn==='H')return me.exh||me.st<C.H?(me.exh?'L':'M'):btn;
   if(btn==='S')return me.exh||me.st<C.special.def-2?(me.exh?'L':'M'):btn;
   if(btn==='M')return me.exh?'L':btn;return btn}
- tired(me,opp,dist,fwd,go,walk){const S=STAMINA,R=Math.random;if(!(me.exh||me.st<S.low+10))return false;
-  const safe=dist>230||((opp.state==='knockdown'||opp.state==='wakeup')&&dist>130);
-  if(safe&&me.grounded&&R()<this.P.rest){go('REST');return true}
-  if(me.exh&&dist<200&&R()<.5+.4*this.P.rest){walk(-fwd,0,14);return true}   // erschöpft und Gegner nah: Abstand suchen
+ // Ausdauer knapp/leer: unter 25 % ist kein Blocken möglich -> Abstand suchen bzw. abwarten (die Leiste regeneriert nur im Stehen, nicht beim Blocken).
+ tired(me,opp,dist,fwd,go,walk){const S=STAMINA,R=Math.random,pc=me.st/me.stMax;if(!(me.exh||pc<S.guard.none+.1))return false;
+  if(dist<210&&R()<.5+.4*this.P.rest){walk(-fwd,0,14);return true}   // Abstand suchen statt in den Angriff zu laufen
+  if(dist>=210&&me.exh&&R()<.7)return true;                          // abwarten: neutral stehen, damit die Leiste nach der Pause regeneriert
   return false}
+ // Verschnaufen (HP): nur angeschlagen und in sicherer Distanz, ohne Bedrohung (Gegner weit weg/am Boden, kein Angriff, kein Projektil)
+ healRest(me,opp,dist,go,game){if(!me.canRest(game)||me.hp>me.maxHp*.72)return false;
+  const safe=dist>300||((opp.state==='knockdown'||opp.state==='wakeup')&&dist>200);
+  if(!safe||opp.state==='attack'||game.projectiles.some(p=>p.owner===opp))return false;
+  if(Math.random()<this.P.rest*.35){go('REST');return true}return false}
  // Luft-Finisher / zweite Combo-Stufe: je nach Stufe Sky-Launcher (nur 1×), Meteor-Spike, Hammer, Luft-Hyper
  airFinish(me,opp,go,R){const P=this.P,r=R();
   if(P.air>0&&me.meter>=100&&r<P.sup*.8)return go('SUP');

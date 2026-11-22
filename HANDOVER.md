@@ -472,9 +472,11 @@
 - Zeichnung: `drawLedges` in `src/render/storyhud.js` (Props im Bereich einer Kante entfallen).
 - Tests: `tests/terrain.test.js` (Geometrie, Physik, KI klettert, alle Kapitel), `story3/story4.test.js` (Kanten + komplettes Kapitel mit Bot).
 
-## Update: Parkour mit Schatz (pro Kapitel)
-- Jedes Story-Kapitel hat `parkour:{deco,platforms,relic}` (story.js): 4 Plattformen (Zone x −140…570, endet vor dem Auslöser der 3. Welle), die letzte Lücke (ca. 340–360 px) ist nur mit Doppelsprung zu schaffen; oben liegt der Schatz (`Story.relic`, `relicCheck()`): Leben voll, +100 Hyper-Meter, +2 Booster, einmal pro Kapitelstart. Figuren ohne Luftsprung (airJumps 0: A1LIEN, Mantis …) kommen nicht ganz hinauf.
-- Plattformen = `Terrain.platforms` (core/terrain.js): von unten durchlässig, nur von oben landbar (`land`), Stehen über `floorFor`; `Fighter.physics` merkt sich dafür die Vor-Höhe `py`.
-- Kulissen (render/storyhud.js `PK_DECO`): Kap. 1 Neon City = Hochhaus mit Feuerleiter (NEON-CHIP), Kap. 2 Docks = Kran mit Containern (FRACHT-SCHATZ), Kap. 3 Kern = Reaktorzylinder (KERNSPLITTER), Kap. 4 Totenreich = Pyramide/Obelisk (SKARABÄUS), Kap. 5 Tempel = Pagode mit Glocke (DRACHENPERLE).
-- Kanten (`ledges`) liegen jetzt ab x≈640, damit sie die Parkour-Zone nicht berühren.
-- Tests: `tests/parkour.test.js` (Plattform-Physik, Machbarkeit mit der echten Physik: Stufen einzeln springbar, letzte Lücke nur doppelt; Daten; Schatz; Zeichnen).
+## Update: Parkour mit Schatz (pro Kapitel, hoch + steigende Schwierigkeit)
+- Jedes Story-Kapitel hat `parkour:{deco,name,width,segs}` (story.js). Der Generator `src/core/parkour.js` (`buildParkour`) macht aus den Kürzeln (S Stufe, L flach, H hoch, N schmal, D Doppelsprung-Lücke, F gerade, B Rast, M beweglich, C bröckelnd, T Wende) die Plattformen (`platforms`, `relic`, `height`). Maßstab: 100 px = 1 m (Figuren ~180 px). Zone x −300…800 (`PK_ZONE`).
+- Schwierigkeit steigt je Kapitel: Höhe 12,9 / 18,5 / 24,4 / 28,7 / 32,4 m, Plattformen 12/18/25/31/35, schmaler (210→125 px), mehr D-Lücken (1→5), bewegliche Plattformen ab Kap. 3, bröckelnde ab Kap. 4. D-Lücken (≈340 px) gehen nur mit Doppelsprung; Figuren ohne Luftsprung (airJumps 0: A1LIEN, Mantis …) kommen nicht ganz hinauf.
+- Oben liegt der Schatz (`Story.relic`, `relicCheck()`): Leben voll, +100 Hyper-Meter, +2 Booster, einmal pro Kapitelstart. Solange man >110 px über dem Boden ist, startet keine Welle (`Story.update`).
+- Terrain (`core/terrain.js`): Plattformen von unten durchlässig, nur von oben landbar (`land`), Stehen über `floorFor`/`under`; `kind:'move'` pendelt (`ox`,`dx`, trägt Figuren mit, siehe `Fighter.physics`), `kind:'crumble'` fällt `hold` Frames nach dem Betreten weg und kommt nach `off` Frames wieder; `Game.step` ruft `Terrain.tick`.
+- Kamera: `Camera.compute` (Story) folgt der Figur nach oben (`y=min(H-hh, p.y-.24*hh)`); `Stage.skyAbove` verlängert den Himmel nach oben (Sterne); Höhenanzeige rechts im Story-HUD.
+- Kulissen (`src/render/parkourdeco.js`, realistische Proportionen): Kap. 1 Hochhaus (Geschosse 3 m, Fenster 1,1×1,5 m, Ladenfront, Dachtank, Antennen), Kap. 2 Containerkran (Gitterturm, Ausleger, Laufkatze/Haken, Container), Kap. 3 Reaktorzylinder mit Ringen/Rohren/Blitzen, Kap. 4 Stufenpyramide mit Fackeln + Obelisk, Kap. 5 Pagode mit Dächern/Laternen/Glocke.
+- Tests: `tests/parkour.test.js` (Plattform-Physik, bewegliche/bröckelnde, Generator, Machbarkeit JEDER Stufe mit der echten Physik, Kamera, Daten/Schwierigkeit, Schatz, Zeichnen).

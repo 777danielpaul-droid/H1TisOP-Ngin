@@ -1,5 +1,5 @@
 import{CHARACTERS}from'../core/characters.js';
-import{CUS_SHEETS,CUS_ANIMS,CUS_ANIM_LABELS,CUS_ATLAS_W,CUS_STAND_H,CUS_AIR_CENTER,CUS_TEMPLATES,CUS_LIMITS,CUS_DEFAULT,CUS_MOVE_GROUPS,CUS_MOVE_KEYS,CUS_MAX_MOVE_FRAMES,CUS_ADJ_LIMITS,CUS_ADJ_DEFAULT,cusKeyOut,cusPlanSheet,cusBuildAnims,cusCompleteAnims,cusClean,cusMakeChar,cusPrompt,
+import{CUS_SHEETS,CUS_ANIMS,CUS_ANIM_LABELS,CUS_ATLAS_W,CUS_STAND_H,CUS_AIR_CENTER,CUS_TEMPLATES,CUS_LIMITS,CUS_DEFAULT,CUS_MOVE_GROUPS,CUS_MOVE_KEYS,CUS_MAX_MOVE_FRAMES,CUS_ADJ_LIMITS,CUS_ADJ_DEFAULT,CUS_MOVE_SPECS,cusMovePrompt,cusDetectGrid,cusMoveKeyFromName,cusKeyOut,cusPlanSheet,cusBuildAnims,cusCompleteAnims,cusClean,cusMakeChar,cusPrompt,
  cusCleanMoves,cusCleanProps,cusFrameGeom,cusMoveAnims,cusMoveImgs,cusMoveName,cusNewId,cusPlanImage,cusPlanMoveSheet,cusMvMove,cusMvRemove,cusMvInsert,cusMvReplace}from'../core/custom.js';
 import{registerSpriteChar}from'./sprites.js';
 // Eigene Figur: Editor-Fenster (Upload der Sprite-Sheets, Vorschau, Werte, Speichern). Die Bildverarbeitung läuft komplett im Browser, gespeichert wird in IndexedDB.
@@ -7,7 +7,7 @@ import{registerSpriteChar}from'./sprites.js';
 // Logik (Hintergrund, Raster, Maßstab, Animationen): core/custom.js. Draußen nutzbar: studioOpen / studioIsOpen / studioLoadSaved / studioDelete / studioHas.
 const STUDIO=(()=>{
  const S={open:false,profile:{...CUS_DEFAULT},desc:'',files:{},cache:{},built:null,saved:null,gen:0,timer:0,raf:0,url:null,ui:null,onDone:null,loose:[],
-   moves:{},imgs:{},undo:[],redo:[],tab:'sheets',mv:{key:'punch',sel:0,hold:false,mode:'sheet',cols:3,rows:2,calib:true,append:false,pick:'import',hl:-1},ready:false,busy:false,over:[],adjSnap:null,packRaf:0};
+   moves:{},imgs:{},undo:[],redo:[],tab:'sheets',mv:{key:'punch',sel:0,hold:false,mode:'sheet',cols:3,rows:2,auto:true,calib:true,append:false,pick:'import',hl:-1},ready:false,busy:0,q:Promise.resolve(),over:[],adjSnap:null,packRaf:0};
  const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
  const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const tick=()=>new Promise(r=>setTimeout(r,0));
@@ -79,13 +79,13 @@ const STUDIO=(()=>{
   if(a)for(const n of a.frames){const f=A.frames[n];if(!f)continue;const c=mk(f.w,f.h);c.getContext('2d').drawImage(A.canvas,f.x,f.y,f.w,f.h,0,0,f.w,f.h);const img=cusNewId();S.imgs[img]={canvas:c};
    frames.push({id:cusNewId(),img,w:f.w,h:f.h,ox:f.ox,oy:f.oy,air:f.ox===Math.floor(-f.w/2)&&f.oy===-(CUS_AIR_CENTER+(f.h>>1)),adj:{...CUS_ADJ_DEFAULT}})}
   return S.moves[key]={frames,props:baseProps(key)}}
- async function edit(fn){if(S.busy)return;S.busy=true;
-  try{await prepare();const snap=JSON.stringify(S.moves),r=await fn();if(r===false)return;S.undo.push(snap);if(S.undo.length>40)S.undo.shift();S.redo=[];afterEdit()}
-  catch(e){setStatus(String(e&&e.message||e),1)}finally{S.busy=false}}
+ // Änderungen laufen nacheinander in einer Warteschlange: ein Klick während der Verarbeitung geht nicht verloren (Bereich bekommt .busy)
+ function enqueue(fn,quiet){const run=async()=>{S.busy++;if(!quiet)S.ui.paneM.classList.add('busy');try{return await fn()}catch(e){setStatus(String(e&&e.message||e),1)}finally{if(!--S.busy)S.ui.paneM.classList.remove('busy')}};return S.q=S.q.then(run,run)}
+ const edit=fn=>enqueue(async()=>{await prepare();const snap=JSON.stringify(S.moves),r=await fn();if(r===false)return;S.undo.push(snap);if(S.undo.length>40)S.undo.shift();S.redo=[];afterEdit()});
  function afterEdit(){repack();S.mv.sel=Math.max(0,Math.min(S.mv.sel,curLen()-1));refreshAll()}
  const curLen=()=>{const A=curr(),o=ovr(S.mv.key),a=A&&A.anims[S.mv.key];return o?o.frames.length:a?a.frames.length:0};
- function undo(){if(S.busy||!S.undo.length)return;S.redo.push(JSON.stringify(S.moves));S.moves=JSON.parse(S.undo.pop());afterEdit()}
- function redo(){if(S.busy||!S.redo.length)return;S.undo.push(JSON.stringify(S.moves));S.moves=JSON.parse(S.redo.pop());afterEdit()}
+ function undo(){return enqueue(()=>{if(!S.undo.length)return;S.redo.push(JSON.stringify(S.moves));S.moves=JSON.parse(S.undo.pop());afterEdit()})}
+ function redo(){return enqueue(()=>{if(!S.redo.length)return;S.undo.push(JSON.stringify(S.moves));S.moves=JSON.parse(S.redo.pop());afterEdit()})}
  async function loadKeyed(file){const{c,x,w,h}=await decode(file),id=x.getImageData(0,0,w,h);cusKeyOut(id.data,w,h);x.putImageData(id,0,0);return{c,id,w,h}}
  const keepRes=p=>{const r=Math.min(1,2*p.dw/p.sw);return{sx:p.sx,sy:p.sy,sw:p.sw,sh:p.sh,dw:Math.max(1,Math.round(p.sw*r)),dh:Math.max(1,Math.round(p.sh*r))}}   // Bild in bis zu doppelter Spielauflösung behalten (Feinabstimmung bleibt scharf)
  const newFrame=(cv,p,air)=>{const img=cusNewId();S.imgs[img]={canvas:cv};return{id:cusNewId(),img,w:p.dw,h:p.dh,ox:p.ox,oy:p.oy,air:!!air,adj:{...CUS_ADJ_DEFAULT}}};
@@ -93,12 +93,16 @@ const STUDIO=(()=>{
   const cv=cropScale(c,keepRes(p));c.width=c.height=0;return{frame:newFrame(cv,p,opts.air),scale:p.scale,notes:p.notes}}
  function refH(key){const A=curr();if(!A)return CUS_STAND_H;const a=A.anims[key]||A.anims.idle,nm=a&&(a.frames[Math.min(S.mv.sel,a.frames.length-1)]||a.frames[0]),f=nm&&A.frames[nm];return f?f.h:CUS_STAND_H}
  // Sheet für den gewählten Move importieren: ersetzt alle Frames des Moves (Rückgängig möglich)
- function importSheet(file){const key=S.mv.key,{cols,rows,calib}=S.mv;
-  return edit(async()=>{const{c,id,w,h}=await loadKeyed(file),plan=cusPlanMoveSheet(id.data,w,h,cols,rows,{calib});
-   if(plan.error){c.width=c.height=0;setStatus(plan.error,1);return false}
-   const frames=plan.frames.slice(0,CUS_MAX_MOVE_FRAMES).map(f=>newFrame(cropScale(c,keepRes(f)),f,false));c.width=c.height=0;
-   const o0=ovr(key);S.moves[key]={frames,props:o0?o0.props:baseProps(key)};S.mv.sel=0;S.mv.hold=false;
-   setStatus(`${frames.length} Frames importiert`+(plan.notes.length?' · '+plan.notes.join(' · '):''),plan.notes.length&&0)})}
+ // Sheet für einen Move: Raster aus dem Bild erkennen (S.mv.auto, sonst eingestelltes bzw. empfohlenes Raster); Zuschnitt, Kalibrierung und Ankerung wie bei den Sheets
+ function importSheet(file,key=S.mv.key){const calib=S.mv.calib,auto=S.mv.auto,sp=CUS_MOVE_SPECS[key];let cols=S.mv.cols,rows=S.mv.rows;
+  return edit(async()=>{const{c,id,w,h}=await loadKeyed(file);let gnote='';
+   if(auto){const g=cusDetectGrid(id.data,w,h);if(g){cols=g.cols;rows=g.rows;gnote=`Raster ${cols}×${rows} erkannt`}else if(sp){cols=sp.c;rows=sp.r;gnote=`Raster nicht erkennbar – empfohlenes ${cols}×${rows} verwendet`}}
+   const plan=cusPlanMoveSheet(id.data,w,h,cols,rows,{calib});
+   if(plan.error){c.width=c.height=0;setStatus(CUS_ANIM_LABELS[key]+': '+plan.error,1);return false}
+   const frames=plan.frames.slice(0,CUS_MAX_MOVE_FRAMES).map(f=>newFrame(cropScale(c,keepRes(f)),f,!!(sp&&sp.air)));c.width=c.height=0;
+   const o0=ovr(key);S.moves[key]={frames,props:o0?o0.props:baseProps(key)};
+   if(key===S.mv.key){S.mv.sel=0;S.mv.hold=false;S.mv.cols=cols;S.mv.rows=rows}
+   setStatus(`${CUS_ANIM_LABELS[key]}: ${frames.length} Frames importiert`+(gnote?' · '+gnote:'')+(plan.notes.length?' · '+plan.notes.join(' · '):''),0)})}
  // Einzelbilder: where = 'replace' (alle Frames ersetzen), 'end' (anhängen), 'after' (hinter dem gewählten Frame einfügen). Das erste Bild bestimmt den Maßstab, die übrigen folgen ihm.
  function addImages(files,where){files=files.filter(isImg).sort(natCmp);if(!files.length)return;const key=S.mv.key;
   return edit(async()=>{const o0=ovr(key),cur=o0&&o0.frames[S.mv.sel],targetH=cur?cusFrameGeom(cur).dh:refH(key),o=where==='replace'?{frames:[],props:o0?o0.props:baseProps(key)}:bake(key),out=[],notes=[];let scale=0;
@@ -110,7 +114,15 @@ const STUDIO=(()=>{
  function replaceFrame(file){const key=S.mv.key,i=S.mv.sel;   // ein einzelnes Frame austauschen, alles andere bleibt unberührt
   return edit(async()=>{const o=bake(key),old=o.frames[i];if(!old)return false;const r=await frameFromFile(file,{targetH:cusFrameGeom(old).dh,air:old.air});o.frames=cusMvReplace(o.frames,i,r.frame);
    setStatus(`Frame ${i+1} ersetzt`+(r.notes.length?' · '+r.notes.join(' · '):''))})}
- function importFiles(files){files=[...files].filter(isImg);if(!files.length)return;if(S.mv.mode==='sheet'){if(files.length>1)setStatus('Im Sheet-Modus wird nur die erste Datei genutzt – für mehrere Bilder „Einzelbilder“ wählen.');return importSheet(files[0])}return addImages(files,S.mv.append?'end':'replace')}
+ // Sheet-Modus: Dateiname bestimmt den Move (punch.png, hyper.png, duck-schlag.png …); ohne passenden Namen gilt eine einzelne Datei für den gewählten Move. Einzelbilder-Modus: alle Bilder für den gewählten Move.
+ function importFiles(files){files=[...files].filter(isImg).sort(natCmp);if(!files.length)return;
+  if(S.mv.mode!=='sheet')return addImages(files,S.mv.append?'end':'replace');
+  const jobs=files.map(f=>({f,k:cusMoveKeyFromName(f.name)})),hit=jobs.filter(j=>j.k),miss=jobs.filter(j=>!j.k);
+  if(!hit.length){if(files.length===1)return importSheet(files[0]);setStatus('Dateinamen passen zu keinem Move (z. B. punch.png, hyper.png, duck-schlag.png) – wähle einen Move und lade nur eine Datei, oder benenne die Dateien um.',1);return}
+  const byKey={};for(const j of hit)byKey[j.k]=j.f;const keys=Object.keys(byKey);   // pro Move zählt die letzte Datei
+  const first=keys.includes(S.mv.key)?S.mv.key:keys[0];if(first!==S.mv.key)selectMove(first);
+  for(const k of keys)importSheet(byKey[k],k);
+  if(keys.length>1||miss.length)enqueue(()=>setStatus(`${keys.length} Sheets importiert: ${keys.map(k=>CUS_ANIM_LABELS[k]).join(', ')}`+(miss.length?` · nicht zugeordnet (Name passt zu keinem Move): ${miss.map(j=>j.f.name).join(', ')}`:''),miss.length?1:0),true)}
  function frameOp(kind,arg){const key=S.mv.key,i=S.mv.sel;
   return edit(()=>{const o=bake(key),f=o.frames[i];if(!f)return false;
    if(kind==='del'){o.frames=cusMvRemove(o.frames,i);if(!o.frames.length){delete S.moves[key];setStatus('Der Move hat keine eigenen Frames mehr – es gilt wieder das Sheet bzw. der Behelf.')}else S.mv.sel=Math.min(i,o.frames.length-1)}
@@ -124,9 +136,10 @@ const STUDIO=(()=>{
     setStatus(`Frame ${kind==='copy'?'kopiert':'verschoben'} nach „${CUS_ANIM_LABELS[dest]}“`)}})}
  function resetMove(){const key=S.mv.key;return edit(()=>{if(!ovr(key)){setStatus('Dieser Move hat keine eigenen Frames.');return false}delete S.moves[key];S.mv.sel=0;S.mv.hold=false;setStatus('Eigene Frames verworfen – es gilt wieder das Sheet bzw. der Behelf.')})}
  function setProps(p){const key=S.mv.key;return edit(()=>{const o=bake(key);if(!o.frames.length)return false;o.props=cusCleanProps({...o.props,...p})})}
- // Schieberegler: viele Eingaben in Folge ergeben nur einen Undo-Schritt (adjDone beim Loslassen)
- async function adjInput(fn){if(S.busy)return;await prepare();const snap=S.adjSnap||JSON.stringify(S.moves);S.adjSnap=snap;const key=S.mv.key;bake(key);const f=S.moves[key].frames[S.mv.sel];if(!f)return;fn(f);schedulePack()}
- function adjDone(){if(S.adjSnap){S.undo.push(S.adjSnap);if(S.undo.length>40)S.undo.shift();S.redo=[];S.adjSnap=null;refreshMoves()}}
+ // Schieberegler: viele Eingaben in Folge ergeben nur einen Undo-Schritt (adjDone beim Loslassen). Beides läuft über die Warteschlange (leise, ohne Fortschritts-Mauszeiger):
+ // so findet „change“ direkt nach „input“ (Tastatur, Klick auf die Leiste) den gemerkten Zustand immer schon vor und der Undo-Schritt geht nicht verloren.
+ function adjInput(fn){const key=S.mv.key,sel=S.mv.sel;return enqueue(async()=>{await prepare();const snap=S.adjSnap||JSON.stringify(S.moves);S.adjSnap=snap;bake(key);const f=S.moves[key].frames[sel];if(!f)return;fn(f);schedulePack()},true)}
+ function adjDone(){return enqueue(()=>{if(S.adjSnap){S.undo.push(S.adjSnap);if(S.undo.length>40)S.undo.shift();S.redo=[];S.adjSnap=null;refreshMoves()}},true)}
  function setTab(t){const u=S.ui;S.tab=t;u.paneS.classList.toggle('hidden',t!=='sheets');u.paneM.classList.toggle('hidden',t!=='moves');u.tabS.classList.toggle('on',t==='sheets');u.tabM.classList.toggle('on',t==='moves');
   if(t==='moves'){setStatus('Bereite Moves vor …');prepare().then(()=>{setStatus('');refreshAll()}).catch(e=>setStatus(String(e&&e.message||e),1))}else refreshAll()}
  function drawThumb(cv,name){const A=curr(),g=cv.getContext('2d'),f=A&&A.frames[name];g.clearRect(0,0,cv.width,cv.height);if(!f)return;
@@ -147,16 +160,18 @@ const STUDIO=(()=>{
   v.fps.value=p.fps||12;v.loop.checked=!!p.loop;v.fps.disabled=!has||!p.loop;v.loop.disabled=!has;v.play.disabled=!has;v.play.textContent=S.mv.hold?'▶ Animation abspielen':'⏸ Frame anhalten';
   v.undo.disabled=!S.undo.length;v.redo.disabled=!S.redo.length;v.reset.disabled=!o;
   for(const op of v.to.options)op.disabled=op.value===key;if(v.to.value===key)v.to.value=CUS_MOVE_KEYS.find(k=>k!==key);
-  v.cols.value=S.mv.cols;v.rows.value=S.mv.rows;v.calib.checked=S.mv.calib;v.append.checked=!!S.mv.append;
+  v.cols.value=S.mv.cols;v.rows.value=S.mv.rows;v.calib.checked=S.mv.calib;v.auto.checked=S.mv.auto;{const sp=CUS_MOVE_SPECS[key];v.rec.innerHTML=sp?`Empfohlenes Sheet für <b>${esc(CUS_ANIM_LABELS[key])}</b>: ${sp.c}×${sp.r} Zellen – Zelle 1 = neutrale Haltung (Kalibrierung), Zelle 2–${sp.c*sp.r} = der Move. <b>Prompt kopieren</b> erzeugt den fertigen Text für Gemini. Fertiges Sheet hierher ziehen: Raster und Zuschnitt werden automatisch erkannt. Mehrere Dateien mit passendem Namen (punch.png, hyper.png, duck-schlag.png …) landen gleich im richtigen Move.`:''}v.append.checked=!!S.mv.append;
   v.root.querySelectorAll('[name=mv-mode]').forEach(r=>r.checked=r.value===S.mv.mode);v.root.querySelectorAll('.mv-opt').forEach(s=>s.classList.toggle('hidden',s.dataset.m!==S.mv.mode))}
- function selectMove(k){S.mv.key=k;S.mv.sel=0;S.mv.hold=false;refreshMoves();const u=S.ui;if(u.anim.querySelector(`option[value="${k}"]`))u.anim.value=k}
+ function applySpec(k){const sp=CUS_MOVE_SPECS[k];if(sp){S.mv.cols=sp.c;S.mv.rows=sp.r}}   // empfohlenes Raster des Moves vorbelegen
+ function selectMove(k){S.mv.key=k;S.mv.sel=0;S.mv.hold=false;applySpec(k);refreshMoves();const u=S.ui;if(u.anim.querySelector(`option[value="${k}"]`))u.anim.value=k}
  function buildMoves(m,u){const P=u.paneM,v=u.mv={chips:{},th:[],root:P};
   P.innerHTML=`<div class="mv-groups"></div><div class="mv-box">
    <div class="mv-head"><b id="mv-title"></b><span id="mv-src" class="st-sm"></span></div>
    <div class="mv-imp"><span class="mv-seg"><label><input type="radio" name="mv-mode" value="sheet" checked> Sheet</label><label><input type="radio" name="mv-mode" value="single"> Einzelbilder</label></span>
-    <span class="mv-opt" data-m="sheet">Raster <input id="mv-cols" type="number" min="1" max="8" value="3" title="Spalten"> × <input id="mv-rows" type="number" min="1" max="8" value="2" title="Zeilen"> <label title="Zelle 1 = neutrale Haltung: bestimmt die Größe und wird nicht mitimportiert"><input id="mv-calib" type="checkbox" checked> Zelle 1 = Kalibrierung</label></span>
+    <span class="mv-opt" data-m="sheet">Raster <input id="mv-cols" type="number" min="1" max="8" value="3" title="Spalten"> × <input id="mv-rows" type="number" min="1" max="8" value="2" title="Zeilen"> <label title="Raster aus dem Bild erkennen (Zellen durch freie Streifen getrennt) – sonst gilt das eingestellte Raster"><input id="mv-auto" type="checkbox" checked> automatisch</label> <label title="Zelle 1 = neutrale Haltung: bestimmt die Größe und wird nicht mitimportiert"><input id="mv-calib" type="checkbox" checked> Zelle 1 = Kalibrierung</label></span>
     <span class="mv-opt hidden" data-m="single"><label title="Neue Bilder hinten anhängen statt alle Frames zu ersetzen"><input id="mv-append" type="checkbox"> anhängen</label></span>
-    <button id="mv-pick">Datei(en) wählen …</button><button id="mv-reset" class="warn" title="Eigene Frames dieses Moves verwerfen (zurück auf Sheet bzw. Behelf)">Zurücksetzen</button></div>
+    <button id="mv-pick">Datei(en) wählen …</button><button id="mv-prompt" title="Fertiger Text für Gemini: erzeugt das passende Sheet für diesen Move (Figurenbeschreibung unten bei „So entstehen gute Sheets“)">Prompt kopieren</button><button id="mv-reset" class="warn" title="Eigene Frames dieses Moves verwerfen (zurück auf Sheet bzw. Behelf)">Zurücksetzen</button></div>
+   <div class="mv-rec st-sm" id="mv-rec"></div>
    <div class="mv-strip" id="mv-strip"></div>
    <div class="mv-tools"><button id="mv-left" title="Frame nach links">◀</button><button id="mv-right" title="Frame nach rechts">▶</button><button id="mv-repl">Ersetzen …</button><button id="mv-ins">Einfügen …</button><button id="mv-dup">Duplizieren</button><button id="mv-del" class="warn">Löschen</button>
     <span class="mv-sp"></span><button id="mv-undo" title="Letzte Änderung rückgängig (Strg+Z)">↶</button><button id="mv-redo" title="Wiederholen (Strg+Y)">↷</button></div>
@@ -167,7 +182,7 @@ const STUDIO=(()=>{
    <input id="mv-file" type="file" accept="image/*" multiple hidden></div>`;
   const q=id=>P.querySelector('#'+id);Object.assign(v,{title:q('mv-title'),src:q('mv-src'),strip:q('mv-strip'),cols:q('mv-cols'),rows:q('mv-rows'),calib:q('mv-calib'),append:q('mv-append'),pick:q('mv-pick'),reset:q('mv-reset'),file:q('mv-file'),
    left:q('mv-left'),right:q('mv-right'),repl:q('mv-repl'),ins:q('mv-ins'),dup:q('mv-dup'),del:q('mv-del'),undo:q('mv-undo'),redo:q('mv-redo'),to:q('mv-to'),copy:q('mv-copy'),move:q('mv-move'),
-   s:q('mv-s'),x:q('mv-x'),y:q('mv-y'),vs:q('mv-vs'),vx:q('mv-vx'),vy:q('mv-vy'),air:q('mv-air'),adjreset:q('mv-adjreset'),fps:q('mv-fps'),loop:q('mv-loop'),play:q('mv-play')});
+   s:q('mv-s'),x:q('mv-x'),y:q('mv-y'),vs:q('mv-vs'),vx:q('mv-vx'),vy:q('mv-vy'),air:q('mv-air'),adjreset:q('mv-adjreset'),fps:q('mv-fps'),loop:q('mv-loop'),play:q('mv-play'),auto:q('mv-auto'),prompt:q('mv-prompt'),rec:q('mv-rec')});
   const gbox=P.querySelector('.mv-groups');
   for(const[title,keys]of CUS_MOVE_GROUPS){const g=el('div','mv-g'),row=el('div','mv-chips');g.appendChild(el('div','st-h',title));g.appendChild(row);
    for(const k of keys){const c=el('button','mv-chip',esc(CUS_ANIM_LABELS[k]));c.dataset.k=k;c.onclick=()=>selectMove(k);v.chips[k]=c;row.appendChild(c)}gbox.appendChild(g)}
@@ -177,13 +192,17 @@ const STUDIO=(()=>{
   v.cols.onchange=()=>{S.mv.cols=Math.max(1,Math.min(8,+v.cols.value||3));refreshMoves()};v.rows.onchange=()=>{S.mv.rows=Math.max(1,Math.min(8,+v.rows.value||2));refreshMoves()};
   v.calib.onchange=()=>{S.mv.calib=v.calib.checked};v.append.onchange=()=>{S.mv.append=v.append.checked};
   const pick=what=>{S.mv.pick=what;v.file.multiple=what!=='replace';v.file.click()};
+  v.auto.onchange=()=>{S.mv.auto=v.auto.checked};
+  v.prompt.onclick=async()=>{const k=S.mv.key,sp=CUS_MOVE_SPECS[k];if(!sp)return;const t=cusMovePrompt(k,u.desc.value);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(x){const a=el('textarea');a.value=t;document.body.appendChild(a);a.select();try{ok=document.execCommand('copy')}catch(y){}a.remove()}
+   setStatus(ok?`Prompt für „${CUS_ANIM_LABELS[k]}“ kopiert – ${sp.c}×${sp.r}-Sheet mit Gemini erzeugen (Bild deiner Figur anhängen) und hierher ziehen.`:'Kopieren nicht möglich – der Browser blockiert die Zwischenablage.',!ok);const b=v.prompt;b.textContent=ok?'Kopiert ✓':'Fehler';setTimeout(()=>b.textContent='Prompt kopieren',1600)};
   v.pick.onclick=()=>pick('import');v.repl.onclick=()=>pick('replace');v.ins.onclick=()=>pick('after');
   v.file.onchange=()=>{const fs=[...v.file.files];v.file.value='';if(S.mv.pick==='replace')replaceFrame(fs[0]);else if(S.mv.pick==='after')addImages(fs,'after');else importFiles(fs)};
   v.reset.onclick=resetMove;
   // Frames bearbeiten
   v.left.onclick=()=>frameOp('left');v.right.onclick=()=>frameOp('right');v.dup.onclick=()=>frameOp('dup');v.del.onclick=()=>frameOp('del');v.adjreset.onclick=()=>frameOp('adjreset');
   v.copy.onclick=()=>frameOp('copy',v.to.value);v.move.onclick=()=>frameOp('move',v.to.value);v.undo.onclick=undo;v.redo.onclick=redo;
-  v.s.oninput=()=>adjInput(f=>{f.adj.s=Math.min(CUS_ADJ_LIMITS.s[1],Math.max(CUS_ADJ_LIMITS.s[0],+v.s.value/100))});v.x.oninput=()=>adjInput(f=>{f.adj.dx=+v.x.value});v.y.oninput=()=>adjInput(f=>{f.adj.dy=+v.y.value});
+  // Reglerwert wird im Moment der Eingabe gelesen (nicht erst beim Abarbeiten der Warteschlange), damit schnelle Folgen von Eingaben nichts verlieren
+  v.s.oninput=()=>{const val=Math.min(CUS_ADJ_LIMITS.s[1],Math.max(CUS_ADJ_LIMITS.s[0],+v.s.value/100));adjInput(f=>{f.adj.s=val})};v.x.oninput=()=>{const val=+v.x.value;adjInput(f=>{f.adj.dx=val})};v.y.oninput=()=>{const val=+v.y.value;adjInput(f=>{f.adj.dy=val})};
   for(const k of['s','x','y'])v[k].onchange=adjDone;
   v.air.onchange=()=>edit(()=>{const f=bake(S.mv.key).frames[S.mv.sel];if(!f)return false;f.air=v.air.checked});
   v.fps.onchange=()=>setProps({fps:+v.fps.value||12});v.loop.onchange=()=>setProps({loop:v.loop.checked?1:0});
@@ -201,7 +220,7 @@ const STUDIO=(()=>{
    if((e.ctrlKey||e.metaKey)&&e.code==='KeyZ'){e.preventDefault();e.shiftKey?redo():undo()}else if((e.ctrlKey||e.metaKey)&&e.code==='KeyY'){e.preventDefault();redo()}
    else if(e.code==='ArrowLeft'||e.code==='ArrowRight'){const n=curLen();if(!n)return;e.preventDefault();S.mv.sel=Math.max(0,Math.min(n-1,S.mv.sel+(e.code==='ArrowLeft'?-1:1)));S.mv.hold=true;refreshMoves()}
    else if(e.code==='Delete'||e.code==='Backspace'){if(!curLen())return;e.preventDefault();frameOp('del')}});
-  u.tabS.onclick=()=>setTab('sheets');u.tabM.onclick=()=>setTab('moves');u.anim.onchange=()=>{if(S.tab==='moves'&&CUS_MOVE_KEYS.includes(u.anim.value)&&u.anim.value!==S.mv.key){S.mv.key=u.anim.value;S.mv.sel=0;S.mv.hold=false;refreshMoves()}}}
+  u.tabS.onclick=()=>setTab('sheets');u.tabM.onclick=()=>setTab('moves');u.anim.onchange=()=>{if(S.tab==='moves'&&CUS_MOVE_KEYS.includes(u.anim.value)&&u.anim.value!==S.mv.key){S.mv.key=u.anim.value;S.mv.sel=0;S.mv.hold=false;applySpec(S.mv.key);refreshMoves()}}}
  // ---- Figur aktivieren / speichern ----
  async function activate(p,meta,blob){CHARACTERS.custom=cusMakeChar(p,CHARACTERS[p.template]||CHARACTERS.tiger);
   const url=URL.createObjectURL(blob),img=new Image();img.src=url;

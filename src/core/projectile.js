@@ -11,5 +11,5 @@ export class Projectile{
   const T=this.owner.terrain;if(this.vy>0&&this.y>=(T?T.floorAt(this.x):GROUND)-8)this.dead=true} // Bogen-/Schräg-Projektile verpuffen am Boden
  rect(){return new Hitbox(this.x-this.w/2,this.y-this.h/2,this.w,this.h)}
  // Projektile treffen wie Moves – gleiche Felder, damit combat.hit() nur einen Pfad braucht
- asMove(){const d=this.def;return{dmg:d.dmg,hs:d.hs,bs:d.bs,pb:4,pbb:5,hstop:8,shake:3,lv:d.lv||'mid',launch:d.launch||null,hard:!!d.hard,multi:0,minScale:0}}
+ asMove(){const d=this.def;return{projectile:true,dmg:d.dmg,hs:d.hs,bs:d.bs,pb:4,pbb:5,hstop:8,shake:3,lv:d.lv||'mid',launch:d.launch||null,hard:!!d.hard,multi:0,minScale:0}}
 }

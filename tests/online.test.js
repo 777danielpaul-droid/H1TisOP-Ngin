@@ -38,7 +38,7 @@ let A,B;
 const mk=(client,seed,toward)=>{const inputs=[new NetInput(),new NetInput()],ai=new AIController(0);const p1=new Fighter({char:CHARACTERS.tiger,x:340,facing:1,input:inputs[0]}),p2=new Fighter({char:CHARACTERS.tiger,x:620,facing:-1,input:inputs[1]});
  const g=new Game(p1,p2),arc=new Arcade(g,p1,p2,ai);g.frame=777;   // absichtlich anderer Zählerstand vorher: startOnline setzt ihn zurück
  const o={g,arc,hashes:new Map(),launches:[],ended:[],started:0,delay:0};
- o.m=new NetMatch({client,game:g,inputs,sample:sampler(seed,toward),valid:id=>!!CHARACTERS[id],hooks:{
+ o.m=new NetMatch({client,game:g,inputs,stam:()=>toward>0,tune:()=>toward>0?[200,0,150,50]:[100,100,100,100],sample:sampler(seed,toward),valid:id=>!!CHARACTERS[id],hooks:{
   onLaunch:(cfg,i)=>{o.launches.push({cfg,rematch:i.rematch});arc.startOnline(cfg);setTimeout(()=>o.m.launched(),i.rematch?0:seed%5*15)},   // Start-Animation dauert je Gerät unterschiedlich lang
   onStart:()=>{o.started++;o.delay=o.m.ls.delay},onEnd:r=>o.ended.push(r)}});
  const oh=o.m.ls.hash.bind(o.m.ls);o.m.ls.hash=()=>{o.hashes.set(o.m.epoch+':'+o.m.ls.fr,netHash(g));oh()};return o};
@@ -46,7 +46,7 @@ const H=mk(A,3,1),G=mk(B,4,-1);
 {assert.equal(H.m.slot,0);assert.equal(G.m.slot,1);G.m.pick('st3g0',1);H.m.pick('tiger',0);await until(()=>H.m.them.id==='st3g0'&&G.m.them.id==='tiger','Auswahl sichtbar');assert.equal(H.m.them.skin,1);
  assert.equal(H.m.hostStart(2),false,'noch nicht bereit');H.m.setReady(true);G.m.setReady(true);await until(()=>H.m.canStart(),2000,'beide bereit');assert.equal(G.m.canStart(),false,'nur der Gastgeber startet');
  assert.equal(H.m.hostStart(2),true);await until(()=>H.started===1&&G.started===1,4000,'Start');
- for(const o of[H,G]){assert.deepEqual(o.launches[0].cfg.ids,['tiger','st3g0']);assert.deepEqual(o.launches[0].cfg.skins,[0,1]);assert.equal(o.launches[0].cfg.stage,2);assert.equal(o.g.stageIndex,2);assert.equal(o.g.frame,0,'Zähler zurückgesetzt');assert.equal(o.g.p1.char.id,'tiger');assert.equal(o.g.p2.char.id,'st3g0');assert.equal(o.arc.online,true)}
+ for(const o of[H,G]){assert.deepEqual(o.launches[0].cfg.ids,['tiger','st3g0']);assert.deepEqual(o.launches[0].cfg.skins,[0,1]);assert.equal(o.launches[0].cfg.stage,2);assert.equal(o.g.stageIndex,2);assert.equal(o.g.frame,0,'Zähler zurückgesetzt');assert.equal(o.g.p1.char.id,'tiger');assert.equal(o.g.p2.char.id,'st3g0');assert.equal(o.arc.online,true);assert.equal(o.launches[0].cfg.stam,true,'Ausdauer: Vorgabe des Gastgebers');assert.deepEqual(o.launches[0].cfg.tune,[200,0,150,50]);assert.equal(o.g.stamOn,true,'Ausdauer läuft bei beiden');assert.deepEqual([o.g.stamTune.regen,o.g.stamTune.delay,o.g.stamTune.empty,o.g.stamTune.rest],[2,0,1.5,.5],'Regler-Werte des Gastgebers gelten bei beiden')}
  ok('Auswahl + Start: beide sehen Figur/Farbe des anderen, Stage vom Gastgeber, Zähler bei 0, unterschiedlich lange Start-Animation → gemeinsamer Start (Verzögerung '+H.delay+' / '+G.delay+' Frames)')}
 let ITER=0;void ITER;const play=async(frames)=>{const t0=Date.now();while((H.m.ls.fr<frames||G.m.ls.fr<frames)&&Date.now()-t0<30000){let n=0;while(n++<40&&H.m.ls.fr<frames&&H.m.step()){}n=0;while(n++<25&&G.m.ls.fr<frames&&G.m.step()){}H.m.flush();G.m.flush();ITER++;await sleep(0)}assert.ok(H.m.ls.fr>=frames&&G.m.ls.fr>=frames,'Frames erreicht: '+H.m.ls.fr+'/'+G.m.ls.fr)};
 const compare=(l)=>{let n=0;for(const[k,h]of H.hashes)if(G.hashes.has(k)){assert.equal(G.hashes.get(k),h,l+': Abweichung bei '+k);n++}assert.ok(n>5,l+': Vergleichspunkte '+n);return n};
