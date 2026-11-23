@@ -1,46 +1,219 @@
 // Bündelt src/ (ES-Module) zu dist/game.js (klassisches Script, läuft per Doppelklick) und dist/hitisop.html (alles in einer Datei).
-import fs from'node:fs';import path from'node:path';import{fileURLToPath}from'node:url';
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const ORDER=['core/config','core/terrain','core/parkour','core/sfx','core/camera','core/barrier','core/hitbox','core/gamepad','core/input','core/moves','core/movesets','core/unlocks','core/characters','core/custom','core/particles','core/effects','core/projectile','core/fighter','core/melee','core/combat','core/ai','core/items','core/loot','core/blackmarket','core/story','core/arcade','core/devcmds','core/game','core/netplay','core/netclient','core/netmatch','render/skins','render/sprites','render/audio','render/fonts','render/fx','render/gl','render/rig','render/stage','render/houses','render/hud','render/parkourdeco','render/storyhud','render/lootui','render/packopen','render/fog','render/select','render/meleehud','render/customstudio','render/backdrop','render/bgpanel','render/intro','render/shopclip','render/musicpanel','render/netui','render/devconsole','render/hover','render/renderer','main'];
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ORDER = [
+  "core/config",
+  "core/terrain",
+  "core/parkour",
+  "core/sfx",
+  "core/camera",
+  "core/barrier",
+  "core/hitbox",
+  "core/gamepad",
+  "core/input",
+  "core/moves",
+  "core/movesets",
+  "core/unlocks",
+  "core/characters",
+  "core/custom",
+  "core/particles",
+  "core/effects",
+  "core/projectile",
+  "core/fighter",
+  "core/melee",
+  "core/combat",
+  "core/ai",
+  "core/items",
+  "core/loot",
+  "core/blackmarket",
+  "core/story",
+  "core/arcade",
+  "core/devcmds",
+  "core/game",
+  "core/netplay",
+  "core/netclient",
+  "core/netmatch",
+  "render/skins",
+  "render/sprites",
+  "render/audio",
+  "render/fonts",
+  "render/fx",
+  "render/gl",
+  "render/rig",
+  "render/stage",
+  "render/houses",
+  "render/hud",
+  "render/parkourdeco",
+  "render/storyhud",
+  "render/lootui",
+  "render/packopen",
+  "render/fog",
+  "render/select",
+  "render/meleehud",
+  "render/customstudio",
+  "render/backdrop",
+  "render/bgpanel",
+  "render/intro",
+  "render/shopclip",
+  "render/musicpanel",
+  "render/netui",
+  "render/devconsole",
+  "render/hover",
+  "render/renderer",
+  "main",
+];
 // Sicherheitsnetz 0: jedes Modul in src/core + src/render MUSS in ORDER stehen (sonst fehlt es im Bündel -> im Browser "... is not defined", Tests laufen trotzdem, weil sie echte ES-Module nutzen)
-{const lost=[];for(const d of['core','render'])for(const f of fs.readdirSync(path.join(root,'src',d)))if(f.endsWith('.js')&&!ORDER.includes(d+'/'+f.slice(0,-3)))lost.push(d+'/'+f);
- if(lost.length){console.error('FEHLER: Modul(e) fehlen in ORDER (tools/build.mjs): '+lost.join(', '));process.exit(1)}}
-let out='';
-for(const m of ORDER){let s=fs.readFileSync(path.join(root,'src',m+'.js'),'utf8');
- s=s.replace(/^import\b[^;'"]*?\bfrom\s*(['"]).*?\1;?[ \t]*$/gms,'').replace(/^import\b.*$/gm,'').replace(/^export\s+/gm,'');out+=`\n// ===== ${m} =====\n`+s}
+{
+  const lost = [];
+  for (const d of ["core", "render"])
+    for (const f of fs.readdirSync(path.join(root, "src", d)))
+      if (f.endsWith(".js") && !ORDER.includes(d + "/" + f.slice(0, -3)))
+        lost.push(d + "/" + f);
+  if (lost.length) {
+    console.error(
+      "FEHLER: Modul(e) fehlen in ORDER (tools/build.mjs): " + lost.join(", "),
+    );
+    process.exit(1);
+  }
+}
+let out = "";
+for (const m of ORDER) {
+  let s = fs.readFileSync(path.join(root, "src", m + ".js"), "utf8");
+  s = s
+    .replace(/^import\b[^;'"]*?\bfrom\s*(['"]).*?\1;?[ \t]*$/gms, "")
+    .replace(/^import\b.*$/gm, "")
+    .replace(/^export\s+/gm, "");
+  out += `\n// ===== ${m} =====\n` + s;
+}
 // Sprite-Atlanten (assets/<id>/atlas.webp + meta.json) als Data-URI einbetten, damit dist/game.js und die Single-File-HTML ohne Server laufen
-const sp=[];const ad=path.join(root,'assets');
-for(const id of fs.existsSync(ad)?fs.readdirSync(ad):[]){const d=path.join(ad,id);
- if(fs.existsSync(path.join(d,'atlas.webp'))&&fs.existsSync(path.join(d,'meta.json')))
-  sp.push(`${id}:{meta:${fs.readFileSync(path.join(d,'meta.json'),'utf8')},atlas:"data:image/webp;base64,${fs.readFileSync(path.join(d,'atlas.webp')).toString('base64')}"}`)}
-const sd=path.join(root,'sfx'),sx=[];   // Sounds (sfx/<name>.ogg) als Data-URI einbetten
-for(const f of fs.existsSync(sd)?fs.readdirSync(sd).sort():[])if(f.endsWith('.ogg'))sx.push(`${JSON.stringify(f.slice(0,-4))}:"data:audio/ogg;base64,${fs.readFileSync(path.join(sd,f)).toString('base64')}"`);
-const md=path.join(root,'music'),mu=[];   // Musik (music/<name>.ogg) als Data-URI einbetten
-for(const f of fs.existsSync(md)?fs.readdirSync(md).sort():[])if(f.endsWith('.ogg'))mu.push(`${JSON.stringify(f.slice(0,-4))}:"data:audio/ogg;base64,${fs.readFileSync(path.join(md,f)).toString('base64')}"`);
+const sp = [];
+const ad = path.join(root, "assets");
+for (const id of fs.existsSync(ad) ? fs.readdirSync(ad) : []) {
+  const d = path.join(ad, id);
+  if (
+    fs.existsSync(path.join(d, "atlas.webp")) &&
+    fs.existsSync(path.join(d, "meta.json"))
+  )
+    sp.push(
+      `${id}:{meta:${fs.readFileSync(path.join(d, "meta.json"), "utf8")},atlas:"data:image/webp;base64,${fs.readFileSync(path.join(d, "atlas.webp")).toString("base64")}"}`,
+    );
+}
+const sd = path.join(root, "sfx"),
+  sx = []; // Sounds (sfx/<name>.ogg) als Data-URI einbetten
+for (const f of fs.existsSync(sd) ? fs.readdirSync(sd).sort() : [])
+  if (f.endsWith(".ogg"))
+    sx.push(
+      `${JSON.stringify(f.slice(0, -4))}:"data:audio/ogg;base64,${fs.readFileSync(path.join(sd, f)).toString("base64")}"`,
+    );
+const md = path.join(root, "music"),
+  mu = []; // Musik (music/<name>.ogg) als Data-URI einbetten
+for (const f of fs.existsSync(md) ? fs.readdirSync(md).sort() : [])
+  if (f.endsWith(".ogg"))
+    mu.push(
+      `${JSON.stringify(f.slice(0, -4))}:"data:audio/ogg;base64,${fs.readFileSync(path.join(md, f)).toString("base64")}"`,
+    );
 // Sicherheitsnetz: fehlt Musik, lieber laut abbrechen als still ohne Menü-/Kampfmusik zu deployen (passiert z. B. wenn *.ogg in .gitignore steht)
-const missing=['menu','fight'].filter(n=>!fs.existsSync(path.join(md,n+'.ogg')));
-if(missing.length){console.error('FEHLER: music/'+missing.join('.ogg, music/')+'.ogg fehlt (nicht im Repository?). Bitte hinzufügen: git add music/*.ogg');if(process.env.RENDER||process.env.CI)process.exit(1)}
+const missing = ["menu", "fight"].filter(
+  (n) => !fs.existsSync(path.join(md, n + ".ogg")),
+);
+if (missing.length) {
+  console.error(
+    "FEHLER: music/" +
+      missing.join(".ogg, music/") +
+      ".ogg fehlt (nicht im Repository?). Bitte hinzufügen: git add music/*.ogg",
+  );
+  if (process.env.RENDER || process.env.CI) process.exit(1);
+}
 // Sicherheitsnetz 2: Booster-Design + Figuren-Atlanten sind Pflicht. Fehlen sie (typisch: *.png/*.webp stehen in .gitignore, GitHub Desktop nimmt sie dann nicht mit), bricht der Render-Build mit einer klaren Liste ab,
 // statt ein Spiel mit grauen Boostern und fehlenden Figuren zu veröffentlichen.
-{const need=['assets/packs/CardPacks.png'];for(const id of fs.existsSync(ad)?fs.readdirSync(ad):[]){if(fs.existsSync(path.join(ad,id,'meta.json'))||fs.existsSync(path.join(ad,id,'meta.js')))need.push('assets/'+id+'/atlas.webp','assets/'+id+'/meta.json')}
- const gone=need.filter(f=>!fs.existsSync(path.join(root,f)));
- if(gone.length){console.error('\n=== FEHLER: Diese Spiel-Dateien fehlen im Build (nicht im Git-Repository?) ===\n  '+gone.join('\n  ')+'\nLösung: git add -f assets/   (die .gitignore darf *.png/*.webp unter assets/ nicht ausschließen), committen, pushen.\n');if(process.env.RENDER||process.env.CI)process.exit(1)}}
-const fd=path.join(root,'assets/fonts'),fo=[];   // Schriften (assets/fonts/<name>.woff2) als Data-URI einbetten (Canvas + Menü, offline)
-for(const f of fs.existsSync(fd)?fs.readdirSync(fd).sort():[])if(f.endsWith('.woff2'))fo.push(`${JSON.stringify(f.slice(0,-6))}:"data:font/woff2;base64,${fs.readFileSync(path.join(fd,f)).toString('base64')}"`);
-const vd=path.join(root,'assets/video'),vi=[];   // Auswahl-Kurzvideos (assets/video/<id>.webm) als Data-URI einbetten
-for(const f of fs.existsSync(vd)?fs.readdirSync(vd).sort():[])if(f.endsWith('.webm'))vi.push(`${JSON.stringify(f.slice(0,-5))}:\"data:video/webm;base64,${fs.readFileSync(path.join(vd,f)).toString('base64')}\"`);
-const ip=path.join(root,'assets/intro/intro.mp4');   // Intro-Video (assets/intro/intro.mp4) als Data-URI einbetten
-const scp=path.join(root,'assets/shop/shopclip.mp4');   // Transfer-Clip beim Betreten des Shops (erste 3,7 s des Händler-Videos)
-const pp=path.join(root,'assets/intro/poster.jpg');   // Standbild fürs Intro (erster Frame), optional
-const cdir=path.join(root,'assets/cards'),ca=[];   // Sammelkarten-Bilder (assets/cards/<karten-id>.png|webp|jpg) als Data-URI einbetten
-for(const f of fs.existsSync(cdir)?fs.readdirSync(cdir).sort():[]){const m=/^(.+)\.(png|webp|jpe?g)$/i.exec(f);if(m)ca.push(`${JSON.stringify(m[1])}:"data:image/${m[2].toLowerCase().replace('jpg','jpeg')};base64,${fs.readFileSync(path.join(cdir,f)).toString('base64')}"`)}
-const pkp=path.join(root,'assets/packs/CardPacks.png');   // Pack-Sprites (9 Farben x 20 Motive, 84x154 px je Pack) als Data-URI einbetten
-const ou=process.env.HITISOP_ONLINE_URL?`window.__ONLINE_URL__=${JSON.stringify(process.env.HITISOP_ONLINE_URL)};\n`:'';   // optional: feste Server-Adresse für die Doppelklick-Version (npm run build mit HITISOP_ONLINE_URL=https://...)
-const pre=ou+(fs.existsSync(pkp)?`window.__PACKS__="data:image/png;base64,${fs.readFileSync(pkp).toString('base64')}";\n`:'')+(fs.existsSync(pp)?`window.__INTRO_POSTER__="data:image/jpeg;base64,${fs.readFileSync(pp).toString('base64')}";\n`:'')+(fs.existsSync(ip)?`window.__INTRO__="data:video/mp4;base64,${fs.readFileSync(ip).toString('base64')}";\n`:'')+(fs.existsSync(scp)?`window.__SHOPCLIP__=\"data:video/mp4;base64,${fs.readFileSync(scp).toString('base64')}\";\n`:'')+(ca.length?`window.__CARDS__={${ca.join(',')}};\n`:'')+(vi.length?`window.__VIDEOS__={${vi.join(',')}};\n`:'')+(fo.length?`window.__FONTS__={${fo.join(',')}};\n`:'')+(sp.length?`window.__SPRITES__={${sp.join(',')}};\n`:'')+(sx.length?`window.__SFX__={${sx.join(',')}};\n`:'')+(mu.length?`window.__MUSIC__={${mu.join(',')}};\n`:'');
-const js=`${pre}(()=>{'use strict';${out}\n})();`;
-fs.mkdirSync(path.join(root,'dist'),{recursive:true});fs.writeFileSync(path.join(root,'dist/game.js'),js);
-let html=fs.readFileSync(path.join(root,'index.html'),'utf8');const css=fs.readFileSync(path.join(root,'styles/main.css'),'utf8');
-html=html.replace('<link rel="stylesheet" href="styles/main.css">',`<style>${css}</style>`).replace('<script src="dist/game.js"></script>',()=>`<script>${js}</script>`);
-fs.writeFileSync(path.join(root,'dist/hitisop.html'),html);
-fs.writeFileSync(path.join(root,'dist/index.html'),html);   // für Static-Hosting (Render: Publish Directory = dist)
-console.log('Build OK:',(js.length/1024).toFixed(0)+' KB JS -> dist/game.js, dist/hitisop.html');
+{
+  const need = ["assets/packs/CardPacks.png"];
+  for (const id of fs.existsSync(ad) ? fs.readdirSync(ad) : []) {
+    if (
+      fs.existsSync(path.join(ad, id, "meta.json")) ||
+      fs.existsSync(path.join(ad, id, "meta.js"))
+    )
+      need.push("assets/" + id + "/atlas.webp", "assets/" + id + "/meta.json");
+  }
+  const gone = need.filter((f) => !fs.existsSync(path.join(root, f)));
+  if (gone.length) {
+    console.error(
+      "\n=== FEHLER: Diese Spiel-Dateien fehlen im Build (nicht im Git-Repository?) ===\n  " +
+        gone.join("\n  ") +
+        "\nLösung: git add -f assets/   (die .gitignore darf *.png/*.webp unter assets/ nicht ausschließen), committen, pushen.\n",
+    );
+    if (process.env.RENDER || process.env.CI) process.exit(1);
+  }
+}
+const fd = path.join(root, "assets/fonts"),
+  fo = []; // Schriften (assets/fonts/<name>.woff2) als Data-URI einbetten (Canvas + Menü, offline)
+for (const f of fs.existsSync(fd) ? fs.readdirSync(fd).sort() : [])
+  if (f.endsWith(".woff2"))
+    fo.push(
+      `${JSON.stringify(f.slice(0, -6))}:"data:font/woff2;base64,${fs.readFileSync(path.join(fd, f)).toString("base64")}"`,
+    );
+const vd = path.join(root, "assets/video"),
+  vi = []; // Auswahl-Kurzvideos (assets/video/<id>.webm) als Data-URI einbetten
+for (const f of fs.existsSync(vd) ? fs.readdirSync(vd).sort() : [])
+  if (f.endsWith(".webm"))
+    vi.push(
+      `${JSON.stringify(f.slice(0, -5))}:\"data:video/webm;base64,${fs.readFileSync(path.join(vd, f)).toString("base64")}\"`,
+    );
+const ip = path.join(root, "assets/intro/intro.mp4"); // Intro-Video (assets/intro/intro.mp4) als Data-URI einbetten
+const scp = path.join(root, "assets/shop/shopclip.mp4"); // Transfer-Clip beim Betreten des Shops (erste 3,7 s des Händler-Videos)
+const pp = path.join(root, "assets/intro/poster.jpg"); // Standbild fürs Intro (erster Frame), optional
+const cdir = path.join(root, "assets/cards"),
+  ca = []; // Sammelkarten-Bilder (assets/cards/<karten-id>.png|webp|jpg) als Data-URI einbetten
+for (const f of fs.existsSync(cdir) ? fs.readdirSync(cdir).sort() : []) {
+  const m = /^(.+)\.(png|webp|jpe?g)$/i.exec(f);
+  if (m)
+    ca.push(
+      `${JSON.stringify(m[1])}:"data:image/${m[2].toLowerCase().replace("jpg", "jpeg")};base64,${fs.readFileSync(path.join(cdir, f)).toString("base64")}"`,
+    );
+}
+const pkp = path.join(root, "assets/packs/CardPacks.png"); // Pack-Sprites (9 Farben x 20 Motive, 84x154 px je Pack) als Data-URI einbetten
+const ou = process.env.HITISOP_ONLINE_URL
+  ? `window.__ONLINE_URL__=${JSON.stringify(process.env.HITISOP_ONLINE_URL)};\n`
+  : ""; // optional: feste Server-Adresse für die Doppelklick-Version (npm run build mit HITISOP_ONLINE_URL=https://...)
+const pre =
+  ou +
+  (fs.existsSync(pkp)
+    ? `window.__PACKS__="data:image/png;base64,${fs.readFileSync(pkp).toString("base64")}";\n`
+    : "") +
+  (fs.existsSync(pp)
+    ? `window.__INTRO_POSTER__="data:image/jpeg;base64,${fs.readFileSync(pp).toString("base64")}";\n`
+    : "") +
+  (fs.existsSync(ip)
+    ? `window.__INTRO__="data:video/mp4;base64,${fs.readFileSync(ip).toString("base64")}";\n`
+    : "") +
+  (fs.existsSync(scp)
+    ? `window.__SHOPCLIP__=\"data:video/mp4;base64,${fs.readFileSync(scp).toString("base64")}\";\n`
+    : "") +
+  (ca.length ? `window.__CARDS__={${ca.join(",")}};\n` : "") +
+  (vi.length ? `window.__VIDEOS__={${vi.join(",")}};\n` : "") +
+  (fo.length ? `window.__FONTS__={${fo.join(",")}};\n` : "") +
+  (sp.length ? `window.__SPRITES__={${sp.join(",")}};\n` : "") +
+  (sx.length ? `window.__SFX__={${sx.join(",")}};\n` : "") +
+  (mu.length ? `window.__MUSIC__={${mu.join(",")}};\n` : "");
+const js = `${pre}(()=>{'use strict';${out}\n})();`;
+fs.mkdirSync(path.join(root, "dist"), { recursive: true });
+fs.writeFileSync(path.join(root, "dist/game.js"), js);
+let html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const css = fs.readFileSync(path.join(root, "styles/main.css"), "utf8");
+html = html
+  .replace(
+    '<link rel="stylesheet" href="styles/main.css">',
+    `<style>${css}</style>`,
+  )
+  .replace(
+    '<script src="dist/game.js"></script>',
+    () => `<script>${js}</script>`,
+  );
+fs.writeFileSync(path.join(root, "dist/hitisop.html"), html);
+fs.writeFileSync(path.join(root, "dist/index.html"), html); // für Static-Hosting (Render: Publish Directory = dist)
+console.log(
+  "Build OK:",
+  (js.length / 1024).toFixed(0) + " KB JS -> dist/game.js, dist/hitisop.html",
+);

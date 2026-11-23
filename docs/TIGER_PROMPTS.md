@@ -1,12 +1,14 @@
 # Tiger-Sheets: Prompts für Gemini
+
 Für jedes Sheet: **tiger_referenz.png** (Ordner `assets/tiger/referenz/`) an Gemini anhängen, den Prompt einfügen, Bild in höchster Auflösung erzeugen und unter dem **Dateinamen** im Kopf des Abschnitts in `assets/tiger/sheets/` speichern. Dann `TIGER-UPDATE.bat` (Windows) bzw. `tiger-update.sh` doppelklicken.
 **Reihenfolge-Tipp:** Fang mit den ersten acht an (idle_1 … hit) – schon damit sieht der Tiger komplett anders aus. Die restlichen kannst du später nachliefern; was fehlt, bleibt auf den alten Behelfs-Animationen.
-**Wenn die Figur zwischen den Sheets anders aussieht:** hänge zusätzlich das erste gelungene Sheet an und schreibe dazu: *"Keep the character exactly identical to the first attached sheet."*
-**Wenn Frames abgeschnitten sind oder sich berühren:** schreibe dazu: *"Leave much more empty green space between the cells and make the character smaller inside its cell."*
+**Wenn die Figur zwischen den Sheets anders aussieht:** hänge zusätzlich das erste gelungene Sheet an und schreibe dazu: _"Keep the character exactly identical to the first attached sheet."_
+**Wenn Frames abgeschnitten sind oder sich berühren:** schreibe dazu: _"Leave much more empty green space between the cells and make the character smaller inside its cell."_
 
 ---
 
-## 1. Idle, Teil 1 von 2  →  Dateiname: `idle_1.png`  (3×2 = 6 Zellen)
+## 1. Idle, Teil 1 von 2 → Dateiname: `idle_1.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -23,7 +25,8 @@ Output in the highest resolution available.
 
 ---
 
-## 2. Idle, Teil 2 von 2  →  Dateiname: `idle_2.png`  (3×2 = 6 Zellen)
+## 2. Idle, Teil 2 von 2 → Dateiname: `idle_2.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -40,7 +43,8 @@ Output in the highest resolution available.
 
 ---
 
-## 3. Gehen, Teil 1 von 2  →  Dateiname: `walk_1.png`  (3×2 = 6 Zellen)
+## 3. Gehen, Teil 1 von 2 → Dateiname: `walk_1.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -57,7 +61,8 @@ Output in the highest resolution available.
 
 ---
 
-## 4. Gehen, Teil 2 von 2  →  Dateiname: `walk_2.png`  (3×2 = 6 Zellen)
+## 4. Gehen, Teil 2 von 2 → Dateiname: `walk_2.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -74,7 +79,8 @@ Output in the highest resolution available.
 
 ---
 
-## 5. Leichter Schlag (Jab)  →  Dateiname: `punch.png`  (3×2 = 6 Zellen)
+## 5. Leichter Schlag (Jab) → Dateiname: `punch.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -91,7 +97,8 @@ Output in the highest resolution available.
 
 ---
 
-## 6. Tritt  →  Dateiname: `kick.png`  (3×2 = 6 Zellen)
+## 6. Tritt → Dateiname: `kick.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -108,7 +115,8 @@ Output in the highest resolution available.
 
 ---
 
-## 7. Sprung  →  Dateiname: `jump.png`  (3×2 = 6 Zellen)
+## 7. Sprung → Dateiname: `jump.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -125,7 +133,8 @@ Output in the highest resolution available.
 
 ---
 
-## 8. Treffer  →  Dateiname: `hit.png`  (3×2 = 6 Zellen)
+## 8. Treffer → Dateiname: `hit.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -142,7 +151,8 @@ Output in the highest resolution available.
 
 ---
 
-## 9. Schwerer Schlag  →  Dateiname: `heavy.png`  (3×2 = 6 Zellen)
+## 9. Schwerer Schlag → Dateiname: `heavy.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -159,7 +169,8 @@ Output in the highest resolution available.
 
 ---
 
-## 10. Ducken  →  Dateiname: `crouch.png`  (3×2 = 6 Zellen)
+## 10. Ducken → Dateiname: `crouch.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -176,7 +187,8 @@ Output in the highest resolution available.
 
 ---
 
-## 11. Duck-Angriffe  →  Dateiname: `crouch_atk.png`  (3×2 = 6 Zellen)
+## 11. Duck-Angriffe → Dateiname: `crouch_atk.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -193,7 +205,8 @@ Output in the highest resolution available.
 
 ---
 
-## 12. Luft-Angriffe  →  Dateiname: `air_atk.png`  (4×2 = 8 Zellen)
+## 12. Luft-Angriffe → Dateiname: `air_atk.png` (4×2 = 8 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -210,7 +223,8 @@ Output in the highest resolution available.
 
 ---
 
-## 13. Dash  →  Dateiname: `dash.png`  (3×2 = 6 Zellen)
+## 13. Dash → Dateiname: `dash.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -227,7 +241,8 @@ Output in the highest resolution available.
 
 ---
 
-## 14. Rising Claw (Aufwärts-Klaue)  →  Dateiname: `claw.png`  (4×2 = 8 Zellen)
+## 14. Rising Claw (Aufwärts-Klaue) → Dateiname: `claw.png` (4×2 = 8 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -244,7 +259,8 @@ Output in the highest resolution available.
 
 ---
 
-## 15. Energie-Special  →  Dateiname: `special.png`  (4×2 = 8 Zellen)
+## 15. Energie-Special → Dateiname: `special.png` (4×2 = 8 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -261,7 +277,8 @@ Output in the highest resolution available.
 
 ---
 
-## 16. Block  →  Dateiname: `block.png`  (3×2 = 6 Zellen)
+## 16. Block → Dateiname: `block.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -278,7 +295,8 @@ Output in the highest resolution available.
 
 ---
 
-## 17. Knockdown / KO  →  Dateiname: `down.png`  (4×2 = 8 Zellen)
+## 17. Knockdown / KO → Dateiname: `down.png` (4×2 = 8 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -295,7 +313,8 @@ Output in the highest resolution available.
 
 ---
 
-## 18. Aufstehen  →  Dateiname: `getup.png`  (3×2 = 6 Zellen)
+## 18. Aufstehen → Dateiname: `getup.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
@@ -312,7 +331,8 @@ Output in the highest resolution available.
 
 ---
 
-## 19. Siegerpose  →  Dateiname: `win.png`  (3×2 = 6 Zellen)
+## 19. Siegerpose → Dateiname: `win.png` (3×2 = 6 Zellen)
+
 ```text
 Reference: the attached image shows the exact character – a muscular blue anthropomorphic tiger martial artist (blue fur with darker stripes, white chest and muzzle, bare torso, dark-blue karate pants with a dark belt, bare clawed feet, long striped tail). Keep face, stripes, proportions and outfit identical in every cell. Ignore the green background of the reference.
 
