@@ -1,1 +1,10 @@
-{"name":"hitisop-dom-tests","private":true,"type":"module","devDependencies":{"jsdom":"*","canvas":"*","fake-indexeddb":"*"}}
+{
+  "name": "hitisop-dom-tests",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "jsdom": "*",
+    "canvas": "*",
+    "fake-indexeddb": "*"
+  }
+}
