@@ -15,15 +15,11 @@ const ok=n=>console.log('  ✓',n);
  const x=T.block(300,380,GROUND-90);assert.ok(x<=350-TERRAIN_HALF,'Treppe: höhere Stufe blockt die 90er Ebene (x='+x+')');
  assert.equal(T.block(500,500,GROUND),500);assert.equal(new Terrain([]).block(0,50,GROUND),50);
  assert.equal(new Terrain([{x0:600,x1:200,h:50}]).heightAt(400),50,'x0/x1 vertauscht ist ok');ok('Geometrie: Höhe, Wand von beiden Seiten, Treppe, Füße über der Kante')}
-// ---- Kapitel-Daten: alle Level sinnvoll ----
-{for(const c of CHAPTERS){assert.ok(!c.hurdles,'Kapitel '+c.id+': Hindernisse (Kisten) sind entfernt');assert.ok(c.ledges&&c.ledges.length>=2,'Kapitel '+c.id+': hat Kanten');
-  const T=new Terrain(c.ledges);
-  for(const l of c.ledges){assert.ok(l.x0>-400&&l.x1<LV.x1-300,`Kapitel ${c.id}: Kante ${l.x0}..${l.x1} im Level, nicht am Start/Händler`);assert.ok(l.h>=60&&l.h<=200,`Kapitel ${c.id}: Höhe ${l.h} ist gut hochspringbar`);assert.ok(l.x1-l.x0>=120)}
-  // jede Stufe ist von der darunterliegenden Ebene aus erreichbar (Sprunghöhe des schwächsten Springers ~ 216)
-  for(const l of c.ledges){const below=T.heightAt(l.x0-TERRAIN_HALF-4);assert.ok(l.h-below<=120,`Kapitel ${c.id}: Stufe an ${l.x0} (${l.h-below} px) ist zu hoch`)}
-  // Boss-Welle (letzte) und Start liegen auf ebenem Boden
-  assert.equal(T.heightAt(LV.start),0);assert.equal(T.heightAt(c.enc.at(-1).x),0,'Kapitel '+c.id+': Boss-Arena (Mitte) ist eben')}
- ok('Alle '+CHAPTERS.length+' Kapitel: Kanten statt Kisten, Höhen/Stufen erreichbar, Start + Boss-Mitte eben')}
+// ---- Kapitel-Daten: die Straße ist frei von festen Hindernissen (Kanten wurden entfernt; die Parkour-Gebäude bleiben) ----
+{for(const c of CHAPTERS){assert.ok(!c.hurdles,'Kapitel '+c.id+': Hindernisse (Kisten) sind entfernt');assert.deepEqual(c.ledges,[],'Kapitel '+c.id+': keine Kanten/Hindernisse auf der Straße');
+  const T=new Terrain(c.ledges);assert.equal(T.heightAt(LV.start),0);assert.equal(T.heightAt(c.enc.at(-1).x),0,'Kapitel '+c.id+': Boss-Arena (Mitte) ist eben');
+  assert.ok(c.parkour&&c.parkour.segs&&c.parkour.deco,'Kapitel '+c.id+': Parkour-Gebäude bleibt')}
+ ok('Alle '+CHAPTERS.length+' Kapitel: Straße frei von Hindernissen, Parkour-Gebäude bleiben')}
 // ---- Physik im echten Story-Level ----
 const mk=(ch=1)=>{const dummy=new AIController(0),ctl={dx:0,dy:0};
  const p1=new Fighter({char:CHARACTERS.tiger,x:340,facing:1,input:dummy}),p2=new Fighter({char:CHARACTERS.tiger,x:620,facing:-1,input:new AIController(0)});
