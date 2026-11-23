@@ -2,870 +2,227 @@
 // gleiche Maßstab-/Ankerlogik. Die Oberfläche (Upload, Vorschau, Speichern) steht in render/customstudio.js.
 // Ablauf: Hintergrund entfernen -> Sheet in Zellen schneiden -> Zelle 1 (neutrale Haltung) bestimmt den Maßstab -> je Frame Fußlinie + Körpermitte ankern
 // -> Animationen aus den vorhandenen Sheets bauen, Lücken mit Behelfen füllen -> Figurenwerte (Name, Moveset-Vorlage, Stats).
-export const CUS_STAND_H = 300,
-  CUS_AIR_CENTER = 105,
-  CUS_A_BODY = 48,
-  CUS_A_TRIM = 8,
-  CUS_ATLAS_W = 4096;
+export const CUS_STAND_H=300,CUS_AIR_CENTER=105,CUS_A_BODY=48,CUS_A_TRIM=8,CUS_ATLAS_W=4096;
 // Sheets: key, Spalten, Zeilen, Beschriftung, core = zum Start empfohlen. Lesereihenfolge links->rechts, oben->unten; Zelle 1 = neutrale Kampfhaltung (Referenz für den Maßstab).
-export const CUS_SHEETS = [
-  {
-    key: "idle_1",
-    c: 3,
-    r: 2,
-    core: 1,
-    label: "Idle – Teil 1",
-    hint: "Atmen/Wippen in Kampfhaltung (Pflicht)",
-  },
-  {
-    key: "idle_2",
-    c: 3,
-    r: 2,
-    core: 1,
-    label: "Idle – Teil 2",
-    hint: "Fortsetzung, Schleife",
-  },
-  {
-    key: "walk_1",
-    c: 3,
-    r: 2,
-    core: 1,
-    label: "Gehen – Teil 1",
-    hint: "Laufzyklus vorwärts",
-  },
-  {
-    key: "walk_2",
-    c: 3,
-    r: 2,
-    core: 1,
-    label: "Gehen – Teil 2",
-    hint: "Laufzyklus, andere Seite",
-  },
-  { key: "punch", c: 3, r: 2, core: 1, label: "Leichter Schlag", hint: "Jab" },
-  { key: "kick", c: 3, r: 2, core: 1, label: "Tritt", hint: "High Kick" },
-  {
-    key: "jump",
-    c: 3,
-    r: 2,
-    core: 1,
-    label: "Sprung",
-    hint: "Steigen, Scheitel, Fallen",
-  },
-  {
-    key: "hit",
-    c: 3,
-    r: 2,
-    core: 1,
-    label: "Treffer",
-    hint: "Leicht & schwer getroffen",
-  },
-  { key: "heavy", c: 3, r: 2, label: "Schwerer Schlag", hint: "" },
-  { key: "crouch", c: 3, r: 2, label: "Ducken", hint: "inkl. Duck-Block" },
-  {
-    key: "crouch_atk",
-    c: 3,
-    r: 2,
-    label: "Duck-Angriffe",
-    hint: "Schlag + Fußfeger",
-  },
-  {
-    key: "air_atk",
-    c: 4,
-    r: 2,
-    label: "Luft-Angriffe",
-    hint: "Schlag, Tritt, Überkopf",
-  },
-  { key: "dash", c: 3, r: 2, label: "Dash", hint: "Boden- und Luft-Dash" },
-  { key: "claw", c: 4, r: 2, label: "Aufwärts-Special", hint: "Rising-Move" },
-  { key: "special", c: 4, r: 2, label: "Energie-Special", hint: "" },
-  {
-    key: "hyper",
-    c: 4,
-    r: 2,
-    label: "Hyper-Special",
-    hint: "Super-Move, größer als der Energie-Special",
-  },
-  { key: "block", c: 3, r: 2, label: "Block", hint: "" },
-  {
-    key: "down",
-    c: 4,
-    r: 2,
-    label: "Knockdown / KO",
-    hint: "Fliegen, Fallen, Liegen",
-  },
-  { key: "getup", c: 3, r: 2, label: "Aufstehen", hint: "" },
-  { key: "win", c: 3, r: 2, label: "Siegerpose", hint: "" },
-];
-export const CUS_GRID = {};
-for (const s of CUS_SHEETS) CUS_GRID[s.key] = [s.c, s.r];
+export const CUS_SHEETS=[
+ {key:'idle_1',c:3,r:2,core:1,label:'Idle – Teil 1',hint:'Atmen/Wippen in Kampfhaltung (Pflicht)'},
+ {key:'idle_2',c:3,r:2,core:1,label:'Idle – Teil 2',hint:'Fortsetzung, Schleife'},
+ {key:'walk_1',c:3,r:2,core:1,label:'Gehen – Teil 1',hint:'Laufzyklus vorwärts'},
+ {key:'walk_2',c:3,r:2,core:1,label:'Gehen – Teil 2',hint:'Laufzyklus, andere Seite'},
+ {key:'punch',c:3,r:2,core:1,label:'Leichter Schlag',hint:'Jab'},
+ {key:'kick',c:3,r:2,core:1,label:'Tritt',hint:'High Kick'},
+ {key:'jump',c:3,r:2,core:1,label:'Sprung',hint:'Steigen, Scheitel, Fallen'},
+ {key:'hit',c:3,r:2,core:1,label:'Treffer',hint:'Leicht & schwer getroffen'},
+ {key:'heavy',c:3,r:2,label:'Schwerer Schlag',hint:''},
+ {key:'crouch',c:3,r:2,label:'Ducken',hint:'inkl. Duck-Block'},
+ {key:'crouch_atk',c:3,r:2,label:'Duck-Angriffe',hint:'Schlag + Fußfeger'},
+ {key:'air_atk',c:4,r:2,label:'Luft-Angriffe',hint:'Schlag, Tritt, Überkopf'},
+ {key:'dash',c:3,r:2,label:'Dash',hint:'Boden- und Luft-Dash'},
+ {key:'claw',c:4,r:2,label:'Aufwärts-Special',hint:'Rising-Move'},
+ {key:'special',c:4,r:2,label:'Energie-Special',hint:''},
+ {key:'hyper',c:4,r:2,label:'Hyper-Special',hint:'Super-Move, größer als der Energie-Special'},
+ {key:'block',c:3,r:2,label:'Block',hint:''},
+ {key:'down',c:4,r:2,label:'Knockdown / KO',hint:'Fliegen, Fallen, Liegen'},
+ {key:'getup',c:3,r:2,label:'Aufstehen',hint:''},
+ {key:'win',c:3,r:2,label:'Siegerpose',hint:''}];
+export const CUS_GRID={};for(const s of CUS_SHEETS)CUS_GRID[s.key]=[s.c,s.r];
 // Fliegende Treffer-Frames: Körpermitte statt Fußlinie verankern
-const CUS_CENTER = new Set(["down:1", "down:2", "down:3"]);
+const CUS_CENTER=new Set(['down:1','down:2','down:3']);
 // Spiel-Animation -> Frames [Sheet,[Zellen ab 0]]; erster Teil ist Pflicht, weitere Teile sind optional (fehlen sie, läuft die Animation kürzer)
-export const CUS_ANIMS = {
-  idle: {
-    parts: [
-      ["idle_1", [0, 1, 2, 3, 4, 5]],
-      ["idle_2", [1, 2, 3, 4, 5]],
-    ],
-    loop: 1,
-    fps: 12,
-  },
-  walk: {
-    parts: [
-      ["walk_1", [1, 2, 3, 4, 5]],
-      ["walk_2", [1, 2, 3, 4, 5]],
-    ],
-    loop: 1,
-    fps: 16,
-  },
-  dash: { parts: [["dash", [2, 3]]], loop: 1, fps: 12, lean: 0.04 },
-  airdash: { parts: [["dash", [4, 5]]], loop: 1, fps: 12, lean: 0.1 },
-  air: { parts: [["jump", [1, 2, 3, 4, 5]]] },
-  crouch: { parts: [["crouch", [2, 3]]], loop: 1, fps: 4 },
-  cblock: { parts: [["crouch", [4]]] },
-  punch: { parts: [["punch", [1, 2, 3, 4, 5]]] },
-  heavy: { parts: [["heavy", [1, 2, 3, 4, 5]]] },
-  kick: { parts: [["kick", [1, 2, 3, 4, 5]]] },
-  cpunch: { parts: [["crouch_atk", [1, 2, 2]]] },
-  ckick: { parts: [["crouch_atk", [3, 4, 4, 5]]] },
-  jpunch: { parts: [["air_atk", [1, 2, 2]]] },
-  jkick: { parts: [["air_atk", [3, 4, 5]]] },
-  jheavy: { parts: [["air_atk", [6, 7, 7]]] },
-  upper: { parts: [["claw", [1, 2, 3, 4, 5, 6, 7]]] },
-  special: { parts: [["special", [1, 2, 3, 4, 5, 6, 7]]] },
-  hyper: { parts: [["hyper", [1, 2, 3, 4, 5, 6, 7]]] },
-  hit: { parts: [["hit", [1, 2, 3, 4]]] },
-  airhit: { parts: [["down", [1, 2, 3]]] },
-  kd: { parts: [["down", [4, 5, 6, 7]]] },
-  wakeup: { parts: [["getup", [1, 2, 3, 4, 5]]] },
-  block: { parts: [["block", [2]]] },
-  win: { parts: [["win", [1, 2, 3, 4, 5]]], loop: 1, fps: 5 },
-};
+export const CUS_ANIMS={
+ idle:{parts:[['idle_1',[0,1,2,3,4,5]],['idle_2',[1,2,3,4,5]]],loop:1,fps:12},
+ walk:{parts:[['walk_1',[1,2,3,4,5]],['walk_2',[1,2,3,4,5]]],loop:1,fps:16},
+ dash:{parts:[['dash',[2,3]]],loop:1,fps:12,lean:.04},airdash:{parts:[['dash',[4,5]]],loop:1,fps:12,lean:.1},
+ air:{parts:[['jump',[1,2,3,4,5]]]},crouch:{parts:[['crouch',[2,3]]],loop:1,fps:4},cblock:{parts:[['crouch',[4]]]},
+ punch:{parts:[['punch',[1,2,3,4,5]]]},heavy:{parts:[['heavy',[1,2,3,4,5]]]},kick:{parts:[['kick',[1,2,3,4,5]]]},
+ cpunch:{parts:[['crouch_atk',[1,2,2]]]},ckick:{parts:[['crouch_atk',[3,4,4,5]]]},
+ jpunch:{parts:[['air_atk',[1,2,2]]]},jkick:{parts:[['air_atk',[3,4,5]]]},jheavy:{parts:[['air_atk',[6,7,7]]]},
+ upper:{parts:[['claw',[1,2,3,4,5,6,7]]]},special:{parts:[['special',[1,2,3,4,5,6,7]]]},hyper:{parts:[['hyper',[1,2,3,4,5,6,7]]]},
+ hit:{parts:[['hit',[1,2,3,4]]]},airhit:{parts:[['down',[1,2,3]]]},kd:{parts:[['down',[4,5,6,7]]]},wakeup:{parts:[['getup',[1,2,3,4,5]]]},
+ block:{parts:[['block',[2]]]},win:{parts:[['win',[1,2,3,4,5]]],loop:1,fps:5}};
 // Namen für die Vorschau-Auswahl
-export const CUS_ANIM_LABELS = {
-  idle: "Idle",
-  walk: "Gehen",
-  air: "Sprung",
-  crouch: "Ducken",
-  dash: "Dash",
-  airdash: "Luft-Dash",
-  punch: "Schlag",
-  heavy: "Schwerer Schlag",
-  kick: "Tritt",
-  cpunch: "Duck-Schlag",
-  ckick: "Fußfeger",
-  jpunch: "Luft-Schlag",
-  jkick: "Luft-Tritt",
-  jheavy: "Luft-Überkopf",
-  upper: "Aufwärts-Special",
-  special: "Energie-Special",
-  hyper: "Hyper-Special",
-  hit: "Treffer",
-  airhit: "Luft-Treffer",
-  kd: "Knockdown",
-  wakeup: "Aufstehen",
-  block: "Block",
-  cblock: "Duck-Block",
-  win: "Sieg",
-};
-export function cusNeededCells() {
-  const need = {};
-  for (const a of Object.values(CUS_ANIMS))
-    for (const [sh, idx] of a.parts) {
-      need[sh] || (need[sh] = new Set());
-      idx.forEach((i) => need[sh].add(i));
-    }
-  return need;
-}
+export const CUS_ANIM_LABELS={idle:'Idle',walk:'Gehen',air:'Sprung',crouch:'Ducken',dash:'Dash',airdash:'Luft-Dash',punch:'Schlag',heavy:'Schwerer Schlag',kick:'Tritt',cpunch:'Duck-Schlag',ckick:'Fußfeger',jpunch:'Luft-Schlag',jkick:'Luft-Tritt',jheavy:'Luft-Überkopf',upper:'Aufwärts-Special',special:'Energie-Special',hyper:'Hyper-Special',hit:'Treffer',airhit:'Luft-Treffer',kd:'Knockdown',wakeup:'Aufstehen',block:'Block',cblock:'Duck-Block',win:'Sieg'};
+export function cusNeededCells(){const need={};for(const a of Object.values(CUS_ANIMS))for(const[sh,idx]of a.parts){(need[sh]||(need[sh]=new Set()));idx.forEach(i=>need[sh].add(i))}return need}
 
 // ---------- Hintergrund entfernen (RGBA in-place) ----------
 // Reihenfolge: vorhandene Transparenz -> Chroma-Grün (#00FF00) -> Hintergrundfarbe der Ecken (nur was mit dem Rand verbunden ist)
-export function cusKeyOut(d, w, h) {
-  const n = w * h;
-  let tr = 0,
-    gr = 0;
-  for (let i = 0; i < n; i++) if (d[i * 4 + 3] < 250) tr++;
-  if (tr / n > 0.02) return "Transparenz";
-  for (let i = 0; i < n; i++) {
-    const r = d[i * 4],
-      g = d[i * 4 + 1],
-      b = d[i * 4 + 2];
-    if (g - Math.max(r, b) > 100) gr++;
-  }
-  if (gr / n > 0.15) {
-    for (let i = 0; i < n; i++) {
-      const o = i * 4,
-        r = d[o],
-        g = d[o + 1],
-        b = d[o + 2],
-        m = Math.max(r, b),
-        dd = g - m;
-      d[o + 3] = Math.round(Math.min(1, Math.max(0, (70 - dd) / 40)) * 255);
-      if (dd > 0) d[o + 1] = m;
-    } // Grün-Saum entfernen
-    return "Chroma-Grün";
-  }
-  // Notlösung: Hintergrundfarbe = Median des Rands, Flutfüllung vom Rand aus
-  const edge = [];
-  for (let x = 0; x < w; x++) {
-    edge.push(x * 4, ((h - 1) * w + x) * 4);
-  }
-  for (let y = 0; y < h; y++) {
-    edge.push(y * w * 4, (y * w + w - 1) * 4);
-  }
-  const med = (c) => {
-      const a = edge.map((o) => d[o + c]).sort((p, q) => p - q);
-      return a[a.length >> 1];
-    },
-    bg = [med(0), med(1), med(2)];
-  const near = (i) => {
-    const o = i * 4;
-    return (
-      Math.max(
-        Math.abs(d[o] - bg[0]),
-        Math.abs(d[o + 1] - bg[1]),
-        Math.abs(d[o + 2] - bg[2]),
-      ) < 38
-    );
-  };
-  const seen = new Uint8Array(n),
-    st = new Int32Array(n);
-  let sp = 0;
-  const push = (i) => {
-    if (!seen[i] && near(i)) {
-      seen[i] = 1;
-      st[sp++] = i;
-    }
-  };
-  for (let x = 0; x < w; x++) {
-    push(x);
-    push((h - 1) * w + x);
-  }
-  for (let y = 0; y < h; y++) {
-    push(y * w);
-    push(y * w + w - 1);
-  }
-  while (sp) {
-    const i = st[--sp],
-      x = i % w,
-      y = (i - x) / w;
-    if (x > 0) push(i - 1);
-    if (x < w - 1) push(i + 1);
-    if (y > 0) push(i - w);
-    if (y < h - 1) push(i + w);
-  }
-  for (let i = 0; i < n; i++) d[i * 4 + 3] = seen[i] ? 0 : 255;
-  return "Hintergrundfarbe der Ecken";
-}
+export function cusKeyOut(d,w,h){const n=w*h;let tr=0,gr=0;
+ for(let i=0;i<n;i++)if(d[i*4+3]<250)tr++;
+ if(tr/n>.02)return'Transparenz';
+ for(let i=0;i<n;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2];if(g-Math.max(r,b)>100)gr++}
+ if(gr/n>.15){
+  for(let i=0;i<n;i++){const o=i*4,r=d[o],g=d[o+1],b=d[o+2],m=Math.max(r,b),dd=g-m;
+   d[o+3]=Math.round(Math.min(1,Math.max(0,(70-dd)/40))*255);if(dd>0)d[o+1]=m}   // Grün-Saum entfernen
+  return'Chroma-Grün'}
+ // Notlösung: Hintergrundfarbe = Median des Rands, Flutfüllung vom Rand aus
+ const edge=[];for(let x=0;x<w;x++){edge.push((x)*4,((h-1)*w+x)*4)}for(let y=0;y<h;y++){edge.push((y*w)*4,(y*w+w-1)*4)}
+ const med=c=>{const a=edge.map(o=>d[o+c]).sort((p,q)=>p-q);return a[a.length>>1]},bg=[med(0),med(1),med(2)];
+ const near=i=>{const o=i*4;return Math.max(Math.abs(d[o]-bg[0]),Math.abs(d[o+1]-bg[1]),Math.abs(d[o+2]-bg[2]))<38};
+ const seen=new Uint8Array(n),st=new Int32Array(n);let sp=0;
+ const push=i=>{if(!seen[i]&&near(i)){seen[i]=1;st[sp++]=i}};
+ for(let x=0;x<w;x++){push(x);push((h-1)*w+x)}for(let y=0;y<h;y++){push(y*w);push(y*w+w-1)}
+ while(sp){const i=st[--sp],x=i%w,y=(i-x)/w;if(x>0)push(i-1);if(x<w-1)push(i+1);if(y>0)push(i-w);if(y<h-1)push(i+w)}
+ for(let i=0;i<n;i++)d[i*4+3]=seen[i]?0:255;
+ return'Hintergrundfarbe der Ecken'}
 
 // ---------- Raster ----------
-function cusRuns(p) {
-  const r = [];
-  let i = 0;
-  const n = p.length;
-  while (i < n) {
-    if (p[i] > 0) {
-      let j = i,
-        m = 0;
-      while (j < n && p[j] > 0) {
-        m += p[j];
-        j++;
-      }
-      r.push([i, j, m]);
-      i = j;
-    } else i++;
-  }
-  return r;
-}
-function cusPick(p, n) {
-  let r = cusRuns(p);
-  if (r.length > n) {
-    let mx = 0;
-    for (const x of r) if (x[2] > mx) mx = x[2];
-    const big = r.filter((x) => x[2] >= 0.03 * mx);
-    if (big.length >= n) r = big;
-  }
-  while (r.length > n) {
-    let k = 0,
-      bg = Infinity;
-    for (let i = 0; i < r.length - 1; i++) {
-      const g = r[i + 1][0] - r[i][1];
-      if (g < bg) {
-        bg = g;
-        k = i;
-      }
-    }
-    r[k][1] = r[k + 1][1];
-    r[k][2] += r[k + 1][2];
-    r.splice(k + 1, 1);
-  }
-  return r.length === n ? r : null;
-}
-function cusBounds(r, total, n) {
-  if (!r)
-    return [
-      Array.from({ length: n + 1 }, (_, i) => Math.round((i * total) / n)),
-      false,
-    ];
-  const b = [0];
-  for (let i = 0; i < n - 1; i++) b.push((r[i][1] + r[i + 1][0]) >> 1);
-  b.push(total);
-  return [b, true];
-}
+function cusRuns(p){const r=[];let i=0;const n=p.length;while(i<n){if(p[i]>0){let j=i,m=0;while(j<n&&p[j]>0){m+=p[j];j++}r.push([i,j,m]);i=j}else i++}return r}
+function cusPick(p,n){let r=cusRuns(p);
+ if(r.length>n){let mx=0;for(const x of r)if(x[2]>mx)mx=x[2];const big=r.filter(x=>x[2]>=.03*mx);if(big.length>=n)r=big}
+ while(r.length>n){let k=0,bg=Infinity;for(let i=0;i<r.length-1;i++){const g=r[i+1][0]-r[i][1];if(g<bg){bg=g;k=i}}r[k][1]=r[k+1][1];r[k][2]+=r[k+1][2];r.splice(k+1,1)}
+ return r.length===n?r:null}
+function cusBounds(r,total,n){if(!r)return[Array.from({length:n+1},(_,i)=>Math.round(i*total/n)),false];
+ const b=[0];for(let i=0;i<n-1;i++)b.push((r[i][1]+r[i+1][0])>>1);b.push(total);return[b,true]}
 // Zellen [x0,y0,x1,y1]; ok=false: Lücken zwischen den Frames nicht gefunden, gleichmäßig geteilt
-export function cusSliceCells(d, w, h, cols, rows) {
-  const rowSum = new Float64Array(h);
-  for (let y = 0; y < h; y++) {
-    let s = 0;
-    for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > CUS_A_BODY) s++;
-    rowSum[y] = s;
-  }
-  const [yb, okY] = cusBounds(cusPick(rowSum, rows), h, rows);
-  let ok = okY;
-  const cells = [];
-  for (let r = 0; r < rows; r++) {
-    const colSum = new Float64Array(w);
-    for (let y = yb[r]; y < yb[r + 1]; y++)
-      for (let x = 0; x < w; x++)
-        if (d[(y * w + x) * 4 + 3] > CUS_A_BODY) colSum[x]++;
-    const [xb, okX] = cusBounds(cusPick(colSum, cols), w, cols);
-    ok = ok && okX;
-    for (let c = 0; c < cols; c++)
-      cells.push([xb[c], yb[r], xb[c + 1], yb[r + 1]]);
-  }
-  return { cells, ok };
-}
+export function cusSliceCells(d,w,h,cols,rows){
+ const rowSum=new Float64Array(h);for(let y=0;y<h;y++){let s=0;for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>CUS_A_BODY)s++;rowSum[y]=s}
+ const[yb,okY]=cusBounds(cusPick(rowSum,rows),h,rows);let ok=okY;const cells=[];
+ for(let r=0;r<rows;r++){const colSum=new Float64Array(w);
+  for(let y=yb[r];y<yb[r+1];y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>CUS_A_BODY)colSum[x]++;
+  const[xb,okX]=cusBounds(cusPick(colSum,cols),w,cols);ok=ok&&okX;
+  for(let c=0;c<cols;c++)cells.push([xb[c],yb[r],xb[c+1],yb[r+1]])}
+ return{cells,ok}}
 // Zuschnitt (inkl. Leuchten), Körperhöhe/Fußlinie (Alpha > 48) und horizontaler Schwerpunkt (Median) einer Zelle; null = leer
-export function cusMeasureCell(d, w, x0, y0, x1, y1) {
-  let tx0 = 1e9,
-    tx1 = -1,
-    ty0 = 1e9,
-    ty1 = -1,
-    bt = 1e9,
-    bb = -1,
-    edge = false;
-  const col = new Float64Array(x1 - x0);
-  let tot = 0;
-  for (let y = y0; y < y1; y++)
-    for (let x = x0; x < x1; x++) {
-      const a = d[(y * w + x) * 4 + 3];
-      if (a > CUS_A_TRIM) {
-        if (x < tx0) tx0 = x;
-        if (x > tx1) tx1 = x;
-        if (y < ty0) ty0 = y;
-        if (y > ty1) ty1 = y;
-      }
-      if (a > CUS_A_BODY) {
-        if (y < bt) bt = y;
-        if (y > bb) bb = y;
-        col[x - x0]++;
-        tot++;
-        if (y === y0 || y === y1 - 1 || x === x0 || x === x1 - 1) edge = true;
-      }
-    }
-  if (bb < 0) return null;
-  let acc = 0,
-    anchor = x0;
-  for (let i = 0; i < col.length; i++) {
-    acc += col[i];
-    if (acc >= tot / 2) {
-      anchor = x0 + i;
-      break;
-    }
-  }
-  return {
-    crop: [
-      Math.max(tx0 - 2, x0),
-      Math.max(ty0 - 2, y0),
-      Math.min(tx1 + 3, x1),
-      Math.min(ty1 + 3, y1),
-    ],
-    top: bt,
-    foot: bb + 1,
-    anchor,
-    edge,
-  };
-}
+export function cusMeasureCell(d,w,x0,y0,x1,y1){
+ let tx0=1e9,tx1=-1,ty0=1e9,ty1=-1,bt=1e9,bb=-1,edge=false;const col=new Float64Array(x1-x0);let tot=0;
+ for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const a=d[(y*w+x)*4+3];
+  if(a>CUS_A_TRIM){if(x<tx0)tx0=x;if(x>tx1)tx1=x;if(y<ty0)ty0=y;if(y>ty1)ty1=y}
+  if(a>CUS_A_BODY){if(y<bt)bt=y;if(y>bb)bb=y;col[x-x0]++;tot++;if(y===y0||y===y1-1||x===x0||x===x1-1)edge=true}}
+ if(bb<0)return null;let acc=0,anchor=x0;for(let i=0;i<col.length;i++){acc+=col[i];if(acc>=tot/2){anchor=x0+i;break}}
+ return{crop:[Math.max(tx0-2,x0),Math.max(ty0-2,y0),Math.min(tx1+3,x1),Math.min(ty1+3,y1)],top:bt,foot:bb+1,anchor,edge}}
 // Plan für ein Sheet: welche Bereiche mit welchem Maßstab/Anker in den Atlas kommen. need = Zell-Indizes (Set/Array), sonst alle benutzten.
-export function cusPlanSheet(key, d, w, h, need) {
-  const [cols, rows] = CUS_GRID[key];
-  const idxs = [...(need || cusNeededCells()[key] || [])].sort((a, b) => a - b);
-  const notes = [];
-  const { cells, ok } = cusSliceCells(d, w, h, cols, rows),
-    ms = cells.map((c) => cusMeasureCell(d, w, c[0], c[1], c[2], c[3]));
-  if (!ms[0])
-    return {
-      error: "Zelle 1 ist leer – dort muss die neutrale Kampfhaltung stehen",
-      notes,
-      frames: [],
-    };
-  if (!ok)
-    notes.push(
-      "Raster gleichmäßig geteilt – Frames liegen evtl. nicht sauber in den Zellen (mehr Abstand zwischen den Zellen lassen)",
-    );
-  const href = ms[0].foot - ms[0].top,
-    s = CUS_STAND_H / href;
-  if (href < 200)
-    notes.push(
-      `Niedrige Auflösung (Standhöhe nur ${href} px, besser ab 300 px) – wirkt weich`,
-    );
-  const frames = [];
-  for (const i of idxs) {
-    const m = ms[i];
-    if (i >= ms.length || !m) {
-      notes.push(`Zelle ${i + 1} ist leer oder fehlt`);
-      continue;
-    }
-    if (m.edge)
-      notes.push(
-        `Zelle ${i + 1}: Figur berührt den Zellrand (evtl. abgeschnitten)`,
-      );
-    const [x0, y0, x1, y1] = m.crop,
-      dw = Math.max(1, Math.round((x1 - x0) * s)),
-      dh = Math.max(1, Math.round((y1 - y0) * s));
-    const center = CUS_CENTER.has(key + ":" + i);
-    frames.push({
-      name: key + "_" + i,
-      sx: x0,
-      sy: y0,
-      sw: x1 - x0,
-      sh: y1 - y0,
-      dw,
-      dh,
-      ox: center ? Math.floor(-dw / 2) : Math.round((x0 - m.anchor) * s),
-      oy: center
-        ? -(CUS_AIR_CENTER + (dh >> 1))
-        : Math.round((y0 - m.foot) * s),
-    });
-  }
-  return { frames, scale: s, href, ok, notes };
-}
+export function cusPlanSheet(key,d,w,h,need){const[cols,rows]=CUS_GRID[key];const idxs=[...(need||cusNeededCells()[key]||[])].sort((a,b)=>a-b);const notes=[];
+ const{cells,ok}=cusSliceCells(d,w,h,cols,rows),ms=cells.map(c=>cusMeasureCell(d,w,c[0],c[1],c[2],c[3]));
+ if(!ms[0])return{error:'Zelle 1 ist leer – dort muss die neutrale Kampfhaltung stehen',notes,frames:[]};
+ if(!ok)notes.push('Raster gleichmäßig geteilt – Frames liegen evtl. nicht sauber in den Zellen (mehr Abstand zwischen den Zellen lassen)');
+ const href=ms[0].foot-ms[0].top,s=CUS_STAND_H/href;
+ if(href<200)notes.push(`Niedrige Auflösung (Standhöhe nur ${href} px, besser ab 300 px) – wirkt weich`);
+ const frames=[];
+ for(const i of idxs){const m=ms[i];if(i>=ms.length||!m){notes.push(`Zelle ${i+1} ist leer oder fehlt`);continue}
+  if(m.edge)notes.push(`Zelle ${i+1}: Figur berührt den Zellrand (evtl. abgeschnitten)`);
+  const[x0,y0,x1,y1]=m.crop,dw=Math.max(1,Math.round((x1-x0)*s)),dh=Math.max(1,Math.round((y1-y0)*s));
+  const center=CUS_CENTER.has(key+':'+i);
+  frames.push({name:key+'_'+i,sx:x0,sy:y0,sw:x1-x0,sh:y1-y0,dw,dh,ox:center?Math.floor(-dw/2):Math.round((x0-m.anchor)*s),oy:center?-(CUS_AIR_CENTER+(dh>>1)):Math.round((y0-m.foot)*s)})}
+ return{frames,scale:s,href,ok,notes}}
 
 // ---------- Animationen ----------
-export function cusBuildAnims(have) {
-  const out = {};
-  for (const k in CUS_ANIMS) {
-    const sp = CUS_ANIMS[k];
-    let fr = [],
-      bad = false;
-    sp.parts.forEach(([sh, idx], pi) => {
-      if (bad) return;
-      const nm = idx.map((i) => sh + "_" + i);
-      if (nm.every((n) => have.has(n))) fr.push(...nm);
-      else if (pi === 0) bad = true;
-    });
-    if (!bad && fr.length) {
-      const o = { ...sp };
-      delete o.parts;
-      out[k] = { ...o, frames: fr };
-    }
-  }
-  return out;
-}
+export function cusBuildAnims(have){const out={};
+ for(const k in CUS_ANIMS){const sp=CUS_ANIMS[k];let fr=[],bad=false;
+  sp.parts.forEach(([sh,idx],pi)=>{if(bad)return;const nm=idx.map(i=>sh+'_'+i);if(nm.every(n=>have.has(n)))fr.push(...nm);else if(pi===0)bad=true});
+  if(!bad&&fr.length){const o={...sp};delete o.parts;out[k]={...o,frames:fr}}}
+ return out}
 // Fehlende Animationen mit Behelfen aus den vorhandenen füllen (wie bei den mitgelieferten Figuren). Braucht mindestens 'idle'.
-export function cusCompleteAnims(A) {
-  if (!A.idle) return null;
-  const O = { ...A },
-    i0 = [A.idle.frames[0]],
-    put = (k, v) => {
-      if (!O[k]) O[k] = { ...v };
-    };
-  const P = A.punch ||
-    A.heavy ||
-    A.kick ||
-    A.upper ||
-    A.special || { frames: i0, lean: 0.14 };
-  put("walk", { frames: A.idle.frames, loop: 1, fps: 22, bob: 4, lean: 0.07 });
-  put("crouch", { frames: i0, squash: 0.74 });
-  put("cblock", { frames: A.block ? A.block.frames : i0, squash: 0.76 });
-  put("air", { frames: i0, lean: 0.05 });
-  put("dash", { frames: i0, lean: 0.1 });
-  put("airdash", { frames: i0, lean: 0.2 });
-  put("punch", P);
-  put("heavy", A.punch || P);
-  put("kick", A.heavy || P);
-  put("upper", A.heavy || P);
-  put("special", A.upper || A.heavy || P);
-  put("hyper", O.special || P);
-  put("cpunch", { ...P, squash: 0.8 });
-  put("ckick", { ...(A.kick || P), squash: 0.8 });
-  put("jpunch", P);
-  put("jkick", A.kick || P);
-  put("jheavy", A.heavy || P);
-  put("hit", { frames: i0, lean: -0.16, shiftX: -12 });
-  put("airhit", { frames: A.hit ? A.hit.frames.slice(-1) : i0, lean: -0.5 });
-  put("block", { frames: i0, lean: 0.05 });
-  put("kd", { frames: i0, lying: 1 });
-  put("wakeup", { frames: i0, lying: 1, rise: 1 });
-  put("win", { frames: A.idle.frames, loop: 1, fps: 6, bob: 3 });
-  return O;
-}
+export function cusCompleteAnims(A){if(!A.idle)return null;const O={...A},i0=[A.idle.frames[0]],put=(k,v)=>{if(!O[k])O[k]={...v}};
+ const P=A.punch||A.heavy||A.kick||A.upper||A.special||{frames:i0,lean:.14};
+ put('walk',{frames:A.idle.frames,loop:1,fps:22,bob:4,lean:.07});
+ put('crouch',{frames:i0,squash:.74});put('cblock',{frames:A.block?A.block.frames:i0,squash:.76});
+ put('air',{frames:i0,lean:.05});put('dash',{frames:i0,lean:.1});put('airdash',{frames:i0,lean:.2});
+ put('punch',P);put('heavy',A.punch||P);put('kick',A.heavy||P);put('upper',A.heavy||P);put('special',A.upper||A.heavy||P);put('hyper',O.special||P);
+ put('cpunch',{...P,squash:.8});put('ckick',{...(A.kick||P),squash:.8});put('jpunch',P);put('jkick',A.kick||P);put('jheavy',A.heavy||P);
+ put('hit',{frames:i0,lean:-.16,shiftX:-12});put('airhit',{frames:A.hit?A.hit.frames.slice(-1):i0,lean:-.5});
+ put('block',{frames:i0,lean:.05});put('kd',{frames:i0,lying:1});put('wakeup',{frames:i0,lying:1,rise:1});put('win',{frames:A.idle.frames,loop:1,fps:6,bob:3});
+ return O}
 
 // ---------- Moves: eigene Assets je Animation (Move-Editor) ----------
 // Jede Animation (Schlag, Tritt, Block, Knockdown …) kann unabhängig vom Sheet-Slot eigene Frames bekommen: moves[key]={frames:[Frame],props:{fps,loop,…}}.
 // Frame={id,img,w,h,ox,oy,air,adj:{s,dx,dy}}: id = eindeutig, Atlas-Name ist 'mv_'+id; img = Bild-Schlüssel (das PNG liegt separat, mehrere Frames dürfen dasselbe Bild nutzen);
 // w/h = Größe im Spiel bei adj.s=1; ox/oy = Versatz (Fußlinie + Körpermitte wie bei den Sheets); air = in der Luft (Körpermitte verankert); adj = Feinabstimmung (Größe, X, Y in Spiel-Pixeln).
 // Priorität im Spiel: Move-Frames > Frames aus den Sheets > Behelf (cusCompleteAnims). Ein Move ohne Frames zählt als „nicht belegt“ (zurück auf Sheet/Behelf).
-export const CUS_MOVE_GROUPS = [
-  ["Bewegung", ["idle", "walk", "air", "crouch", "dash", "airdash"]],
-  [
-    "Angriffe",
-    [
-      "punch",
-      "heavy",
-      "kick",
-      "cpunch",
-      "ckick",
-      "jpunch",
-      "jkick",
-      "jheavy",
-      "upper",
-      "special",
-      "hyper",
-    ],
-  ],
-  ["Reaktionen", ["hit", "airhit", "block", "cblock", "kd", "wakeup", "win"]],
-];
-export const CUS_MOVE_KEYS = CUS_MOVE_GROUPS.flatMap((g) => g[1]);
-export const CUS_MAX_MOVE_FRAMES = 48;
-export const CUS_ADJ_LIMITS = {
-  s: [0.3, 2.5],
-  dx: [-200, 200],
-  dy: [-200, 200],
-};
-export const CUS_ADJ_DEFAULT = { s: 1, dx: 0, dy: 0 };
-const cusNum = (v, [a, b], d) => {
-  v = +v;
-  return Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : d;
-};
-export const cusNewId = () =>
-  Math.random().toString(36).slice(2, 10).padEnd(8, "0");
-export function cusCleanProps(p) {
-  p = p || {};
-  const o = {};
-  if (p.fps != null) o.fps = Math.round(cusNum(p.fps, [1, 60], 12));
-  if (p.loop != null) o.loop = p.loop ? 1 : 0;
-  for (const [k, r] of [
-    ["lean", [-1, 1]],
-    ["squash", [0.3, 1.2]],
-    ["bob", [0, 20]],
-    ["shiftX", [-60, 60]],
-  ])
-    if (p[k] != null && Number.isFinite(+p[k])) o[k] = cusNum(p[k], r, 0);
-  for (const k of ["lying", "rise"]) if (p[k]) o[k] = 1;
-  return o;
-}
+export const CUS_MOVE_GROUPS=[['Bewegung',['idle','walk','air','crouch','dash','airdash']],['Angriffe',['punch','heavy','kick','cpunch','ckick','jpunch','jkick','jheavy','upper','special','hyper']],['Reaktionen',['hit','airhit','block','cblock','kd','wakeup','win']]];
+export const CUS_MOVE_KEYS=CUS_MOVE_GROUPS.flatMap(g=>g[1]);
+export const CUS_MAX_MOVE_FRAMES=48;
+export const CUS_ADJ_LIMITS={s:[.3,2.5],dx:[-200,200],dy:[-200,200]};
+export const CUS_ADJ_DEFAULT={s:1,dx:0,dy:0};
+const cusNum=(v,[a,b],d)=>{v=+v;return Number.isFinite(v)?Math.min(b,Math.max(a,v)):d};
+export const cusNewId=()=>Math.random().toString(36).slice(2,10).padEnd(8,'0');
+export function cusCleanProps(p){p=p||{};const o={};
+ if(p.fps!=null)o.fps=Math.round(cusNum(p.fps,[1,60],12));if(p.loop!=null)o.loop=p.loop?1:0;
+ for(const[k,r]of[['lean',[-1,1]],['squash',[.3,1.2]],['bob',[0,20]],['shiftX',[-60,60]]])if(p[k]!=null&&Number.isFinite(+p[k]))o[k]=cusNum(p[k],r,0);
+ for(const k of['lying','rise'])if(p[k])o[k]=1;return o}
 // Gespeicherte/importierte Move-Daten bereinigen (unbekannte Moves, kaputte IDs, Werte außerhalb der Grenzen)
-export function cusCleanMoves(m) {
-  const out = {};
-  if (!m || typeof m !== "object") return out;
-  const okId = (x) => typeof x === "string" && /^[a-z0-9]{3,16}$/i.test(x);
-  for (const k of CUS_MOVE_KEYS) {
-    const e = m[k];
-    if (!e || !Array.isArray(e.frames)) continue;
-    const seen = new Set(),
-      fr = [];
-    for (const f of e.frames) {
-      if (fr.length >= CUS_MAX_MOVE_FRAMES) break;
-      if (!f || !okId(f.id) || !okId(f.img) || seen.has(f.id)) continue;
-      seen.add(f.id);
-      const a = f.adj || {};
-      fr.push({
-        id: f.id,
-        img: f.img,
-        w: Math.round(cusNum(f.w, [1, 4000], 1)),
-        h: Math.round(cusNum(f.h, [1, 4000], 1)),
-        ox: Math.round(cusNum(f.ox, [-4000, 4000], 0)),
-        oy: Math.round(cusNum(f.oy, [-4000, 4000], 0)),
-        air: !!f.air,
-        adj: {
-          s: cusNum(a.s, CUS_ADJ_LIMITS.s, 1),
-          dx: Math.round(cusNum(a.dx, CUS_ADJ_LIMITS.dx, 0)),
-          dy: Math.round(cusNum(a.dy, CUS_ADJ_LIMITS.dy, 0)),
-        },
-      });
-    }
-    if (fr.length) out[k] = { frames: fr, props: cusCleanProps(e.props) };
-  }
-  return out;
-}
-export const cusMoveName = (id) => "mv_" + id;
+export function cusCleanMoves(m){const out={};if(!m||typeof m!=='object')return out;const okId=x=>typeof x==='string'&&/^[a-z0-9]{3,16}$/i.test(x);
+ for(const k of CUS_MOVE_KEYS){const e=m[k];if(!e||!Array.isArray(e.frames))continue;const seen=new Set(),fr=[];
+  for(const f of e.frames){if(fr.length>=CUS_MAX_MOVE_FRAMES)break;if(!f||!okId(f.id)||!okId(f.img)||seen.has(f.id))continue;seen.add(f.id);
+   const a=f.adj||{};fr.push({id:f.id,img:f.img,w:Math.round(cusNum(f.w,[1,4000],1)),h:Math.round(cusNum(f.h,[1,4000],1)),ox:Math.round(cusNum(f.ox,[-4000,4000],0)),oy:Math.round(cusNum(f.oy,[-4000,4000],0)),air:!!f.air,
+    adj:{s:cusNum(a.s,CUS_ADJ_LIMITS.s,1),dx:Math.round(cusNum(a.dx,CUS_ADJ_LIMITS.dx,0)),dy:Math.round(cusNum(a.dy,CUS_ADJ_LIMITS.dy,0))}})}
+  if(fr.length)out[k]={frames:fr,props:cusCleanProps(e.props)}}
+ return out}
+export const cusMoveName=id=>'mv_'+id;
 // Frame im Spiel: Größe + Versatz inkl. Feinabstimmung (Größe skaliert um den Ankerpunkt)
-export function cusFrameGeom(f) {
-  const a = f.adj || CUS_ADJ_DEFAULT,
-    s = a.s || 1,
-    dx = a.dx || 0,
-    dy = a.dy || 0,
-    dw = Math.max(1, Math.round(f.w * s)),
-    dh = Math.max(1, Math.round(f.h * s));
-  return f.air
-    ? {
-        dw,
-        dh,
-        ox: Math.floor(-dw / 2) + dx,
-        oy: -(CUS_AIR_CENTER + (dh >> 1)) + dy,
-      }
-    : { dw, dh, ox: Math.round(f.ox * s) + dx, oy: Math.round(f.oy * s) + dy };
-}
+export function cusFrameGeom(f){const a=f.adj||CUS_ADJ_DEFAULT,s=a.s||1,dx=a.dx||0,dy=a.dy||0,dw=Math.max(1,Math.round(f.w*s)),dh=Math.max(1,Math.round(f.h*s));
+ return f.air?{dw,dh,ox:Math.floor(-dw/2)+dx,oy:-(CUS_AIR_CENTER+(dh>>1))+dy}:{dw,dh,ox:Math.round(f.ox*s)+dx,oy:Math.round(f.oy*s)+dy}}
 // Eigene Animationen (nur die Moves mit Frames) – werden über die Sheet-Animationen gelegt
-export function cusMoveAnims(moves) {
-  const out = {};
-  for (const k of CUS_MOVE_KEYS) {
-    const m = moves && moves[k];
-    if (!m || !m.frames || !m.frames.length) continue;
-    out[k] = {
-      ...cusCleanProps(m.props),
-      frames: m.frames.map((f) => cusMoveName(f.id)),
-    };
-  }
-  return out;
-}
-export function cusMoveImgs(moves) {
-  const s = new Set();
-  for (const k in moves || {})
-    for (const f of moves[k].frames || []) s.add(f.img);
-  return s;
-}
+export function cusMoveAnims(moves){const out={};for(const k of CUS_MOVE_KEYS){const m=moves&&moves[k];if(!m||!m.frames||!m.frames.length)continue;out[k]={...cusCleanProps(m.props),frames:m.frames.map(f=>cusMoveName(f.id))}}return out}
+export function cusMoveImgs(moves){const s=new Set();for(const k in moves||{})for(const f of moves[k].frames||[])s.add(f.img);return s}
 // Einzelbild (Hintergrund schon entfernt): Zuschnitt + Anker. targetH = gewünschte Höhe des Zuschnitts im Spiel (z. B. des ersetzten Frames), scale = fester Maßstab
-export function cusPlanImage(d, w, h, opts) {
-  opts = opts || {};
-  const m = cusMeasureCell(d, w, 0, 0, w, h);
-  if (!m)
-    return {
-      error:
-        "Das Bild enthält kein Motiv (alles transparent oder Hintergrundfarbe)",
-      notes: [],
-    };
-  const [x0, y0, x1, y1] = m.crop,
-    cw = x1 - x0,
-    ch = y1 - y0,
-    notes = [];
-  let s = opts.scale;
-  if (!(s > 0)) s = (opts.targetH > 0 ? opts.targetH : CUS_STAND_H) / ch;
-  if (m.edge)
-    notes.push("Das Motiv berührt den Bildrand (evtl. abgeschnitten)");
-  return {
-    sx: x0,
-    sy: y0,
-    sw: cw,
-    sh: ch,
-    dw: Math.max(1, Math.round(cw * s)),
-    dh: Math.max(1, Math.round(ch * s)),
-    ox: Math.round((x0 - m.anchor) * s),
-    oy: Math.round((y0 - m.foot) * s),
-    scale: s,
-    notes,
-  };
-}
+export function cusPlanImage(d,w,h,opts){opts=opts||{};const m=cusMeasureCell(d,w,0,0,w,h);if(!m)return{error:'Das Bild enthält kein Motiv (alles transparent oder Hintergrundfarbe)',notes:[]};
+ const[x0,y0,x1,y1]=m.crop,cw=x1-x0,ch=y1-y0,notes=[];let s=opts.scale;if(!(s>0))s=(opts.targetH>0?opts.targetH:CUS_STAND_H)/ch;
+ if(m.edge)notes.push('Das Motiv berührt den Bildrand (evtl. abgeschnitten)');
+ return{sx:x0,sy:y0,sw:cw,sh:ch,dw:Math.max(1,Math.round(cw*s)),dh:Math.max(1,Math.round(ch*s)),ox:Math.round((x0-m.anchor)*s),oy:Math.round((y0-m.foot)*s),scale:s,notes}}
 // Sheet für einen beliebigen Move (Raster frei wählbar). opts.calib (Standard an): Zelle 1 = neutrale Haltung bestimmt den Maßstab und wird nicht mitgenommen;
 // aus = alle Zellen, Maßstab fest (opts.scale) oder so, dass die höchste Pose Standhöhe bekommt
-export function cusPlanMoveSheet(d, w, h, cols, rows, opts) {
-  opts = opts || {};
-  cols = Math.max(1, Math.min(8, cols | 0 || 1));
-  rows = Math.max(1, Math.min(8, rows | 0 || 1));
-  const notes = [];
-  const { cells, ok } = cusSliceCells(d, w, h, cols, rows),
-    ms = cells.map((c) => cusMeasureCell(d, w, c[0], c[1], c[2], c[3]));
-  if (!ok && cols * rows > 1)
-    notes.push(
-      "Raster gleichmäßig geteilt – Frames liegen evtl. nicht sauber in den Zellen (mehr Abstand zwischen den Zellen lassen)",
-    );
-  const calib = opts.calib !== false && cols * rows > 1;
-  let s = opts.scale;
-  if (calib) {
-    if (!ms[0])
-      return {
-        error:
-          "Zelle 1 ist leer – dort muss die neutrale Kampfhaltung stehen (oder „Zelle 1 = Kalibrierung“ ausschalten)",
-        notes,
-        frames: [],
-      };
-    const href = ms[0].foot - ms[0].top;
-    s = opts.scale > 0 ? opts.scale : CUS_STAND_H / href;
-    if (href < 200)
-      notes.push(
-        `Niedrige Auflösung (Standhöhe nur ${href} px, besser ab 300 px) – wirkt weich`,
-      );
-  } else if (!(s > 0)) {
-    const hs = ms.filter(Boolean).map((m) => m.foot - m.top);
-    if (!hs.length)
-      return { error: "Das Bild enthält kein Motiv", notes, frames: [] };
-    s = CUS_STAND_H / Math.max(...hs);
-  }
-  const frames = [];
-  for (let i = calib ? 1 : 0; i < ms.length; i++) {
-    const m = ms[i];
-    if (!m) {
-      notes.push(`Zelle ${i + 1} ist leer – übersprungen`);
-      continue;
-    }
-    if (m.edge)
-      notes.push(
-        `Zelle ${i + 1}: Figur berührt den Zellrand (evtl. abgeschnitten)`,
-      );
-    const [x0, y0, x1, y1] = m.crop;
-    frames.push({
-      cell: i,
-      sx: x0,
-      sy: y0,
-      sw: x1 - x0,
-      sh: y1 - y0,
-      dw: Math.max(1, Math.round((x1 - x0) * s)),
-      dh: Math.max(1, Math.round((y1 - y0) * s)),
-      ox: Math.round((x0 - m.anchor) * s),
-      oy: Math.round((y0 - m.foot) * s),
-    });
-  }
-  if (!frames.length)
-    return {
-      error:
-        "Keine Frames erkannt – ist das Raster (Spalten × Zeilen) richtig eingestellt?",
-      notes,
-      frames,
-    };
-  return { frames, scale: s, ok, calib, notes };
-}
+export function cusPlanMoveSheet(d,w,h,cols,rows,opts){opts=opts||{};cols=Math.max(1,Math.min(8,cols|0||1));rows=Math.max(1,Math.min(8,rows|0||1));const notes=[];
+ const{cells,ok}=cusSliceCells(d,w,h,cols,rows),ms=cells.map(c=>cusMeasureCell(d,w,c[0],c[1],c[2],c[3]));
+ if(!ok&&cols*rows>1)notes.push('Raster gleichmäßig geteilt – Frames liegen evtl. nicht sauber in den Zellen (mehr Abstand zwischen den Zellen lassen)');
+ const calib=opts.calib!==false&&cols*rows>1;let s=opts.scale;
+ if(calib){if(!ms[0])return{error:'Zelle 1 ist leer – dort muss die neutrale Kampfhaltung stehen (oder „Zelle 1 = Kalibrierung“ ausschalten)',notes,frames:[]};
+  const href=ms[0].foot-ms[0].top;s=opts.scale>0?opts.scale:CUS_STAND_H/href;if(href<200)notes.push(`Niedrige Auflösung (Standhöhe nur ${href} px, besser ab 300 px) – wirkt weich`)}
+ else if(!(s>0)){const hs=ms.filter(Boolean).map(m=>m.foot-m.top);if(!hs.length)return{error:'Das Bild enthält kein Motiv',notes,frames:[]};s=CUS_STAND_H/Math.max(...hs)}
+ const frames=[];
+ for(let i=calib?1:0;i<ms.length;i++){const m=ms[i];if(!m){notes.push(`Zelle ${i+1} ist leer – übersprungen`);continue}
+  if(m.edge)notes.push(`Zelle ${i+1}: Figur berührt den Zellrand (evtl. abgeschnitten)`);
+  const[x0,y0,x1,y1]=m.crop;frames.push({cell:i,sx:x0,sy:y0,sw:x1-x0,sh:y1-y0,dw:Math.max(1,Math.round((x1-x0)*s)),dh:Math.max(1,Math.round((y1-y0)*s)),ox:Math.round((x0-m.anchor)*s),oy:Math.round((y0-m.foot)*s)})}
+ if(!frames.length)return{error:'Keine Frames erkannt – ist das Raster (Spalten × Zeilen) richtig eingestellt?',notes,frames};
+ return{frames,scale:s,ok,calib,notes}}
 // Frame-Listen bearbeiten (rein, geben neue Arrays zurück): verschieben, löschen, einfügen, ersetzen
-export const cusMvMove = (a, i, j) => {
-  if (i < 0 || i >= a.length || j < 0 || j >= a.length || i === j) return a;
-  const b = a.slice(),
-    [x] = b.splice(i, 1);
-  b.splice(j, 0, x);
-  return b;
-};
-export const cusMvRemove = (a, i) =>
-  i < 0 || i >= a.length ? a : a.filter((_, k) => k !== i);
-export const cusMvInsert = (a, i, ...items) => {
-  const b = a.slice();
-  b.splice(Math.max(0, Math.min(a.length, i)), 0, ...items);
-  return b;
-};
-export const cusMvReplace = (a, i, x) =>
-  i < 0 || i >= a.length ? a : a.map((y, k) => (k === i ? x : y));
+export const cusMvMove=(a,i,j)=>{if(i<0||i>=a.length||j<0||j>=a.length||i===j)return a;const b=a.slice(),[x]=b.splice(i,1);b.splice(j,0,x);return b};
+export const cusMvRemove=(a,i)=>i<0||i>=a.length?a:a.filter((_,k)=>k!==i);
+export const cusMvInsert=(a,i,...items)=>{const b=a.slice();b.splice(Math.max(0,Math.min(a.length,i)),0,...items);return b};
+export const cusMvReplace=(a,i,x)=>i<0||i>=a.length?a:a.map((y,k)=>k===i?x:y);
 
 // ---------- Figur ----------
-export const CUS_TEMPLATES = [
-  ["tiger", "H!T", "schnell: Teleport, Mehrfachtreffer, Dash"],
-  ["st3g0", "ST3-G0", "zäh: Rüstungs-Sprint, Schwanzfeger, Feuer-Atem"],
-  [
-    "kitsune",
-    "KITSUNE",
-    "ausgewogen: Geisterfeuer, Spiral-Tritt, Schwanzpeitsche",
-  ],
-];
-export const CUS_LIMITS = {
-  hp: [700, 1300],
-  tempo: [80, 130],
-  dmg: [80, 130],
-  abwehr: [80, 125],
-};
-export const CUS_DEFAULT = {
-  name: "MEIN KÄMPFER",
-  template: "tiger",
-  hp: 1000,
-  tempo: 100,
-  dmg: 100,
-  abwehr: 100,
-  glow: "#ff4fd8",
-};
-const cusClampN = (v, [a, b], d) => {
-  v = +v;
-  return Number.isFinite(v) ? Math.round(Math.min(b, Math.max(a, v))) : d;
-};
-export function cusClean(p) {
-  p = p || {};
-  const name =
-    String(p.name == null ? CUS_DEFAULT.name : p.name)
-      .replace(/[^\p{L}\p{N} !.\-_']/gu, "")
-      .trim()
-      .toUpperCase()
-      .slice(0, 14) || CUS_DEFAULT.name;
-  return {
-    name,
-    template: CUS_TEMPLATES.some((t) => t[0] === p.template)
-      ? p.template
-      : CUS_DEFAULT.template,
-    hp: cusClampN(p.hp, CUS_LIMITS.hp, 1000),
-    tempo: cusClampN(p.tempo, CUS_LIMITS.tempo, 100),
-    dmg: cusClampN(p.dmg, CUS_LIMITS.dmg, 100),
-    abwehr: cusClampN(p.abwehr, CUS_LIMITS.abwehr, 100),
-    glow: /^#[0-9a-fA-F]{6}$/.test(p.glow || "") ? p.glow : CUS_DEFAULT.glow,
-  };
-}
+export const CUS_TEMPLATES=[['tiger','H!T','schnell: Teleport, Mehrfachtreffer, Dash'],['st3g0','ST3-G0','zäh: Rüstungs-Sprint, Schwanzfeger, Feuer-Atem'],['kitsune','KITSUNE','ausgewogen: Geisterfeuer, Spiral-Tritt, Schwanzpeitsche']];
+export const CUS_LIMITS={hp:[700,1300],tempo:[80,130],dmg:[80,130],abwehr:[80,125]};
+export const CUS_DEFAULT={name:'MEIN KÄMPFER',template:'tiger',hp:1000,tempo:100,dmg:100,abwehr:100,glow:'#ff4fd8'};
+const cusClampN=(v,[a,b],d)=>{v=+v;return Number.isFinite(v)?Math.round(Math.min(b,Math.max(a,v))):d};
+export function cusClean(p){p=p||{};
+ const name=String(p.name==null?CUS_DEFAULT.name:p.name).replace(/[^\p{L}\p{N} !.\-_']/gu,'').trim().toUpperCase().slice(0,14)||CUS_DEFAULT.name;
+ return{name,template:CUS_TEMPLATES.some(t=>t[0]===p.template)?p.template:CUS_DEFAULT.template,
+  hp:cusClampN(p.hp,CUS_LIMITS.hp,1000),tempo:cusClampN(p.tempo,CUS_LIMITS.tempo,100),dmg:cusClampN(p.dmg,CUS_LIMITS.dmg,100),abwehr:cusClampN(p.abwehr,CUS_LIMITS.abwehr,100),
+  glow:/^#[0-9a-fA-F]{6}$/.test(p.glow||'')?p.glow:CUS_DEFAULT.glow}}
 // Spielfigur (Eintrag für CHARACTERS) aus Profil + Vorlage (Basisfigur liefert Moves, KI-Werkzeuge, Sprung-/Dash-Werte)
-export function cusMakeChar(profile, base) {
-  const p = cusClean(profile);
-  return {
-    id: "custom",
-    custom: true,
-    name: p.name,
-    desc: "Eigene Figur · " + base.name + "-Moves",
-    hp: p.hp,
-    walk: p.tempo / 100,
-    dmg: p.dmg / 100,
-    def: 100 / p.abwehr,
-    jump: base.jump || 1,
-    dash: base.dash || 1,
-    airJumps: base.airJumps == null ? 1 : base.airJumps,
-    meter: base.meter || 1,
-    pal: base.pal,
-    glow: p.glow,
-    sprites: "custom",
-    mods: base.mods,
-    ai: base.ai,
-    pros:
-      "Moves wie " +
-      (CUS_TEMPLATES.find((t) => t[0] === p.template) || CUS_TEMPLATES[0])[1] +
-      ": " +
-      (CUS_TEMPLATES.find((t) => t[0] === p.template) || CUS_TEMPLATES[0])[2],
-    cons: "Balance liegt bei dir – Werte jederzeit im Editor änderbar (E)",
-  };
-}
+export function cusMakeChar(profile,base){const p=cusClean(profile);
+ return{id:'custom',custom:true,name:p.name,desc:'Eigene Figur · '+base.name+'-Moves',hp:p.hp,walk:p.tempo/100,dmg:p.dmg/100,def:100/p.abwehr,
+  jump:base.jump||1,dash:base.dash||1,airJumps:base.airJumps==null?1:base.airJumps,meter:base.meter||1,pal:base.pal,glow:p.glow,sprites:'custom',mods:base.mods,ai:base.ai,
+  pros:'Moves wie '+(CUS_TEMPLATES.find(t=>t[0]===p.template)||CUS_TEMPLATES[0])[1]+': '+(CUS_TEMPLATES.find(t=>t[0]===p.template)||CUS_TEMPLATES[0])[2],cons:'Balance liegt bei dir – Werte jederzeit im Editor änderbar (E)'}}
 
 // ---------- Prompts für Bild-KIs (Gemini): pro Sheet ein fertiger Text, Figurenbeschreibung kommt vom Nutzer ----------
-const CUS_HYPER_CELLS =
-  "Hyper special: the most powerful super move, bigger and more dramatic than the energy special, with intense glowing energy in the character's signature color. Cell 2: deep crouch gathering massive energy, glow at ground level. Cell 3: an aura erupts around the whole body, hair and cloth whipping upward. Cell 4: the body rises slightly, arms pulled back, energy swirling around the fists. Cell 5: thrusting both arms forward, releasing a huge blast (character only, no projectile). Cell 6: full extension in a wide stance, brightest glow. Cell 7: hold at maximum power, the glow starts to fade. Cell 8: relaxing out of the pose, back toward the neutral stance.";
-export const CUS_PROMPT_CELLS = {
-  hyper: CUS_HYPER_CELLS,
-  idle_1:
-    "Looping idle / breathing animation in fighting stance, part 1 of 2. Cell 1 is the neutral stance. Cells 2-6: a smooth slow bounce – chest rising and falling, guard fists drifting slightly, weight shifting gently from the back foot to the front foot, tail, hair or cloth swaying. Each cell clearly different from the previous one but only by small movements.",
-  idle_2:
-    "Looping idle / breathing animation in fighting stance, part 2 of 2 (continuing directly after part 1). Cell 1 is the neutral stance (calibration only). Cells 2-6: the bounce continues – chest, fists and weight moving back; cell 6 must flow seamlessly back into the neutral stance of cell 1 so the loop is smooth.",
-  walk_1:
-    "Walk cycle moving forward (to the right) in a low fighting stance, part 1 of 2: cell 2 front foot contact, cell 3 weight shifts down, cell 4 passing pose (back leg swings through), cell 5 up pose pushing off, cell 6 opposite foot contact. Guard fists stay up, torso bobbing slightly, tail, hair or cloth swaying.",
-  walk_2:
-    "Walk cycle moving forward (to the right) in a low fighting stance, part 2 of 2, continuing the cycle of part 1 with the opposite leg: cell 2 weight shifts down, cell 3 passing pose, cell 4 up pose pushing off, cell 5 foot contact, cell 6 weight shifts down so that the cycle can loop back to part 1. Cell 1 is the neutral stance (calibration only).",
-  dash: "Cell 2: anticipation, body leaning forward, knees bent. Cells 3-4: fast forward dash, torso low and leaning far forward, legs stretched in a long stride (two different running poses). Cells 5-6: air dash, body almost horizontal flying forward with fist leading (two slightly different poses).",
-  jump: "Jump sequence, drawn in mid-air for cells 3-6 (the character floats; no ground). Cell 2: launch, rising fast with legs bent beneath, fists up. Cell 3: rising, legs tucked. Cell 4: peak of the jump, body curled, knees up. Cell 5: falling, legs extending downward. Cell 6: falling fast, legs stretched down ready to land.",
-  crouch:
-    "Cell 2: going down into a crouch, knees bent, back leaning forward. Cell 3: deep crouch hold, fists up, low guard. Cell 4: same crouch with a tiny breathing movement. Cell 5: crouching guard, both forearms raised in front of the face. Cell 6: crouching guard, pushed back slightly by an impact.",
-  punch:
-    "Fast jab with the front fist. Cell 2: slight windup, shoulder turns back. Cell 3: fist shoots forward, arm half extended. Cell 4: full extension, arm straight, clenched fist, body leaning into the punch. Cell 5: retracting the arm. Cell 6: back close to the guard pose.",
-  heavy:
-    "Powerful heavy straight punch / haymaker with the whole body. Cell 2: deep windup, weight on back leg, fist pulled far back. Cell 3: explosive step forward, torso rotating. Cell 4: full extension, massive punch, wide stance, fists forward. Cell 5: follow-through hold at the moment of impact. Cell 6: recovering back toward the guard.",
-  kick: "High roundhouse / front kick. Cell 2: chamber, knee lifted, fists up. Cell 3: leg extends rapidly. Cell 4: full extension, leg straight at head height, body leaning back for balance. Cell 5: leg retracts. Cell 6: foot returns to the ground, back to stance.",
-  crouch_atk:
-    "Crouching attacks. Cells 2-3: crouching punch (cell 2 windup, cell 3 fist extended low and forward). Cells 4-6: crouching low sweep kick (cell 4 chamber, cell 5 leg fully extended low along the ground, cell 6 retracting). The character stays low in all cells.",
-  air_atk:
-    "Aerial attacks, drawn in mid-air (the character floats; the lowest foot is the reference). Cells 2-3: jumping punch (windup, fist extended). Cells 4-6: jumping kick (cell 4 knees tucked, cell 5 leg extended diagonally downward, cell 6 hold). Cells 7-8: jumping heavy overhead claw slash (cell 7 arm raised high, cell 8 slashing downward with a glowing blue slash).",
-  claw: "Rising claw uppercut special move with blue energy glow around the claw. Cell 2: crouch, claw pulled low behind the body. Cell 3: explosive launch upward, claw swinging up. Cell 4: rising, claw arcing high with blue energy trail. Cell 5: rising higher, body stretched. Cell 6: peak, claw fully raised overhead. Cell 7: starting to fall, body relaxed. Cell 8: falling with legs extending downward. Cells 3-8 are in mid-air.",
-  special:
-    "Energy special move. Cell 2: crouch, gathering blue energy in both hands. Cell 3: strong blue aura builds around the body. Cell 4: thrusting both palms forward, releasing energy (character only, no projectile). Cell 5: full extension, palms forward, intense glow. Cell 6: hold, glow fading. Cell 7: recovering. Cell 8: returning toward the neutral stance.",
-  hit: "Taking hits. Cell 2: light hit, head snaps back, grimace. Cell 3: light hit, recovering. Cell 4: heavy hit, torso bent backward, pained face. Cell 5: heavy hit, staggering backward, off balance. Cell 6: recovering back toward the guard.",
-  down: "Knocked down and KO. Cell 2: launched into the air by a hit, body leaning back. Cell 3: tumbling backward in mid-air, body nearly horizontal. Cell 4: falling head first toward the ground in mid-air. Cell 5: slamming onto the ground, back arched. Cell 6: sliding on the ground, lying on the back. Cell 7: lying flat on the back, motionless. Cell 8: KO, lying flat, face up, eyes closed. Cells 2-4 are in mid-air, cells 5-8 on the ground.",
-  getup:
-    "Getting up from the ground. Cell 2: lying on the back on the ground. Cell 3: rolling over and pushing up with the arms. Cell 4: kneeling on one knee. Cell 5: rising to standing, fists coming up. Cell 6: back in the neutral fighting stance.",
-  block:
-    "Blocking. Cell 2: arms raised, forearms crossed in front of the face, braced. Cell 3: guard hold, leaning slightly forward, tense. Cell 4: guard pushed backward by an impact. Cell 5: guard hold again with a different arm position. Cell 6: relaxing back toward the stance.",
-  win: "Victory poses. Cell 2: roaring with the head thrown back, fist raised. Cell 3: flexing both arms, muscles tensed. Cell 4: fist pump. Cell 5: arms crossed, proud stance. Cell 6: confident pose with a slight smile, hold.",
+const CUS_HYPER_CELLS="Hyper special: the most powerful super move, bigger and more dramatic than the energy special, with intense glowing energy in the character's signature color. Cell 2: deep crouch gathering massive energy, glow at ground level. Cell 3: an aura erupts around the whole body, hair and cloth whipping upward. Cell 4: the body rises slightly, arms pulled back, energy swirling around the fists. Cell 5: thrusting both arms forward, releasing a huge blast (character only, no projectile). Cell 6: full extension in a wide stance, brightest glow. Cell 7: hold at maximum power, the glow starts to fade. Cell 8: relaxing out of the pose, back toward the neutral stance.";
+export const CUS_PROMPT_CELLS={
+ "hyper": CUS_HYPER_CELLS,
+ "idle_1": "Looping idle / breathing animation in fighting stance, part 1 of 2. Cell 1 is the neutral stance. Cells 2-6: a smooth slow bounce – chest rising and falling, guard fists drifting slightly, weight shifting gently from the back foot to the front foot, tail, hair or cloth swaying. Each cell clearly different from the previous one but only by small movements.",
+ "idle_2": "Looping idle / breathing animation in fighting stance, part 2 of 2 (continuing directly after part 1). Cell 1 is the neutral stance (calibration only). Cells 2-6: the bounce continues – chest, fists and weight moving back; cell 6 must flow seamlessly back into the neutral stance of cell 1 so the loop is smooth.",
+ "walk_1": "Walk cycle moving forward (to the right) in a low fighting stance, part 1 of 2: cell 2 front foot contact, cell 3 weight shifts down, cell 4 passing pose (back leg swings through), cell 5 up pose pushing off, cell 6 opposite foot contact. Guard fists stay up, torso bobbing slightly, tail, hair or cloth swaying.",
+ "walk_2": "Walk cycle moving forward (to the right) in a low fighting stance, part 2 of 2, continuing the cycle of part 1 with the opposite leg: cell 2 weight shifts down, cell 3 passing pose, cell 4 up pose pushing off, cell 5 foot contact, cell 6 weight shifts down so that the cycle can loop back to part 1. Cell 1 is the neutral stance (calibration only).",
+ "dash": "Cell 2: anticipation, body leaning forward, knees bent. Cells 3-4: fast forward dash, torso low and leaning far forward, legs stretched in a long stride (two different running poses). Cells 5-6: air dash, body almost horizontal flying forward with fist leading (two slightly different poses).",
+ "jump": "Jump sequence, drawn in mid-air for cells 3-6 (the character floats; no ground). Cell 2: launch, rising fast with legs bent beneath, fists up. Cell 3: rising, legs tucked. Cell 4: peak of the jump, body curled, knees up. Cell 5: falling, legs extending downward. Cell 6: falling fast, legs stretched down ready to land.",
+ "crouch": "Cell 2: going down into a crouch, knees bent, back leaning forward. Cell 3: deep crouch hold, fists up, low guard. Cell 4: same crouch with a tiny breathing movement. Cell 5: crouching guard, both forearms raised in front of the face. Cell 6: crouching guard, pushed back slightly by an impact.",
+ "punch": "Fast jab with the front fist. Cell 2: slight windup, shoulder turns back. Cell 3: fist shoots forward, arm half extended. Cell 4: full extension, arm straight, clenched fist, body leaning into the punch. Cell 5: retracting the arm. Cell 6: back close to the guard pose.",
+ "heavy": "Powerful heavy straight punch / haymaker with the whole body. Cell 2: deep windup, weight on back leg, fist pulled far back. Cell 3: explosive step forward, torso rotating. Cell 4: full extension, massive punch, wide stance, fists forward. Cell 5: follow-through hold at the moment of impact. Cell 6: recovering back toward the guard.",
+ "kick": "High roundhouse / front kick. Cell 2: chamber, knee lifted, fists up. Cell 3: leg extends rapidly. Cell 4: full extension, leg straight at head height, body leaning back for balance. Cell 5: leg retracts. Cell 6: foot returns to the ground, back to stance.",
+ "crouch_atk": "Crouching attacks. Cells 2-3: crouching punch (cell 2 windup, cell 3 fist extended low and forward). Cells 4-6: crouching low sweep kick (cell 4 chamber, cell 5 leg fully extended low along the ground, cell 6 retracting). The character stays low in all cells.",
+ "air_atk": "Aerial attacks, drawn in mid-air (the character floats; the lowest foot is the reference). Cells 2-3: jumping punch (windup, fist extended). Cells 4-6: jumping kick (cell 4 knees tucked, cell 5 leg extended diagonally downward, cell 6 hold). Cells 7-8: jumping heavy overhead claw slash (cell 7 arm raised high, cell 8 slashing downward with a glowing blue slash).",
+ "claw": "Rising claw uppercut special move with blue energy glow around the claw. Cell 2: crouch, claw pulled low behind the body. Cell 3: explosive launch upward, claw swinging up. Cell 4: rising, claw arcing high with blue energy trail. Cell 5: rising higher, body stretched. Cell 6: peak, claw fully raised overhead. Cell 7: starting to fall, body relaxed. Cell 8: falling with legs extending downward. Cells 3-8 are in mid-air.",
+ "special": "Energy special move. Cell 2: crouch, gathering blue energy in both hands. Cell 3: strong blue aura builds around the body. Cell 4: thrusting both palms forward, releasing energy (character only, no projectile). Cell 5: full extension, palms forward, intense glow. Cell 6: hold, glow fading. Cell 7: recovering. Cell 8: returning toward the neutral stance.",
+ "hit": "Taking hits. Cell 2: light hit, head snaps back, grimace. Cell 3: light hit, recovering. Cell 4: heavy hit, torso bent backward, pained face. Cell 5: heavy hit, staggering backward, off balance. Cell 6: recovering back toward the guard.",
+ "down": "Knocked down and KO. Cell 2: launched into the air by a hit, body leaning back. Cell 3: tumbling backward in mid-air, body nearly horizontal. Cell 4: falling head first toward the ground in mid-air. Cell 5: slamming onto the ground, back arched. Cell 6: sliding on the ground, lying on the back. Cell 7: lying flat on the back, motionless. Cell 8: KO, lying flat, face up, eyes closed. Cells 2-4 are in mid-air, cells 5-8 on the ground.",
+ "getup": "Getting up from the ground. Cell 2: lying on the back on the ground. Cell 3: rolling over and pushing up with the arms. Cell 4: kneeling on one knee. Cell 5: rising to standing, fists coming up. Cell 6: back in the neutral fighting stance.",
+ "block": "Blocking. Cell 2: arms raised, forearms crossed in front of the face, braced. Cell 3: guard hold, leaning slightly forward, tense. Cell 4: guard pushed backward by an impact. Cell 5: guard hold again with a different arm position. Cell 6: relaxing back toward the stance.",
+ "win": "Victory poses. Cell 2: roaring with the head thrown back, fist raised. Cell 3: flexing both arms, muscles tensed. Cell 4: fist pump. Cell 5: arms crossed, proud stance. Cell 6: confident pose with a slight smile, hold."
 };
 // Gemeinsamer Prompt-Text: Raster c x r, cells = Beschreibung der Zellen 2..n (Zelle 1 = neutrale Haltung zur Kalibrierung)
-export function cusPromptBase(c, r, cells, desc) {
-  const n = c * r,
-    d =
-      (desc || "").trim() ||
-      "the character shown in the attached reference image";
-  return `Reference: the attached image shows the exact character – ${d}. Keep face, proportions, colors and outfit identical in every cell. Ignore the background of the reference.
+export function cusPromptBase(c,r,cells,desc){const n=c*r,d=(desc||'').trim()||'the character shown in the attached reference image';
+ return`Reference: the attached image shows the exact character – ${d}. Keep face, proportions, colors and outfit identical in every cell. Ignore the background of the reference.
 
 Create a SPRITE SHEET for a 2D fighting game (Marvel vs. Capcom 2 style, hand-painted, crisp clean dark outlines, high detail – same character and rendering style as the reference, but sharper and more detailed).
 
@@ -875,211 +232,56 @@ CHARACTER: side view, facing RIGHT (3/4 view like in fighting games). In EVERY c
 CELL 1 = the neutral fight stance exactly like in the reference (it is only used to calibrate the size).
 CELLS 2-${n}: ${cells}
 
-Output in the highest resolution available.`;
-}
-export function cusPrompt(key, desc) {
-  const sh = CUS_SHEETS.find((x) => x.key === key);
-  return sh ? cusPromptBase(sh.c, sh.r, CUS_PROMPT_CELLS[key], desc) : "";
-}
+Output in the highest resolution available.`}
+export function cusPrompt(key,desc){const sh=CUS_SHEETS.find(x=>x.key===key);return sh?cusPromptBase(sh.c,sh.r,CUS_PROMPT_CELLS[key],desc):''}
 
 // ---------- Sheets je Move (Move-Editor): empfohlenes Raster + fertiger Prompt für jeden der 24 Moves ----------
 // c x r = empfohlenes Raster (Zelle 1 = neutrale Haltung = Kalibrierung, danach die Frames des Moves); cells = Beschreibung der Zellen 2..n für die Bild-KI; air = Luft-Pose (Körpermitte verankert).
-const CUS_P = CUS_PROMPT_CELLS;
-export const CUS_MOVE_SPECS = {
-  idle: {
-    c: 4,
-    r: 2,
-    cells:
-      "Looping idle / breathing animation in fighting stance. Cells 2-8: a smooth slow bounce – chest rising and falling, guard fists drifting slightly, weight shifting gently from the back foot to the front foot, tail, hair or cloth swaying. Each cell differs only slightly from the previous one; cell 8 must flow seamlessly back into the neutral stance of cell 1 so the loop is smooth.",
-  },
-  walk: {
-    c: 4,
-    r: 2,
-    cells:
-      "Walk cycle moving forward (to the right) in a low fighting stance, one full loop. Cell 2: front foot contact. Cell 3: weight shifts down. Cell 4: passing pose, back leg swings through. Cell 5: up pose pushing off. Cell 6: opposite foot contact. Cell 7: weight shifts down. Cell 8: passing pose, so the cycle can loop back to cell 2. Guard fists stay up, torso bobbing slightly, tail or hair swinging.",
-  },
-  air: { c: 3, r: 2, cells: CUS_P.jump },
-  crouch: {
-    c: 3,
-    r: 2,
-    cells:
-      "Crouching. Cell 2: going down into a crouch, knees bent, back leaning forward. Cell 3: deep crouch hold, fists up, low guard. Cell 4: the same crouch with a tiny breathing movement. Cell 5: the same deep crouch, slightly different arm position. Cell 6: the same deep crouch with a tiny breathing movement in the opposite direction. The character stays low in all cells.",
-  },
-  dash: {
-    c: 3,
-    r: 2,
-    cells:
-      "Ground dash. Cell 2: anticipation, body leaning forward, knees bent. Cells 3-6: fast forward dash, torso low and leaning far forward, legs stretched in a long stride (four slightly different running poses that can repeat as a cycle). The character stays on the ground line.",
-  },
-  airdash: {
-    c: 3,
-    r: 2,
-    cells:
-      "Air dash, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: anticipation in the air, body tilting forward. Cells 3-6: body almost horizontal, flying forward with the fist leading (four slightly different poses, small changes in arms and legs, clothing streaming backward).",
-  },
-  punch: { c: 3, r: 2, cells: CUS_P.punch },
-  heavy: { c: 3, r: 2, cells: CUS_P.heavy },
-  kick: { c: 3, r: 2, cells: CUS_P.kick },
-  cpunch: {
-    c: 3,
-    r: 2,
-    cells:
-      "Crouching punch. Cell 2: windup, still crouching low. Cell 3: the fist shoots forward, low and straight. Cell 4: full extension, arm straight, clenched fist, body low. Cell 5: retracting the arm. Cell 6: back in the low crouch guard. The character stays low in all cells.",
-  },
-  ckick: {
-    c: 3,
-    r: 2,
-    cells:
-      "Crouching low sweep kick. Cell 2: chamber, still low, leg pulled in. Cell 3: the leg starts to sweep out. Cell 4: leg fully extended low along the ground, body leaning back for balance. Cell 5: sweep follow-through, hold. Cell 6: retracting the leg, back toward the crouch. The character stays low in all cells.",
-  },
-  jpunch: {
-    c: 3,
-    r: 2,
-    cells:
-      "Jumping punch, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, knees tucked. Cell 3: windup in the air. Cell 4: fist extended forward and diagonally downward, body leaning into the punch. Cell 5: hold at full extension. Cell 6: retracting the arm, falling pose.",
-  },
-  jkick: {
-    c: 3,
-    r: 2,
-    cells:
-      "Jumping kick, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, knees tucked high. Cell 3: knees tucked, body curled. Cell 4: the leg extends diagonally downward. Cell 5: full extension of the kick, hold. Cell 6: retracting the leg, falling pose.",
-  },
-  jheavy: {
-    c: 3,
-    r: 2,
-    cells:
-      "Jumping heavy overhead strike, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, striking arm raised high. Cell 3: windup, body arched back. Cell 4: explosive downward overhead strike, body curling forward. Cell 5: full extension of the strike, hold at the moment of impact. Cell 6: follow-through, falling.",
-  },
-  upper: { c: 4, r: 2, cells: CUS_P.claw },
-  special: { c: 4, r: 2, cells: CUS_P.special },
-  hyper: { c: 4, r: 2, cells: CUS_HYPER_CELLS },
-  hit: { c: 3, r: 2, cells: CUS_P.hit },
-  airhit: {
-    c: 3,
-    r: 2,
-    air: 1,
-    cells:
-      "Hit while airborne, launched into the air, drawn in mid-air (the character floats). Cell 2: just struck, body snapping backward. Cell 3: tumbling backward, body nearly horizontal. Cell 4: tumbling, head lower than the feet. Cell 5: falling, body rotated, limbs flailing. Cell 6: about to land, body stretched out. All cells are drawn in mid-air.",
-  },
-  block: { c: 3, r: 2, cells: CUS_P.block },
-  cblock: {
-    c: 3,
-    r: 2,
-    cells:
-      "Crouching block. Cell 2: dropping into a crouch with the forearms crossed in front of the face. Cell 3: deep crouch guard, hold. Cell 4: the guard pushed backward by an impact. Cell 5: guard hold with a different arm position. Cell 6: relaxing slightly. The character stays low in all cells.",
-  },
-  kd: {
-    c: 3,
-    r: 2,
-    cells:
-      "Slamming onto the ground and lying (knockdown). Cell 2: impact, body hitting the ground, back arched. Cell 3: bouncing slightly off the ground. Cell 4: sliding along the ground, lying on the back. Cell 5: lying flat, motionless. Cell 6: lying flat, slightly settled (hold pose). The body lies on the ground in cells 4-6.",
-  },
-  wakeup: { c: 3, r: 2, cells: CUS_P.getup },
-  win: { c: 3, r: 2, cells: CUS_P.win },
-};
+const CUS_P=CUS_PROMPT_CELLS;
+export const CUS_MOVE_SPECS={
+ idle:{c:4,r:2,cells:"Looping idle / breathing animation in fighting stance. Cells 2-8: a smooth slow bounce – chest rising and falling, guard fists drifting slightly, weight shifting gently from the back foot to the front foot, tail, hair or cloth swaying. Each cell differs only slightly from the previous one; cell 8 must flow seamlessly back into the neutral stance of cell 1 so the loop is smooth."},
+ walk:{c:4,r:2,cells:"Walk cycle moving forward (to the right) in a low fighting stance, one full loop. Cell 2: front foot contact. Cell 3: weight shifts down. Cell 4: passing pose, back leg swings through. Cell 5: up pose pushing off. Cell 6: opposite foot contact. Cell 7: weight shifts down. Cell 8: passing pose, so the cycle can loop back to cell 2. Guard fists stay up, torso bobbing slightly, tail or hair swinging."},
+ air:{c:3,r:2,cells:CUS_P.jump},
+ crouch:{c:3,r:2,cells:"Crouching. Cell 2: going down into a crouch, knees bent, back leaning forward. Cell 3: deep crouch hold, fists up, low guard. Cell 4: the same crouch with a tiny breathing movement. Cell 5: the same deep crouch, slightly different arm position. Cell 6: the same deep crouch with a tiny breathing movement in the opposite direction. The character stays low in all cells."},
+ dash:{c:3,r:2,cells:"Ground dash. Cell 2: anticipation, body leaning forward, knees bent. Cells 3-6: fast forward dash, torso low and leaning far forward, legs stretched in a long stride (four slightly different running poses that can repeat as a cycle). The character stays on the ground line."},
+ airdash:{c:3,r:2,cells:"Air dash, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: anticipation in the air, body tilting forward. Cells 3-6: body almost horizontal, flying forward with the fist leading (four slightly different poses, small changes in arms and legs, clothing streaming backward)."},
+ punch:{c:3,r:2,cells:CUS_P.punch},
+ heavy:{c:3,r:2,cells:CUS_P.heavy},
+ kick:{c:3,r:2,cells:CUS_P.kick},
+ cpunch:{c:3,r:2,cells:"Crouching punch. Cell 2: windup, still crouching low. Cell 3: the fist shoots forward, low and straight. Cell 4: full extension, arm straight, clenched fist, body low. Cell 5: retracting the arm. Cell 6: back in the low crouch guard. The character stays low in all cells."},
+ ckick:{c:3,r:2,cells:"Crouching low sweep kick. Cell 2: chamber, still low, leg pulled in. Cell 3: the leg starts to sweep out. Cell 4: leg fully extended low along the ground, body leaning back for balance. Cell 5: sweep follow-through, hold. Cell 6: retracting the leg, back toward the crouch. The character stays low in all cells."},
+ jpunch:{c:3,r:2,cells:"Jumping punch, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, knees tucked. Cell 3: windup in the air. Cell 4: fist extended forward and diagonally downward, body leaning into the punch. Cell 5: hold at full extension. Cell 6: retracting the arm, falling pose."},
+ jkick:{c:3,r:2,cells:"Jumping kick, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, knees tucked high. Cell 3: knees tucked, body curled. Cell 4: the leg extends diagonally downward. Cell 5: full extension of the kick, hold. Cell 6: retracting the leg, falling pose."},
+ jheavy:{c:3,r:2,cells:"Jumping heavy overhead strike, drawn in mid-air (the character floats; the lowest foot is the reference). Cell 2: leaving the ground, striking arm raised high. Cell 3: windup, body arched back. Cell 4: explosive downward overhead strike, body curling forward. Cell 5: full extension of the strike, hold at the moment of impact. Cell 6: follow-through, falling."},
+ upper:{c:4,r:2,cells:CUS_P.claw},
+ special:{c:4,r:2,cells:CUS_P.special},
+ hyper:{c:4,r:2,cells:CUS_HYPER_CELLS},
+ hit:{c:3,r:2,cells:CUS_P.hit},
+ airhit:{c:3,r:2,air:1,cells:"Hit while airborne, launched into the air, drawn in mid-air (the character floats). Cell 2: just struck, body snapping backward. Cell 3: tumbling backward, body nearly horizontal. Cell 4: tumbling, head lower than the feet. Cell 5: falling, body rotated, limbs flailing. Cell 6: about to land, body stretched out. All cells are drawn in mid-air."},
+ block:{c:3,r:2,cells:CUS_P.block},
+ cblock:{c:3,r:2,cells:"Crouching block. Cell 2: dropping into a crouch with the forearms crossed in front of the face. Cell 3: deep crouch guard, hold. Cell 4: the guard pushed backward by an impact. Cell 5: guard hold with a different arm position. Cell 6: relaxing slightly. The character stays low in all cells."},
+ kd:{c:3,r:2,cells:"Slamming onto the ground and lying (knockdown). Cell 2: impact, body hitting the ground, back arched. Cell 3: bouncing slightly off the ground. Cell 4: sliding along the ground, lying on the back. Cell 5: lying flat, motionless. Cell 6: lying flat, slightly settled (hold pose). The body lies on the ground in cells 4-6."},
+ wakeup:{c:3,r:2,cells:CUS_P.getup},
+ win:{c:3,r:2,cells:CUS_P.win}};
 // Fertiger Prompt für einen Move (gleicher Aufbau wie bei den Sheets); '' bei unbekanntem Move
-export function cusMovePrompt(key, desc) {
-  const sp = CUS_MOVE_SPECS[key];
-  return sp ? cusPromptBase(sp.c, sp.r, sp.cells, desc) : "";
-}
+export function cusMovePrompt(key,desc){const sp=CUS_MOVE_SPECS[key];return sp?cusPromptBase(sp.c,sp.r,sp.cells,desc):''}
 // Raster automatisch erkennen (Bild nach cusKeyOut): Zeilen und Spalten sind durch freie Streifen getrennt. -> {cols,rows} oder null
-export function cusDetectGrid(d, w, h) {
-  const A = (x, y) => d[(y * w + x) * 4 + 3] > CUS_A_BODY;
-  const bands = (prof, size) => {
-    const gapMin = Math.max(4, Math.round(size * 0.012)),
-      minLen = Math.max(6, Math.round(size * 0.04)),
-      out = [];
-    let s = -1,
-      e = -1,
-      gap = 0;
-    for (let i = 0; i < prof.length; i++) {
-      if (prof[i] >= 2) {
-        if (s < 0) s = i;
-        e = i;
-        gap = 0;
-      } else if (s >= 0 && ++gap >= gapMin) {
-        if (e - s + 1 >= minLen) out.push([s, e]);
-        s = -1;
-      }
-    }
-    if (s >= 0 && e - s + 1 >= minLen) out.push([s, e]);
-    return out;
-  };
-  const rp = new Float64Array(h);
-  for (let y = 0; y < h; y++) {
-    let c = 0;
-    for (let x = 0; x < w; x++) if (A(x, y)) c++;
-    rp[y] = c;
-  }
-  const rows = bands(rp, h);
-  if (!rows.length || rows.length > 8) return null;
-  const counts = rows.map(([y0, y1]) => {
-    const cp = new Float64Array(w);
-    for (let y = y0; y <= y1; y++)
-      for (let x = 0; x < w; x++) if (A(x, y)) cp[x]++;
-    return bands(cp, w).length;
-  });
-  const tally = {};
-  counts.forEach((c) => (tally[c] = (tally[c] || 0) + 1));
-  let cols = 0,
-    best = -1;
-  for (const c in tally) {
-    if (tally[c] > best || (tally[c] === best && +c > cols)) {
-      best = tally[c];
-      cols = +c;
-    }
-  } // häufigste Spaltenzahl (bei Gleichstand die größere: letzte Zeile darf unvollständig sein)
-  if (cols < 1 || cols > 8 || cols * rows.length < 2) return null;
-  return { cols, rows: rows.length };
-}
+export function cusDetectGrid(d,w,h){
+ const A=(x,y)=>d[(y*w+x)*4+3]>CUS_A_BODY;
+ const bands=(prof,size)=>{const gapMin=Math.max(4,Math.round(size*.012)),minLen=Math.max(6,Math.round(size*.04)),out=[];let s=-1,e=-1,gap=0;
+  for(let i=0;i<prof.length;i++){if(prof[i]>=2){if(s<0)s=i;e=i;gap=0}else if(s>=0&&++gap>=gapMin){if(e-s+1>=minLen)out.push([s,e]);s=-1}}
+  if(s>=0&&e-s+1>=minLen)out.push([s,e]);return out};
+ const rp=new Float64Array(h);for(let y=0;y<h;y++){let c=0;for(let x=0;x<w;x++)if(A(x,y))c++;rp[y]=c}
+ const rows=bands(rp,h);if(!rows.length||rows.length>8)return null;
+ const counts=rows.map(([y0,y1])=>{const cp=new Float64Array(w);for(let y=y0;y<=y1;y++)for(let x=0;x<w;x++)if(A(x,y))cp[x]++;return bands(cp,w).length});
+ const tally={};counts.forEach(c=>tally[c]=(tally[c]||0)+1);
+ let cols=0,best=-1;for(const c in tally){if(tally[c]>best||(tally[c]===best&&+c>cols)){best=tally[c];cols=+c}}   // häufigste Spaltenzahl (bei Gleichstand die größere: letzte Zeile darf unvollständig sein)
+ if(cols<1||cols>8||cols*rows.length<2)return null;
+ return{cols,rows:rows.length}}
 // Dateiname -> Move (z. B. „cpunch.png“, „Duck-Schlag.png“, „hyper_1.png“, „fussfeger.png“); null = nicht erkannt. So lassen sich mehrere Sheets auf einmal den richtigen Moves zuordnen.
-const cusNorm = (t) =>
-  String(t)
-    .toLowerCase()
-    .replace(/ä/g, "ae")
-    .replace(/ö/g, "oe")
-    .replace(/ü/g, "ue")
-    .replace(/ß/g, "ss")
-    .replace(/[^a-z0-9]+/g, "");
-const CUS_MOVE_ALIAS = {
-  faust: "punch",
-  jab: "punch",
-  jump: "air",
-  sprung: "air",
-  duck: "crouch",
-  getup: "wakeup",
-  aufstehen: "wakeup",
-  ko: "kd",
-  knockdown: "kd",
-  sieg: "win",
-  siegerpose: "win",
-  victory: "win",
-  gehen: "walk",
-  laufen: "walk",
-  run: "walk",
-  luftdash: "airdash",
-  duckblock: "cblock",
-  duckschlag: "cpunch",
-  fussfeger: "ckick",
-  luftschlag: "jpunch",
-  lufttritt: "jkick",
-  luftueberkopf: "jheavy",
-  lufttreffer: "airhit",
-  aufwaertsspecial: "upper",
-  energiespecial: "special",
-  hyperspecial: "hyper",
-  schlag: "punch",
-  tritt: "kick",
-  treffer: "hit",
-};
-export function cusMoveKeyFromName(name) {
-  const stem = cusNorm(String(name).replace(/\.[^.]+$/, "")).replace(
-    /[0-9]+$/,
-    "",
-  );
-  if (!stem) return null;
-  for (const k of CUS_MOVE_KEYS) if (cusNorm(k) === stem) return k;
-  for (const k of CUS_MOVE_KEYS)
-    if (cusNorm(CUS_ANIM_LABELS[k] || "") === stem) return k;
-  return CUS_MOVE_ALIAS[stem] || null;
-}
+const cusNorm=t=>String(t).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'');
+const CUS_MOVE_ALIAS={faust:'punch',jab:'punch',jump:'air',sprung:'air',duck:'crouch',getup:'wakeup',aufstehen:'wakeup',ko:'kd',knockdown:'kd',sieg:'win',siegerpose:'win',victory:'win',gehen:'walk',laufen:'walk',run:'walk',luftdash:'airdash',duckblock:'cblock',duckschlag:'cpunch',fussfeger:'ckick',luftschlag:'jpunch',lufttritt:'jkick',luftueberkopf:'jheavy',lufttreffer:'airhit',aufwaertsspecial:'upper',energiespecial:'special',hyperspecial:'hyper',schlag:'punch',tritt:'kick',treffer:'hit'};
+export function cusMoveKeyFromName(name){const stem=cusNorm(String(name).replace(/\.[^.]+$/,'')).replace(/[0-9]+$/,'');if(!stem)return null;
+ for(const k of CUS_MOVE_KEYS)if(cusNorm(k)===stem)return k;
+ for(const k of CUS_MOVE_KEYS)if(cusNorm(CUS_ANIM_LABELS[k]||'')===stem)return k;
+ return CUS_MOVE_ALIAS[stem]||null}

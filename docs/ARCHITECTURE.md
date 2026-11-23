@@ -22,7 +22,6 @@ tools/build.mjs   bündelt src/ → dist/game.js + dist/hitisop.html
 ```
 
 ## Zustandsautomat (Fighter.state)
-
 `idle · walk · crouch · air · dash · airdash · attack · hit · block · airhit · tumble · knockdown · wakeup · ko · win`
 
 Freie Zustände (idle/walk/crouch/air) rufen jeden Frame `free()` auf: Angriff → Dash → Sprung → Bewegung.
@@ -31,7 +30,6 @@ Cancels (`tryCancel`) sind nur nach Kontakt (Treffer **oder** Block) erlaubt:
 Chain L→M→H (Rang steigt), Special-Cancel, Hyper-Cancel (Special→Super), Jump-Cancel (Launcher `2H`).
 
 ## Physik & Sprung
-
 - Pro Frame: `vy += gravity`, `y += vy`; Landung → `land()` (Zustandswechsel je nach Herkunft).
 - **Jump-Buffering:** `UP` wird 6 Frames gepuffert (`PHYS.jumpBuffer`) – Sprung kurz vor der Landung wird sofort bei Bodenkontakt ausgeführt.
 - **Coyote-Time:** `coyote` zählt 6 Frames nach Verlassen des Bodens (ohne Sprung) → Sprung bleibt erlaubt.
@@ -40,7 +38,6 @@ Chain L→M→H (Rang steigt), Special-Cancel, Hyper-Cancel (Special→Super), J
 - Eingabe-Puffer altern **nicht** während Hitstop/Super-Flash → Cancels bleiben zuverlässig.
 
 ## Treffer, Stun, Combos (combat.js)
-
 - Block: zurück halten (stehend/ducken je nach `lv` high/mid/low, in der Luft nur nicht-low), Chip-Schaden 10 %, kann nie töten.
 - Treffer: `hit` (Boden) oder `airhit` (Launcher/Luft). Hard-Knockdown (`jH`) → `tumble` → `knockdown`.
 - **Luft-Combos:** Launcher `2H` → `airhit` (vy=-17) → Attacker Jump-Cancel (`superJumpV`) → `jL/jM/jH`.
@@ -50,7 +47,6 @@ Chain L→M→H (Rang steigt), Special-Cancel, Hyper-Cancel (Special→Super), J
 - Meter: Angreifer +18 % des Schadens, Verteidiger +10 %; Hyper kostet 100 (max 300).
 
 ## Kamera (core/camera.js, Aufruf in Game.step)
-
 - `compute()`: Bounding-Box beider Kämpfer → nötige Weltbreite (`Abstand + 2·marginX`) und Welthöhe (Kopf-Oberkante + `headroom` bis Boden). `zoom = clamp(min(W/needW, H/needH), minZoom, maxZoom)`.
 - Position: x = Mitte beider Kämpfer; y so, dass die Bildunterkante am Boden bleibt – bei Sprüngen neigt sich die Kamera nach oben. Alles wird in die Weltgrenzen (`WORLD`) geklemmt (kein leerer Rand).
 - `update()`: Lerp (`lerpPos`, `lerpZoom`), läuft auch im Hitstop. `snap()` bei Rundenstart.
@@ -59,19 +55,16 @@ Chain L→M→H (Rang steigt), Special-Cancel, Hyper-Cancel (Special→Super), J
 - Werte justieren: `CAMERA` in config.js (minZoom 0.65, marginX, headroom, Lerp). Tests: `node tests/camera.test.js`.
 
 ## Movesets / Move-Felder (v8)
-
 `moves.js` = Basis-Moves (Allrounder), `movesets.js` = Überschreibungen je Figur. Slots: `5/2/jL,M,H`, `6M`,`6H` (→+K/L), `fireball`/`rising`/`rush` (Motion oder U neutral/→/↓), `back` (←+U), `airsp` (U in der Luft), `super`.
 Zusatzfelder: `armor:[von,bis]` (Rüstung), `unb` (Griff), `dive`, `tp`, `heal`, `gain`, `v:{L,M,H}`, `proj` (Objekt oder Liste; `ox,vy,grav,pierce,uniq,lv,look`). Stats: `def, jump, dash, airJumps, meter`.
 
 ## Erweitern
-
 - Neuer Kämpfer: Eintrag in `characters.js` (+ Moveset in `movesets.js`, Sprites in `assets/<id>/` + `SPRITE_CHARS` in `render/sprites.js`).
 - Neuer Move: Eintrag in `BASE_MOVES` (`moves.js`) + Zuordnung in `Fighter.select()`; Pose in `rig.js` (`A`).
 - Neue Eingabe (Gamepad/P2): Klasse von `InputBuffer` erben und `tick()` implementieren.
 - Nach Änderungen: `node tools/build.mjs` (oder `build.bat`), Tests: `node tests/sim.test.js`.
 
 ## Sprite-Figuren (H!T, ST3-G0)
-
 - Quellen: Tiger = Einzelframes `assets/tiger/source/` (`tools/make-sprites.py`) bzw. Posenbögen `assets/tiger/sheets/` (`tools/import-tiger-sheets.py`); ST3-G0 = Posenbögen `assets/st3g0/sheets/` (`tools/import-st3g0-sheets.py`). Beide packen zu `assets/<id>/atlas.webp` + `meta.json` (+ `meta.js` für dev.html). Nur nötig, wenn sich die Sheets ändern; die fertigen Atlanten liegen bei.
 - `tools/build.mjs` bettet alle Atlanten als Data-URI in `dist/game.js` ein (`window.__SPRITES__`) → läuft per Doppelklick, auch als Single-File-HTML.
 - Animationen: Frame-Listen in `render/sprites.js` (`TIGER_ANIMS`, `ST3G0_ANIMS`). Der Fighter liefert `anim`, `animU` (0..1 über Move-Dauer bzw. Knockdown/Aufstehen) und `sf`. Optionen je Animation: `loop/fps`, `squash` (Ducken), `lean`, `bob`, `lying`, `flip` (gegen die Blickrichtung zeichnen, wenn Frames „nach vorn“ fallen).
@@ -82,7 +75,6 @@ Zusatzfelder: `armor:[von,bis]` (Rüstung), `unb` (Griff), `dive`, `tp`, `heal`,
 - Knockdown: Launcher und harte Treffer setzen `launched` (keine Luft-Erholung) → Landung = harter Knockdown (`knockdown` → `wakeup`).
 
 ## Arcade-Modus (core/arcade.js)
-
 - Zustände: `select → fight → clear | gameover | victory`. Die Charakterwahl ist ein Zustand, kein eigenes Spiel: Solange `state==='select'` läuft kein `game.step()`, der Renderer zeichnet `drawSelect()`.
 - Leiter: `Arcade.ladderFor(id)` = `LADDER` ohne die eigene Figur (kein Endgegner mehr). Je Stage `game.rematch()` mit neuem Gegner (`p2.setChar`) und `game.stageIndex` → Hintergrund-Theme (`THEMES[stage]`).
 - Eine Stage ist geschafft bei 2 Runden-Siegen (`ROUND.wins`). Danach `clear` (Banner, auto-weiter nach 240 Frames, Enter überspringt); bei Niederlage `gameover` (Enter = nochmal gegen denselben Gegner, Esc = Charakterwahl); nach dem letzten Gegner `victory`.
@@ -91,24 +83,20 @@ Zusatzfelder: `armor:[von,bis]` (Rüstung), `unb` (Griff), `dive`, `tp`, `heal`,
 - `char.size` skaliert Hurtbox/Hitboxen/Kamera. `mods` eines Charakters darf je Move ein Objekt oder eine Funktion `base => patch` sein.
 
 ## Stages (render/stage.js)
-
 `THEMES` = 4 Level (NEON CITY, CRIMSON TEMPLE, TOXIC DOCKS, LABYRINTH). Je Theme Farben, Skyline-Layer, Neon-Schilder, Boden; Stil `labyrinth` zeichnet Steinsäulen + Fackeln. Neues Level: Eintrag in `THEMES` (der Renderer wählt `THEMES[game.stageIndex]`).
 
 ## Gasse mit brechbaren Hochhauswänden (core/barrier.js)
-
 `Arena` (`game.arena`) hält je Seite eine Begrenzung `{x, hp, max, step, final, visible, flash, show}`. `arena.l/.r` = aktuelle Spielfeldgrenzen (Start 110/850), beide Seiten brechbar (`BARRIER.steps = {L:1, R:1}`). `hitWall(game, victim, schaden, {launch})` wird von `combat.hit()` (Treffer/Block auf pinned Gegner) und `Fighter.physics()` (Aufprall > `BARRIER.impactV`) aufgerufen; bei hp ≤ 0 → `breakWall()`: Grenze rückt in das Gebäude (`x ± BARRIER.width`, aktuell 1000 px), Ziegel-Partikel, Shake/Hitstop, Opfer wird nach außen geschleudert (airhit, launched), `openT[side]` zählt Frames seit dem Bruch (Erdgeschoss-Fassade blendet aus, obere Fassade bleibt). Rückwände (`endL/endR`) sind `final` (unzerstörbar). `Game.startRound()` setzt die Arena zurück. Rendering: `Renderer.house()` → `houseSide('L'|'R')` mit Ebenen upper/ground/inner aus `houseLayers(theme, side)` (rechts Lobby, links Spielhalle), `areaBanner()` im Bildschirmraum.
 
 **Decke (v15):** `HOUSE.ceil` (config.js) ist die Unterkante der Innendecke. `Arena.inside(x)` liefert 'L'/'R' im aufgebrochenen Gebäude; `Fighter.ceiling()` (am Ende von `physics()`) begrenzt dort die Kopfhöhe und blockt den Eintritt vom Hof, wenn der Kopf über der Decke liegt. KI-Ecken-Taktik: `AIController.corner()` + `AI_LEVELS[].corner`.
 
 ## Sound (v16)
-
 `core/sfx.js` ordnet Ereignisse Sounds zu (`strike`, `hitSounds`, `swingSound`, `comboStep`), `Game.sfx(name,{vol,rate})` leitet an `game.audio.play()` weiter (`render/audio.js`, `main.js` setzt `game.audio`; headless/Tests = `null`). Samples: `sfx/<name>.ogg`, Build bettet sie als `window.__SFX__` ein. Neuer Sound: Datei in `sfx/` legen, in `core/sfx.js` oder per `game.sfx('name')` am Ereignis verwenden, Mindestabstand ggf. in `GAP` (audio.js).
 
 ## Eigener Hintergrund (render/backdrop.js, render/bgpanel.js)
-
 `Backdrop` (`renderer.bd`) hält je Bereich (`all`, `title`, `select`, `fight`) ein Medium (Video-Element, Bitmap-Frames oder verkleinertes Canvas); `resolveSlot()` wählt Einzel-Bereich > `all` > Original. `Backdrop.draw(g,W,H,bereich,{cam,dimAdd})` zeichnet im Bildschirmraum (cover/contain, Abdunkeln, Parallaxe zur Kamera) und liefert `false`, wenn nichts gilt oder das Medium noch lädt – dann zeichnet der Renderer das Original. Der Renderer ruft es in `drawDemo` (Titelmenü), `drawSelect` und `draw` (Kampf, vor `cam.apply`) auf. `BgPanel` ist reine DOM-Oberfläche (Panel, Knopf, globales Drag & Drop, Toast) und kennt nur `Backdrop` und die Hooks `blocked/onOpen/onClose` aus `main.js`.
 
-## Luftkampf (v21)
 
+## Luftkampf (v21)
 Launcher → Super Jump (`AIR.chase`: Magnet + Höhen-Lock) → Luft-Kette jL/jM/jH mit Hover → Sky-Launcher (`j8H`, 1×) → Finisher `jH` / `j2H` (Slam mit Rückprall) / `airsp` / `airsuper`. Logik: `fighter.js` (`airAssist`, `select`, `tryCancel`, `land`), `combat.js` (`hit`: Juggle-Dämpfung, relaunch, slam, Hover), Werte `AIR` in `config.js`. Tests: `node tests/air.test.js`.
 `Story.dealer` (`Dealer`, je Kapitel `CHAPTERS[].npc`) = interaktiver NPC: `update()` (Nähe, Ausblenden bei Wellen, Tipp-Animation), `open()/close()`, `key(code)`/`click(i)`, Käufe über `buyPack`/`buyChar`/`LOOT`. `Game.step` friert die Spieler-Eingabe im Gespräch ein. Darstellung `render/storyhud.js` (`drawDealer`, `drawDealerUi`), Eingabe `main.js` (E, Klick, Hover, Pad `dealer`). Der Rabe ist zugleich Kämpfer (`CHARACTERS.rabe`, Moveset `MODS.rabe`, `RABE_ANIMS`); Freischaltung/Preis: `CHAR_PRICE`, `buyChar` (core/loot.js), `UNLOCKABLE` (characters.js).
