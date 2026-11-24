@@ -3,20 +3,24 @@ import{WALL_L,WALL_R,GROUND,BARRIER,HOUSE}from'./config.js';
 // Gebäude (Innenraum). Rein logisch (kein DOM) -> headless testbar. Grenzen immer über arena.l / arena.r abfragen, nie über WALL_L/WALL_R.
 export class Arena{
  constructor(){this.reset()}
- reset(){this.L=this.make(-1,0);this.R=this.make(1,0);this.msg=null;this.broken=0;this.openT={L:-1,R:-1};this.open=null}
+ reset(){this.dx=0;this.sw=false;this.L=this.make(-1,0);this.R=this.make(1,0);this.msg=null;this.broken=0;this.openT={L:-1,R:-1};this.open=null}
  // Melee: keine Wände, Grenzen weit außerhalb (Blast-Zonen übernehmen)
- setOpen(l,r){this.open={l,r}}
+ setOpen(l,r){this.open={l,r};this.sw=false;this.dx=0}
+ // Story-Finale: Gebäude rechts an der Kampfgrenze der Endgegner-Arena (wallX = Außenwand). Wie im Arcade: Außenwand brechbar, dahinter der Innenraum (BARRIER.width tief, mit Decke).
+ // Nur die rechte Seite; links bleibt eine normale Grenze (l). Nach dem Durchbruch rückt die Grenze r an die Rückwand (Story.onWallBreak zieht story.r nach).
+ setStoryWall(l,wallX){if(this.sw&&this.dx===wallX-WALL_R){this.open.l=l;return}
+  this.dx=wallX-WALL_R;this.sw=true;this.L={...this.make(-1,0),visible:false,step:0,hp:Infinity,max:Infinity,x:l};this.R=this.make(1,0);this.open={l,r:wallX};this.openT={L:-1,R:-1};this.broken=0;this.msg=null}
  make(dir,step){const side=dir<0?'L':'R',n=BARRIER.steps[side],final=step>=n,hp=final?Infinity:BARRIER.hp[Math.min(step,BARRIER.hp.length-1)];
-  return{dir,step,final,visible:n>0,hp,max:hp,x:(dir<0?WALL_L:WALL_R)+dir*step*BARRIER.width,flash:0,show:0}}
+  return{dir,step,final,visible:n>0,hp,max:hp,x:(dir<0?WALL_L:WALL_R+(this.dx||0))+dir*step*BARRIER.width,flash:0,show:0}}
  get l(){return this.open?this.open.l:this.L.x}
  get r(){return this.open?this.open.r:this.R.x}
  get endL(){return WALL_L-BARRIER.width*BARRIER.steps.L} // Rückwand des linken Gebäudes
- get endR(){return WALL_R+BARRIER.width*BARRIER.steps.R} // Rückwand des rechten Gebäudes
+ get endR(){return WALL_R+(this.dx||0)+BARRIER.width*BARRIER.steps.R} // Rückwand des rechten Gebäudes
  // Innenraum eines aufgebrochenen Gebäudes: 'L' | 'R' | null (Hof/Gasse). Nur dort gibt es eine Decke (HOUSE.ceil).
  get ceil(){return HOUSE.ceil}
- inside(x){if(this.open)return null;return this.L.step>0&&x<WALL_L?'L':this.R.step>0&&x>WALL_R?'R':null}
+ inside(x){if(this.sw)return this.R.step>0&&x>WALL_R+this.dx?'R':null;if(this.open)return null;return this.L.step>0&&x<WALL_L?'L':this.R.step>0&&x>WALL_R?'R':null}
  // Welche Begrenzung berührt ein Kämpfer an Position x? 'L' | 'R' | null
- sideAt(x){if(this.open)return null;return x<=this.l+6?'L':x>=this.r-6?'R':null}
+ sideAt(x){if(this.sw)return x>=this.r-6?'R':null;if(this.open)return null;return x<=this.l+6?'L':x>=this.r-6?'R':null}
  update(){for(const w of[this.L,this.R]){if(w.flash>0)w.flash--;if(w.show>0)w.show--}if(this.msg&&--this.msg.t<=0)this.msg=null;
   for(const k of['L','R'])if(this.openT[k]>=0)this.openT[k]++}
  // Schaden an der Wand hinter `victim`. Gibt true zurück, wenn sie dabei bricht.
@@ -31,6 +35,7 @@ export class Arena{
   this.breakWall(game,side,victim,launch);return true}
  breakWall(game,side,victim,launch){const w=this[side],ox=w.x,d=w.dir;
   this[side]=this.make(d,w.step+1);this.broken++;this.openT[side]=0;this.msg={t:170,side,dir:d,step:w.step+1};
+  if(this.sw){this.open.r=this[side].x;if(game.story)game.story.onWallBreak(ox,this[side].x)}   // Story: Grenze in den Innenraum
   const P=game.particles,a=d>0?0:Math.PI;
   P.burst(ox,GROUND-90,{count:50,speed:11,color:'#b9855f',life:46,size:5,gravity:.35,angle:a,spread:2.6,streak:.5});   // Ziegel
   P.burst(ox,GROUND-90,{count:30,speed:9,color:'#d8c8a8',life:40,size:3.5,gravity:.3,angle:a,spread:3,streak:.6});    // Staub/Putz

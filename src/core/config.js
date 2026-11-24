@@ -39,7 +39,7 @@ export const COMBO_SCALE=[1,.95,.9,.85,.8,.7,.6,.5,.4,.3]; // Schadensskalierung
 export const METER={max:300,bar:100};
 export const ROUND={time:99,wins:2,intro:120,ko:150,result:260};   // result = Siegesfeier nach dem Rundenende (Frames)
 // Weltgrenzen: Der Hintergrund reicht über den Bildschirm (0..960 x 0..540) hinaus, damit die Kamera herauszoomen/hochschwenken kann.
-export const WORLD={x0:-1020,y0:-360,x1:1980,y1:540}; // 3000 px breit: reicht über beide voll geöffnete Gebäude (Gasse 740 + 2×BARRIER.width) hinaus
+export const WORLD={x0:-1020,y0:-360,x1:3420,y1:540}; // 4440 px breit: reicht über beide voll geöffnete Gebäude (Gasse 740 + 2×BARRIER.width) und über das Story-Finale-Gebäude (Außenwand bis x≈2360 + BARRIER.width) hinaus
 // Gasse zwischen zwei Hochhäusern: Start in der engen Gasse (WALL_L..WALL_R), jede Seite hat eine brechbare Wand (steps.L / steps.R = Durchbrüche je Seite).
 // Hinter jeder Wand liegt ein Innenraum (Breite `width`; links Spielhalle, rechts Lobby), seine Rückwand ist unzerstörbar. hp = Haltbarkeit der Wand.
 // Schaden: Treffer auf einen in die Ecke gedrängten Gegner (hitMul x Moveschaden, Launcher/harte Treffer x heavyMul, geblockt x blockMul)

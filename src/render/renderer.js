@@ -60,7 +60,7 @@ export class Renderer{
   g.save();cam.apply(g);                                 // --- Welt: alles unter derselben Kamera-Matrix ---
   if(game.story&&game.story.cfg.parkour&&!cbg)this.stage.skyAbove(g,t,cam.y-H/2/cam.z-80);   // Parkour: Himmel nach oben verlängern
   if(cbg){if(!game.melee&&!game.story)this.stage.draw(g,t,true)}else this.stage.draw(g,t,false,!!game.story);game.particles.drawFw(g);   // Feuerwerk: vor dem Himmel, hinter den Häusern
-  const ML=!!game.melee,ST=!!game.story;if(ST)storyWorld(g,game,t);else if(ML){meleeStage(g,this.stage.theme,t,cbg);for(const f of game.fighters)meleeHalo(g,f,t)}else if(!cbg||this.bd.opts.houses)this.house(g,game,t);   // Melee: offene Plattform über dem Abgrund statt Gasse mit Häusern
+  const ML=!!game.melee,ST=!!game.story;if(ST){storyWorld(g,game,t);this.storyHouse(g,game)}else if(ML){meleeStage(g,this.stage.theme,t,cbg);for(const f of game.fighters)meleeHalo(g,f,t)}else if(!cbg||this.bd.opts.houses)this.house(g,game,t);   // Melee: offene Plattform über dem Abgrund statt Gasse mit Häusern
   if(game.finA>.01){g.save();g.setTransform(s,0,0,s,0,0);g.globalAlpha=Math.min(1,game.finA);g.fillStyle='#000';g.fillRect(0,0,W,H);g.restore()}   // Combo-Finisher: Hintergrund komplett schwarz (Figuren, Projektile, Effekte und HUD bleiben)
   for(const f of game.fighters)if(!ML||(f.onStage&&!f.under&&!(f.dead>0))){this.post.floorGlow(g,f,f.floor,t);this.post.hyperAura(g,f,f.floor,t)}
   this.celeb(g,game);
@@ -238,6 +238,10 @@ drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTr
    g.strokeStyle='#00000066';for(let y=top;y<540;y+=11){g.beginPath();g.moveTo(rx,y);g.lineTo(rx+24,y);g.stroke()}});
   return this._hl[k]={OX,Wd,upper,ground,inner,X0,X1,ew,dir,top,bot}}
  house(g,game,t){for(const side of['L','R'])this.houseSide(g,game,side)}
+ // Story-Finale-Gebäude rechts hinter der Endgegner-Arena (core/barrier.js setStoryWall): dieselben Hausebenen wie im Arcade, um dx nach rechts verschoben; Wand-Zustand aus arena.R (bzw. intakt / schon durchbrochen)
+ storyHouse(g,game){const s=game.story,F=s&&s.finale;if(!F)return;const A=game.arena,dx=F.x-WALL_R,on=A.sw&&A.dx===dx,hp=BARRIER.hp[0];
+  const R=on?A.R:F.broken?{step:1,hp:1,max:1,flash:0,show:0,final:true}:{step:0,hp,max:hp,flash:0,show:0,final:false},oT=on?A.openT.R:F.broken?99:-1;
+  g.save();g.translate(dx,0);this.houseSide(g,{arena:{R,openT:{R:oT}}},'R');g.restore()}
  houseSide(g,game,side){const A=game.arena,L=this.houseLayers(this.stage.theme,side),w=A[side],open=w.step>0,oT=A.openT[side],d=L.dir,draw=l=>g.drawImage(l.c,L.OX,l.oy,L.Wd,l.h);
   if(open)draw(L.inner);
   const fa=open?Math.max(0,1-oT/20):1;

@@ -402,7 +402,7 @@
 - **Tests:** `node tests/packopen.test.js` (Wertigkeit, Ablauf, Skip, Feuerwerk wächst mit dem Wert, Zeitsteuerung), Browser: `python3 tests/e2e-booster.py` (Screenshots der Schlüsselmomente). Die alte Kartenreihe in `drawLoot` bleibt nur als Rückfall, falls kein `u.po` gesetzt ist.
 
 
-## Update: Story Kapitel 2 – Cyberdämon (Boss)
+## Update (historisch, überholt): Story Kapitel 2 – Cyberdämon (Boss) – A1LIEN ist inzwischen der Finale-Boss von Kapitel 5, siehe „Boss-Reihenfolge“ unten
 - **Kapitel-System:** `CHAPTERS` in `src/core/story.js` (je Kapitel: `enc` = Wellen, `stage` = Level-Theme, `look` = Straßenfarben/Akzent, `capBase`/`cap` = max. gleichzeitige Mantis, Texte). `ENC` = Kapitel 1 (Kompatibilität). Kapitel 2: Docks, Wellen 4/5/6/7 Mantis, dann Boss `cyberdemon` (+2 Mantis).
 - **Boss:** `CHARACTERS.cyberdemon` (`storyBoss:true`, HP 1350, `size 1.22`), Moveset `MODS.cyberdemon` in `movesets.js`, Animationen `CYBERDEMON_ANIMS` in `sprites.js`. Story-KI eine Stufe härter. Unter 50 % HP: Wutphase (`Story.rageCheck`: Hyper-Meter 150 + 2 Mantis). Bei Niederlage: 2 Booster + Heilung, restlicher Schwarm bricht zusammen. Boss-Leiste: `storyhud.js`.
 - **Sprites:** `assets/cyberdemon/sheets/atem.png` (6 Idle-Frames `i_0..5`) + `schlag.png` (8 Schlag-Frames `a_0..7`). Import: `python3 tools/import-cyberdemon-sheets.py` (spiegelt nach rechts, repariert Alpha der Geister-Frames `a_4/a_5`, Maßstab Schlag-Sheet `k=1.2`). Behelfe: Laufen, Tritte, Ducken, Treffer, Knockdown/Aufstehen (gedrehte Pose), Block, Sprung, Sieg.
@@ -458,19 +458,20 @@
 - **Test:** `node tests/items.test.js` (in `npm test`). Nicht im echten Browser geprüft: Optik der Item-Leiste (Position/Abstand zum Hinweistext), Gefühl der Tastenbelegung. Karten-Bilder für Elixier/Kristall: `assets/cards/elixir.png`, `crystal.png` (ohne Bild wird die Textkarte gezeigt).
 - **Wichtig beim Build:** `tools/build.mjs` bündelt nur Module aus der Liste `ORDER`. Ein neues Modul muss dort eingetragen werden (vor den Modulen, die es beim Laden brauchen, z. B. `core/items` vor `core/loot`), sonst läuft es in den Node-Tests, im Browser aber nicht (ReferenceError). `tests/build.test.js` prüft das; Namen dürfen im gebündelten Scope nicht doppelt vorkommen (`node --check dist/game.js`).
 
-## Update: Cyberdämon heißt jetzt A1LIEN + kaufbarer Kämpfer (nach Kapitel 3)
-- **Umbenennung (nur Anzeige):** `CHARACTERS.cyberdemon.name` = `A1LIEN`, `miniDemon` = `MINI-A1LIEN`, Boss-Titel in Kapitel 2 + 3 (`story.js`) und Sammelkarte (`loot.js`). Die interne ID `cyberdemon` (Sprites in `assets/cyberdemon`, `RABE`-ähnliche Spielstände, Tests) bleibt unverändert.
-- **Shop:** `CHAR_PRICE.cyberdemon = 150` in `src/core/loot.js` (>>> Preis dort ändern <<<). Voraussetzung `CHAR_REQ.cyberdemon = {flag:'storydone3'}`: `canBuyChar`/`buyChar` verweigern den Kauf (ohne Abbuchung), bis Kapitel 3 abgeschlossen ist. Die Karte steht immer im Shop, zeigt vorher „GESPERRT · Schließe Kapitel 3 ab“ (`lootui.js`, Meldung beim Klick in `main.js shopBuy`). Mit 5 Karten sind die Shop-Karten schmaler (`shopCardRect`).
-- **Kapitelabschluss:** `Arcade.update()` speichert bei jedem geschafften Story-Kapitel das Flag `storydone<N>` (`unlocks.js`, localStorage `hitisop.unlocks`). Zum Testen ohne Durchspielen: Seite mit `?unlock=storydone3` öffnen. Auf dem Siegesbildschirm nach Kapitel 3 erscheint „NEU IM SHOP: A1LIEN“ (`storyhud.js`).
+## Update: Cyberdämon heißt jetzt A1LIEN + kaufbarer Kämpfer (nach Kapitel 5 = Finale)
+- **Umbenennung (nur Anzeige):** `CHARACTERS.cyberdemon.name` = `A1LIEN`, `miniDemon` = `MINI-A1LIEN`, Boss-Titel in Kapitel 5 (`story.js`) und Sammelkarte (`loot.js`). Die interne ID `cyberdemon` (Sprites in `assets/cyberdemon`, `RABE`-ähnliche Spielstände, Tests) bleibt unverändert.
+- **Shop:** `CHAR_PRICE.cyberdemon = 150` in `src/core/loot.js` (>>> Preis dort ändern <<<). Voraussetzung `CHAR_REQ.cyberdemon = {flag:'storydone5'}`: `canBuyChar`/`buyChar` verweigern den Kauf (ohne Abbuchung), bis Kapitel 5 (Finale) abgeschlossen ist. Die Karte steht immer im Shop, zeigt vorher „GESPERRT · Schließe Kapitel 5 ab“ (`lootui.js`, Meldung beim Klick in `main.js shopBuy`). Mit 5 Karten sind die Shop-Karten schmaler (`shopCardRect`).
+- **Kapitelabschluss:** `Arcade.update()` speichert bei jedem geschafften Story-Kapitel das Flag `storydone<N>` (`unlocks.js`, localStorage `hitisop.unlocks`). Zum Testen ohne Durchspielen: Seite mit `?unlock=storydone5` öffnen. Auf dem Siegesbildschirm nach dem Finale (Kapitel 5) erscheint „NEU IM SHOP: A1LIEN“ (`storyhud.js`).
 - **Spielbar nach Kauf:** `UNLOCKABLE` enthält `cyberdemon` (`characters.js`) → Eintrag in `ROSTER`, in Arcade/Story/2 Spieler/Melee wählbar (nicht als Arcade-Gegner). Hinweis: Es ist weiter die Boss-Figur mit Behelfs-Animationen (Laufen, Tritte, Ducken, Treffer, Knockdown, Sieg) – siehe Abschnitt „Story Kapitel 2 – Cyberdämon“.
 - **Tests:** neu `tests/a1lien.test.js` (in `npm test`); `tests/blackmarket.test.js` erwartet jetzt 2 Shop-Kämpfer. Im echten Chrome geprüft: Shop gesperrt/freigeschaltet, Kauf, Charakterwahl (7 Plätze), Melee-Menü.
 
-## Update: Story-Kanten statt Hindernisse (Terrain)
+## Update: Story-Kanten statt Hindernisse (Terrain) – STAND 23.11.: Kanten wieder entfernt
+- **Stand 23.11.: Die Kanten wurden wieder entfernt** (`ledges:[]` in allen 5 Kapiteln: Straße frei, nur die Parkour-Gebäude bleiben). `terrain.js`, `drawLedges` und das KI-Klettern bleiben im Code (die Parkour-Plattformen nutzen das Terrain). Props, die nur wegen der Kanten ausgeblendet waren, sind aus den Daten entfernt. Wieder befüllen = `ledges:[{x0,x1,h}]` in `CHAPTERS`.
 - Die Kisten/Hindernisse zum Überspringen (`hurdles`) sind raus. Stattdessen haben die Story-Kapitel `ledges:[{x0,x1,h}]` (Plateaus, h Pixel über dem Boden; Überlappung = Treppe). Daten: `CHAPTERS[i].ledges` in `src/core/story.js`.
 - `src/core/terrain.js` (`Terrain`: `floorAt(x)`, `block(px,x,y)`): von unten ist die Kante eine Wand, man springt hinauf, läuft oben weiter und fällt am Ende hinunter. Gilt für ALLE Figuren: `game.terrain` (= `story.terrain`) wird jeden Frame an `fighter.terrain` gehängt; `Fighter.floor` ersetzt `GROUND` in Physik, Landen, Sprung-/Treffer-Effekten (combat.js, projectile.js), Items (story.js) und Schatten/Bodenglühen (renderer.js).
 - KI: läuft sie gegen eine Kante (`fighter.wallHit`), springt sie hinauf und in der Luft nach vorn (`AIController.climb`, ai.js).
 - Zeichnung: `drawLedges` in `src/render/storyhud.js` (Props im Bereich einer Kante entfallen).
-- Tests: `tests/terrain.test.js` (Geometrie, Physik, KI klettert, alle Kapitel), `story3/story4.test.js` (Kanten + komplettes Kapitel mit Bot).
+- Tests: `tests/terrain.test.js` (Geometrie, Physik, KI klettert, Kapitel-Daten: Straße frei), `story3/4/5.test.js` (Straße frei + komplettes Kapitel mit Bot).
 
 ## Update: Parkour mit Schatz (pro Kapitel, hoch + steigende Schwierigkeit)
 - Jedes Story-Kapitel hat `parkour:{deco,name,width,segs}` (story.js). Der Generator `src/core/parkour.js` (`buildParkour`) macht aus den Kürzeln (S Stufe, L flach, H hoch, N schmal, D Doppelsprung-Lücke, F gerade, B Rast, M beweglich, C bröckelnd, T Wende) die Plattformen (`platforms`, `relic`, `height`). Maßstab: 100 px = 1 m (Figuren ~180 px). Zone x −300…800 (`PK_ZONE`).
@@ -478,7 +479,7 @@
 - Oben liegt der Schatz (`Story.relic`, `relicCheck()`): Leben voll, +100 Hyper-Meter, +2 Booster, einmal pro Kapitelstart. Solange man >110 px über dem Boden ist, startet keine Welle (`Story.update`).
 - Terrain (`core/terrain.js`): Plattformen von unten durchlässig, nur von oben landbar (`land`), Stehen über `floorFor`/`under`; `kind:'move'` pendelt (`ox`,`dx`, trägt Figuren mit, siehe `Fighter.physics`), `kind:'crumble'` fällt `hold` Frames nach dem Betreten weg und kommt nach `off` Frames wieder; `Game.step` ruft `Terrain.tick`.
 - Kamera: `Camera.compute` (Story) folgt der Figur nach oben (`y=min(H-hh, p.y-.24*hh)`); `Stage.skyAbove` verlängert den Himmel nach oben (Sterne); Höhenanzeige rechts im Story-HUD.
-- Kulissen (`src/render/parkourdeco.js`, realistische Proportionen): Kap. 1 Hochhaus (Geschosse 3 m, Fenster 1,1×1,5 m, Ladenfront, Dachtank, Antennen), Kap. 2 Containerkran (Gitterturm, Ausleger, Laufkatze/Haken, Container), Kap. 3 Reaktorzylinder mit Ringen/Rohren/Blitzen, Kap. 4 Stufenpyramide mit Fackeln + Obelisk, Kap. 5 Pagode mit Dächern/Laternen/Glocke.
+- Kulissen (`src/render/parkourdeco.js`, realistische Proportionen): Kap. 1 Hochhaus (Geschosse 3 m, Fenster 1,1×1,5 m, Ladenfront, Dachtank, Antennen), Kap. 2 Containerkran (Gitterturm, Ausleger, Laufkatze/Haken, Container), Kap. 3 (URSUS) Pagode mit Dächern/Laternen/Glocke, Kap. 4 (ANUBIS) Stufenpyramide mit Fackeln + Obelisk, Kap. 5 (A1LIEN) Reaktorzylinder mit Ringen/Rohren/Blitzen.
 - Tests: `tests/parkour.test.js` (Plattform-Physik, bewegliche/bröckelnde, Generator, Machbarkeit JEDER Stufe mit der echten Physik, Kamera, Daten/Schwierigkeit, Schatz, Zeichnen).
 
 ## Update: Händler KORVUS nur oben auf dem Parkour
@@ -506,3 +507,10 @@ Jeder Boss hat sein eigenes **Level-Paket** (in `src/core/story.js`, `CHAPTERS`)
 - Hinweis: Kapitel 3 (Bergtempel) und Kapitel 5 (Kern) nutzen beide die Stage 1 (CRIMSON TEMPLE, Pagode/rote Mondscheibe). Ein eigener Kern-Hintergrund bräuchte ein 5. Theme in `render/stage.js` (+ `STAGE_NAMES` in `loot.js`, Stage-Auswahl/Shop).
 - Boss-Stärke ist unverändert (URSUS 1550 HP, ANUBIS 1450, A1LIEN 1350): der Endboss ist damit der schwächste Boss. Bei Bedarf Werte nach Kapitelplatz angleichen.
 - Tests: `tests/story3.test.js` (URSUS), `story4.test.js` (ANUBIS), `story5.test.js` (A1LIEN, Finale), `a1lien.test.js` (Shop-Voraussetzung Kapitel 5), `st3g0unlock.test.js`.
+
+## Update: Story-Finale-Gebäude (brechbare Wand wie im Arcade)
+- In jedem Story-Kapitel steht hinter der Endgegner-Arena (rechter Rand = letzte Welle `x + LV.half`, `Story.finale={x,broken}`) ein Gebäude wie im Arcade-Modus: die Außenwand ist brechbar (`BARRIER.hp`), dahinter liegt der Innenraum (`BARRIER.width` tief, mit Decke). Nur in der Endgegner-Arena zählt die Wand (`Story.engage` → `Arena.setStoryWall(l, wallX)`); bei normalen Wellen bleibt die Grenze offen wie bisher.
+- `core/barrier.js`: `Arena.sw/dx` (Story-Wand-Modus; `make()`, `endR`, `inside()`, `sideAt()` berücksichtigen den Versatz `dx = wallX − WALL_R`); beim Durchbruch rückt `open.r` an die Rückwand und `Story.onWallBreak()` zieht `story.r` nach (Kamera/Mobs), lässt Heilung an der Bresche fallen und zeigt „WAND DURCHBROCHEN“. Wer an die Wand geprügelt wird (Gegner, Boss ODER Spieler), beschädigt sie wie im Arcade.
+- `render/renderer.js`: `storyHouse()` zeichnet die vorhandenen Haus-Ebenen (`houseSide`/`houseLayers`) um `dx` verschoben (heil / durchbrochen / bleibt offen, auch nach der Arena).
+- `core/config.js`: `WORLD.x1` 1980 → 3420 (Story-Boss-Arenen reichen bis 2360, das Gebäude bis 3360; vorher war die Story-Kamera bei 1980 gedeckelt). Stage-Hintergrund wird dadurch breiter gecached.
+- Test: `tests/storyfinale.test.js` (Daten, nur Endgegner-Arena, Durchbruch inkl. Grenze/Kamera/Decke/Belohnung, echter Kampf bricht die Wand, Neustart, Zeichnen).

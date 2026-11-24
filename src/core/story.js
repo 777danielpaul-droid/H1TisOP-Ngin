@@ -16,7 +16,7 @@ export const LV={x0:-800,x1:2400,start:-700,half:560};   // Levelgrenzen, Startp
 // Schwarzmarkthändler KORVUS (core/blackmarket.js): steht in jedem Kapitel NUR ganz oben auf dem Parkour (parkour.dealer, letzte Plattform B) – ansprechbar, wenn gerade keine Welle läuft.
 // enc-Felder: x = Auslöse-Position, n = Anzahl Mantis, boss = Boss-Figur (1 = Alpha-Mantis) und at = Platz in der Spawn-Reihenfolge (0 = zuerst).
 export const CHAPTERS=[
- {id:1,name:'DER SCHWARM',stage:0,capBase:2,cap:5,ledges:[{x0:880,x1:1200,h:80},{x0:1320,x1:1640,h:100}],parkour:{deco:'neon',name:'NEON-CHIP',width:210,segs:'LSFSSHSDSSSHB'},props:[{k:'crate',x:-600},{k:'barrel',x:-120},{k:'sign',x:330},{k:'crate',x:820},{k:'barrel',x:1200},{k:'sign',x:1560},{k:'crate',x:1750},{k:'barrel',x:2050},{k:'sign',x:2280}],look:{ground:['#14101f','#050309'],line:'#4a3b78',lamp:'255,210,120',acc:'#7dff9a'},
+ {id:1,name:'DER SCHWARM',stage:0,capBase:2,cap:5,ledges:[],parkour:{deco:'neon',name:'NEON-CHIP',width:210,segs:'LSFSSHSDSSSHB'},props:[{k:'crate',x:-600},{k:'barrel',x:-120},{k:'sign',x:330},{k:'crate',x:820},{k:'crate',x:1750},{k:'barrel',x:2050},{k:'sign',x:2280}],look:{ground:['#14101f','#050309'],line:'#4a3b78',lamp:'255,210,120',acc:'#7dff9a'},
   intro:['Die Stadt schläft nicht mehr. Aus den Gassen kriechen Insektenkrieger.','Kämpfe dich durch das Viertel – sie kommen in Gruppen.'],
   win:{title:'LEON BESIEGT',say:'Der Herrscher der Savanne ist geschlagen – der Schwarm zieht sich zurück!'},
   enc:[
@@ -26,7 +26,7 @@ export const CHAPTERS=[
    {x:1000,n:5,title:'VIERTE WELLE',say:'Sie greifen von beiden Seiten an – bleib in Bewegung!'},
    {x:1380,n:4,boss:1,title:'DER ALPHA',say:'Der Anführer des Schwarms steigt herab.'},
    {x:1800,n:2,boss:'leonBoss',at:0,title:'LEON',say:'Ein gewaltiges Brüllen erschüttert die Stadt – der Herrscher der Savanne fordert dich heraus!'}]},
- {id:2,name:'DER DÄMON ERWACHT',stage:2,capBase:3,cap:6,ledges:[{x0:860,x1:1100,h:90},{x0:910,x1:1040,h:170}],parkour:{deco:'crane',name:'FRACHT-SCHATZ',width:185,segs:'SSFSSDHSSLLSDSSNHB'},props:[{k:'barrel',x:-560},{k:'crate',x:-200},{k:'crate',x:420},{k:'barrel',x:900},{k:'sign',x:1250},{k:'crate',x:1600}],look:{ground:['#0c2a22','#030a07'],line:'#52ffa8',lamp:'120,255,200',acc:'#ff6a7a'},
+ {id:2,name:'DER DÄMON ERWACHT',stage:2,capBase:3,cap:6,ledges:[],parkour:{deco:'crane',name:'FRACHT-SCHATZ',width:185,segs:'SSFSSDHSSLLSDSSNHB'},props:[{k:'barrel',x:-560},{k:'crate',x:-200},{k:'crate',x:420},{k:'sign',x:1250},{k:'crate',x:1600}],look:{ground:['#0c2a22','#030a07'],line:'#52ffa8',lamp:'120,255,200',acc:'#ff6a7a'},
   intro:['Der Schwarm war nur der Vorbote. Im Hafen regt sich etwas viel Größeres.','Mehr Krieger, härtere Wellen – und am Ende wartet er.'],
   win:{title:'ST3-G0 BESIEGT',say:'Die Panzer-Echse bricht zusammen – der Weg hinauf in die Berge ist frei.'},
   enc:[
@@ -39,12 +39,12 @@ export const CHAPTERS=[
  // Jeder Boss hat SEIN Level-Paket (name, stage = Hintergrund, look = Farben, intro/win, parkour.deco + Schatzname, Wellen-Texte, Boss). Was an den KAPITELPLATZ gebunden ist (steigt von Kap. 1 bis 5): capBase/cap, Wellengrößen/-positionen, ledges, props, parkour.width/segs.
  // Kapitel 3: gemischte Wellen (mix = [[Figur, Anzahl], …], gleichmäßig durchgemischt) aus Mantis + Mini-A1LIEN.
  // parkour = Kletterstrecke pro Kapitel (Generator core/parkour.js): deco = Kulisse (neon/crane/reactor/obelisk/pagoda, render/storyhud.js), name = Schatz, width = Plattformbreite, segs = Kürzel-Folge (S Stufe, L flach, H hoch, N schmal, D Doppelsprung-Lücke, F gerade, B Rast, M beweglich, C bröckelnd, T Wende). Je Kapitel höher, schmaler und mit mehr D/M/C. Daraus entstehen platforms + relic (Schatz oben: Leben voll, +100 Meter, +2 Booster). Zone x -300..800 (links der Händler, rechts vor den Kanten); solange man oben klettert (>110 px über dem Boden), startet keine Welle.
- // ledges = Kanten/Ebenen des Kapitels [{x0,x1,h}]: ein Plateau, h Pixel über dem Boden. Von unten stoppt die Kante (Wand) – man springt hinauf, läuft oben weiter und fällt am Ende wieder hinunter; sich überlappende Plateaus ergeben Treppen. Siehe core/terrain.js.
+ // ledges = Kanten/Ebenen des Kapitels [{x0,x1,h}] – AKTUELL IN ALLEN KAPITELN LEER: keine festen Hindernisse auf der Straße (die Parkour-Gebäude bleiben). Das System (core/terrain.js) bleibt erhalten, auch für die Parkour-Plattformen. Wenn befüllt: ein Plateau, h Pixel über dem Boden. Von unten stoppt die Kante (Wand) – man springt hinauf, läuft oben weiter und fällt am Ende wieder hinunter; sich überlappende Plateaus ergeben Treppen. Siehe core/terrain.js.
  {id:3,name:'DER BERGTEMPEL',stage:1,capBase:3,cap:7,look:{ground:['#2a1a0c','#0a0603'],line:'#e0a05a',lamp:'255,200,120',acc:'#e08a4a'},
   intro:['Der Hafen ist gefallen – die Spur des Schwarms führt hinauf zum Bergtempel: Nebel, Stein und Kirschblüten.','Dort haust, was selbst den Schwarm erzittern lässt. Er lässt dich nicht kampflos vorbei.'],
   win:{title:'URSUS BESIEGT',say:'Der Bär ist gefallen – der Berg schweigt. Doch unter dem Tempel öffnet sich ein Pfad hinab ins Totenreich.'},
-  ledges:[{x0:860,x1:1120,h:90},{x0:960,x1:1090,h:170},{x0:1170,x1:1320,h:100}],parkour:{deco:'pagoda',name:'DRACHENPERLE',width:160,segs:'LSFNFSLMMSMSSSDHDSDSNHSSB'},
-  props:[{k:'crate',x:-640},{k:'barrel',x:-330},{k:'sign',x:-160},{k:'crate',x:260},{k:'barrel',x:520},{k:'sign',x:700},{k:'crate',x:940},{k:'barrel',x:1100},{k:'crate',x:1500},{k:'sign',x:1640}],
+  ledges:[],parkour:{deco:'pagoda',name:'DRACHENPERLE',width:160,segs:'LSFNFSLMMSMSSSDHDSDSNHSSB'},
+  props:[{k:'crate',x:-640},{k:'barrel',x:-330},{k:'sign',x:-160},{k:'crate',x:260},{k:'barrel',x:520},{k:'sign',x:700},{k:'crate',x:1500},{k:'sign',x:1640}],
   enc:[
    {x:-300,mix:[['mantis',3],['miniDemon',1]],title:'ERSTE WELLE',say:'Der Schwarm hat den Berg erreicht – zwischen den Insekten tauchen kleine Dämonen auf.'},
    {x:150,mix:[['mantis',3],['miniDemon',2]],title:'ZWEITE WELLE',say:'Zwischen den Tempelsäulen regt sich etwas.'},
@@ -55,8 +55,8 @@ export const CHAPTERS=[
  {id:4,name:'DAS TOTENREICH',stage:3,capBase:4,cap:8,look:{ground:['#1f1507','#080501'],line:'#ffd45a',lamp:'255,190,90',acc:'#ffd45a'},
   intro:['Unter dem Bergtempel öffnet sich der Weg ins Totenreich – Fackeln, Stein und der Geruch von altem Staub.','Seine Wächter lassen niemanden vorbei. Am Ende wartet ihr Herr.'],
   win:{title:'ANUBIS BESIEGT',say:'Der Wächter der Unterwelt ist gefallen – doch aus der Tiefe leuchtet ein rotes Glühen.'},
-  ledges:[{x0:860,x1:1200,h:100},{x0:1320,x1:1650,h:90},{x0:1430,x1:1560,h:180}],parkour:{deco:'obelisk',name:'SKARABÄUS',width:140,segs:'SSSSSMLSMSSCLCDMNDCNSSFDFCMDCSB'},
-  props:[{k:'barrel',x:-640},{k:'sign',x:-160},{k:'crate',x:240},{k:'barrel',x:520},{k:'sign',x:700},{k:'crate',x:960},{k:'barrel',x:1100},{k:'crate',x:1480},{k:'sign',x:1700},{k:'barrel',x:2000}],
+  ledges:[],parkour:{deco:'obelisk',name:'SKARABÄUS',width:140,segs:'SSSSSMLSMSSCLCDMNDCNSSFDFCMDCSB'},
+  props:[{k:'barrel',x:-640},{k:'sign',x:-160},{k:'crate',x:240},{k:'barrel',x:520},{k:'sign',x:700},{k:'sign',x:1700},{k:'barrel',x:2000}],
   enc:[
    {x:-300,mix:[['mantis',3],['miniDemon',2]],title:'ERSTE WELLE',say:'Die Wächter des Totenreichs erwachen.'},
    {x:150,mix:[['mantis',4],['miniDemon',2]],title:'ZWEITE WELLE',say:'Aus den Nischen der Gruft kriechen sie hervor.'},
@@ -68,8 +68,8 @@ export const CHAPTERS=[
   {id:5,name:'DER KERN',stage:1,capBase:4,cap:9,look:{ground:['#2a0c14','#0a0206'],line:'#ff5a6e',lamp:'255,130,110',acc:'#ffb347'},
    intro:['Das Totenreich liegt hinter dir – doch das Glühen kommt von noch weiter unten, aus dem Kern der Stadt.','Zwischen den Wellen versperren Trümmer den Weg. Spring drüber – und halte dich bereit.'],
    win:{title:'A1LIEN BESIEGT',say:'Das Glühen im Kern erlischt – die Stadt ist endlich sicher.'},
-   ledges:[{x0:860,x1:1200,h:90},{x0:1300,x1:1650,h:120},{x0:1420,x1:1560,h:190}],parkour:{deco:'reactor',name:'KERNSPLITTER',width:125,segs:'SSSNNFCDCLCDCMNMCMNSDSDMDSCLFMSMSNB'},
-   props:[{k:'barrel',x:-620},{k:'crate',x:-200},{k:'sign',x:180},{k:'barrel',x:560},{k:'crate',x:880},{k:'sign',x:1120},{k:'barrel',x:1400},{k:'crate',x:1700},{k:'sign',x:1980},{k:'barrel',x:2200}],
+   ledges:[],parkour:{deco:'reactor',name:'KERNSPLITTER',width:125,segs:'SSSNNFCDCLCDCMNMCMNSDSDMDSCLFMSMSNB'},
+   props:[{k:'barrel',x:-620},{k:'crate',x:-200},{k:'sign',x:180},{k:'barrel',x:560},{k:'crate',x:1700},{k:'sign',x:1980},{k:'barrel',x:2200}],
    enc:[
     {x:-300,mix:[['mantis',4],['miniDemon',3]],title:'ERSTE WELLE',say:'Aus dem Kern strömen kleine Dämonen herbei.'},
     {x:150,mix:[['mantis',4],['miniDemon',4]],title:'ZWEITE WELLE',say:'Das Glühen wird stärker.'},
@@ -88,14 +88,14 @@ export class MobAI extends AIController{
   super.tick(me,opp,game)}}
 export class Story{
  constructor(game,{ai=0,chapter=1}={}){this.g=game;this.lvl=[0,1,1,2][Math.max(0,Math.min(3,ai|0))];this.ch=Math.max(1,Math.min(CHAPTERS.length,chapter|0||1));this.cfg=CHAPTERS[this.ch-1];this.encs=this.cfg.enc;const pk=this.cfg.parkour;this.terrain=(this.cfg.ledges&&this.cfg.ledges.length)||pk?new Terrain(this.cfg.ledges||[],pk?pk.platforms:[]):null;
-  this.relic=pk&&pk.relic?{x:pk.relic.x,y:GROUND-pk.relic.h-34,name:pk.relic.name,got:false,t:0}:null;this.rage=false;this.cp=0;this.kills=0;this.att=[];this.mobs=[];this.l=LV.x0;this.r=LV.x1;this.dealer=null;this.itemCd=0;this.isel=0}
+  this.relic=pk&&pk.relic?{x:pk.relic.x,y:GROUND-pk.relic.h-34,name:pk.relic.name,got:false,t:0}:null;this.rage=false;this.cp=0;this.kills=0;this.att=[];this.mobs=[];this.l=LV.x0;this.r=LV.x1;this.finale=this.cfg.finale===false?null:{x:Math.min(LV.x1,this.encs[this.encs.length-1].x+LV.half),broken:false};this.dealer=null;this.itemCd=0;this.isel=0}
  get total(){return this.encs.length}
  alive(){return this.mobs.filter(m=>m.state!=='ko')}
  nearest(f){let b=null,bd=1e9;for(const m of this.alive()){const d=Math.abs(m.x-f.x);if(d<bd){bd=d;b=m}}return b}
  pairs(){const p=this.g.p1,o=[];for(const m of this.alive()){o.push([p,m],[m,p])}return o}
  // Start / Neustart (Game.startRound): am letzten Checkpoint
  begin(){const g=this.g,p=g.p1;this.mobs=[];this.items=[];g.fighters=[p];this.queue=[];this.state='walk';this.enc=this.cp;this.ft=0;this.sd=0;this.goT=0;this.doneT=0;this.msg=null;this.att=[];this.rage=false;
-  p.x=this.cp?this.encs[this.cp-1].x+140:LV.start;p.facing=1;this.setBounds(LV.x0,LV.x1);
+  p.x=this.cp?this.encs[this.cp-1].x+140:LV.start;p.facing=1;this.setBounds(LV.x0,LV.x1);if(this.finale)this.finale.broken=false;
   const dl=this.cfg.parkour&&this.cfg.parkour.dealer;this.dealer=dl?new Dealer(this,{x:dl.x,y:GROUND-dl.h,fixed:true}):null}   // Händler: bei jedem (Neu-)Start frisch (Gespräch geschlossen)
  // Händler steht ein Stück vor dem Spieler, aber noch vor dem nächsten Wellen-Auslöser (Checkpoint/Wellenende)
  setBounds(l,r){this.l=l;this.r=r;this.g.arena.setOpen(l,r)}
@@ -104,7 +104,8 @@ export class Story{
   if(e.mix){const L=e.mix.map(([id,n])=>Array.from({length:n},()=>id));let i=0;while(L.some(a=>a.length))for(const a of L)if(a.length){this.queue.push({side:i++%2?-1:1,elite:false,id:a.shift()})}}   // gemischt: reihum aus jeder Gruppe, Seiten im Wechsel
   else for(let i=0;i<e.n;i++)this.queue.push({side:i%2?-1:1,elite:false});
   if(e.boss)this.queue.splice(e.at===undefined?2:e.at,0,{side:1,elite:true,id:e.boss===1?'mantisAlpha':e.boss});
-  this.cap=Math.min(this.cfg.cap,this.cfg.capBase+this.enc);this.sd=30;this.msg={t:170,title:e.title,say:e.say};this.g.sfx('ui_round_start',{vol:.7})}
+  this.cap=Math.min(this.cfg.cap,this.cfg.capBase+this.enc);this.sd=30;this.msg={t:170,title:e.title,say:e.say};this.g.sfx('ui_round_start',{vol:.7});
+  if(this.finale&&e===this.encs[this.encs.length-1])this.g.arena.setStoryWall(this.l,this.finale.x)}   // Endgegner-Arena: Gebäude mit brechbarer Außenwand am rechten Rand
  spawn(q){const g=this.g,c=CHARACTERS[q.id||(q.elite?'mantisAlpha':'mantis')],boss=!!c.storyBoss;
   const f=new Fighter({char:c,x:q.side<0?this.l+40:this.r-40,facing:-q.side,input:new MobAI(boss?Math.min(3,this.lvl+1):this.lvl)});   // Story-Boss: KI eine Stufe härter
   const k=[.8,1,1.2][Math.min(2,this.lvl)];f.maxHp=f.hp=Math.round(c.hp*k);f.y=GROUND-420+Math.random()*60;f.vy=0;f.state='air';f.airJumps=0;
@@ -121,6 +122,8 @@ export class Story{
    for(const m of this.alive())this.mobDown(m,a,true);return}
   const hurt=g.p1.hp/g.p1.maxHp<.45;if(this.kills%3===0||Math.random()<.35)this.drop(v.x,.25,hurt||Math.random()<.5?'heal':'pack')}   // Gegner lassen Heilung ODER Booster fallen (bei wenig Leben immer Heilung)
  // Heilitem (Energiedrink): fällt aus Gegnern bzw. liegt nach jeder Welle bereit; Drüberlaufen = +25 % Leben
+ // Die Außenwand des Finale-Gebäudes ist durchbrochen: Grenze/Kamera reichen in den Innenraum, Belohnung an der Bresche
+ onWallBreak(wx,newR){this.r=newR;if(this.finale)this.finale.broken=true;this.drop(wx+90,.4);this.msg={t:150,title:'WAND DURCHBROCHEN',say:'Das Gebäude ist offen – kämpf drinnen weiter!'}}
  drop(x,heal=.25,kind='heal'){x=Math.max(this.l+30,Math.min(this.r-30,x));this.items.push({kind,x,y:this.g.floorAt(x)-120,vy:-6,heal,age:0})}
  pickups(){const g=this.g,p=g.p1;for(const it of this.items){it.age++;const fl=g.floorAt(it.x);it.vy+=.5;it.y=Math.min(fl-14,it.y+it.vy);if(it.y>=fl-14)it.vy=0;
   if(p.hp>0&&Math.abs(p.x-it.x)<42&&p.y>fl-70&&p.y<=fl+30&&it.y>=fl-14){it.got=true;g.sfx('ui_round_start',{vol:.5,rate:1.6});
