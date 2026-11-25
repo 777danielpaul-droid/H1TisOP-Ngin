@@ -1,4 +1,5 @@
 import{CAMERA,GROUND,H,MELEE,W,WORLD}from'./config.js';
+const FINALE_VIEW=460;   // Story-Finale: so viele px des Gebäudes hinter der brechbaren Außenwand sind sichtbar (Kamera darf bis Wand + FINALE_VIEW)
 
 export const MWORLD={...WORLD,y1:MELEE.y1+90};   // Melee: Kamera darf unter die Plattform schauen (Fallende, Blast-Zone unten)
 // Virtuelle Kamera. (x,y) = Weltkoordinate in der Bildschirmmitte, zoom = Skalierung (1 = normal, <1 = herausgezoomt).
@@ -15,7 +16,7 @@ export class Camera{
   const needW=(maxX-minX)+120,needH=(maxBot-minTop)+C.headroom+70,zoom=cl(Math.min(W/needW,H/needH),C.minZoom,C.maxZoom),hw=W/2/zoom,hh=H/2/zoom,wd=MWORLD;
   return{x:cl((minX+maxX)/2,wd.x0+hw,wd.x1-hw),y:cl((minTop-C.headroom+maxBot+30)/2,wd.y0+hh,wd.y1-hh),zoom}}
  compute(fighters){if(this.melee)return this.computeMelee(fighters);
-  if(this.story){const s=this.story,p=fighters[0],zoom=.88,hw=W/2/zoom,hh=H/2/zoom,lo=Math.max(s.l,WORLD.x0)+hw,hi=Math.min(s.r,WORLD.x1)-hw;   // Story: Seitenscroller, folgt dem Spieler innerhalb der Level-/Kampfgrenzen
+  if(this.story){const s=this.story,p=fighters[0],zoom=.88,hw=W/2/zoom,hh=H/2/zoom,lo=Math.max(s.l,WORLD.x0)+hw,hi=Math.min(s.r+(s.finale&&!s.finale.broken&&s.r===s.finale.x?FINALE_VIEW:0),WORLD.x1)-hw;   // Story: Seitenscroller, folgt dem Spieler innerhalb der Level-/Kampfgrenzen; solange die Außenwand heil ist (Endgegner-Arena) darf die Kamera über sie hinaus aufs Finale-Gebäude schauen; nach dem Durchbruch begrenzt die Rückwand
    // Parkour: klettert die Figur hoch, folgt die Kamera nach oben (Füße bei ~62 % der Bildhöhe, so sieht man die nächsten Plattformen); am Boden bleibt der Boden unten im Bild
    return{x:lo>hi?(lo+hi)/2:clamp(p.x+p.facing*70,lo,hi),y:Math.min(H-hh,p.y-.24*hh),zoom}}const C=CAMERA;let minX=1e9,maxX=-1e9,minTop=1e9;
   for(const f of fighters){minX=Math.min(minX,f.x-70);maxX=Math.max(maxX,f.x+70);

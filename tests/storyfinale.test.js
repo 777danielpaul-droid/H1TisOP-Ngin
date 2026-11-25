@@ -46,4 +46,10 @@ function W_HALF(zoom){return 960/2/zoom}
   s.setBounds(LV.x0,LV.x1);drawn.length=0;R.storyHouse.call({houseSide:fakeSide},g,game);assert.equal(drawn[0].wall.final,true,'bleibt offen, auch wenn die Arena danach wieder offen ist');
   const g2=mkG();const noF=Object.assign({},game,{story:{finale:null}});R.storyHouse.call({houseSide:fakeSide},g2,noF);}
  ok('Zeichnen: Gebäude um dx verschoben, Wandzustand heil / durchbrochen / bleibt offen')}
+// ---- Kamera: in der Endgegner-Arena sieht man das Gebäude hinter der Außenwand (nicht nur bis zur Wand) ----
+{const{W:VW}=await import('../src/core/config.js');
+ for(const ch of[1,2,3,4,5]){const{game,s,p1}=mk(ch),hw=VW/2/.88;s.engage(s.encs.at(-1));p1.x=s.finale.x-100;p1.facing=1;p1.y=GROUND;
+  const c=game.camera.compute(game.fighters);assert.ok(c.x+hw>=s.finale.x+440,'Kapitel '+ch+': Kamera zeigt das Gebäude hinter der Außenwand (rechter Bildrand '+Math.round(c.x+hw)+' > Wand '+s.finale.x+')');
+  assert.ok(c.x+hw<=WORLD.x1+1,'... aber nie über die Welt hinaus')}
+ ok('Kamera: Finale-Gebäude hinter der Wand ist in allen 5 Kapiteln sichtbar')}
 console.log('Story-Finale-Tests bestanden');

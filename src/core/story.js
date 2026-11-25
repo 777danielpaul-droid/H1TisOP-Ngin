@@ -1,5 +1,6 @@
 import{AIController}from'./ai.js';
 import{Dealer}from'./blackmarket.js';
+import{BOSS_CINE,BossCine}from'./bosscine.js';
 import{CHARACTERS}from'./characters.js';
 import{EFFECT,GROUND}from'./config.js';
 import{Fighter}from'./fighter.js';
@@ -94,7 +95,7 @@ export class Story{
  nearest(f){let b=null,bd=1e9;for(const m of this.alive()){const d=Math.abs(m.x-f.x);if(d<bd){bd=d;b=m}}return b}
  pairs(){const p=this.g.p1,o=[];for(const m of this.alive()){o.push([p,m],[m,p])}return o}
  // Start / Neustart (Game.startRound): am letzten Checkpoint
- begin(){const g=this.g,p=g.p1;this.mobs=[];this.items=[];g.fighters=[p];this.queue=[];this.state='walk';this.enc=this.cp;this.ft=0;this.sd=0;this.goT=0;this.doneT=0;this.msg=null;this.att=[];this.rage=false;
+ begin(){const g=this.g,p=g.p1;this.cine=null;this.bossDown=null;this.postDone=false;this.mobs=[];this.items=[];g.fighters=[p];this.queue=[];this.state='walk';this.enc=this.cp;this.ft=0;this.sd=0;this.goT=0;this.doneT=0;this.msg=null;this.att=[];this.rage=false;
   p.x=this.cp?this.encs[this.cp-1].x+140:LV.start;p.facing=1;this.setBounds(LV.x0,LV.x1);if(this.finale)this.finale.broken=false;
   const dl=this.cfg.parkour&&this.cfg.parkour.dealer;this.dealer=dl?new Dealer(this,{x:dl.x,y:GROUND-dl.h,fixed:true}):null}   // Händler: bei jedem (Neu-)Start frisch (Gespräch geschlossen)
  // Händler steht ein Stück vor dem Spieler, aber noch vor dem nächsten Wellen-Auslöser (Checkpoint/Wellenende)
@@ -105,7 +106,12 @@ export class Story{
   else for(let i=0;i<e.n;i++)this.queue.push({side:i%2?-1:1,elite:false});
   if(e.boss)this.queue.splice(e.at===undefined?2:e.at,0,{side:1,elite:true,id:e.boss===1?'mantisAlpha':e.boss});
   this.cap=Math.min(this.cfg.cap,this.cfg.capBase+this.enc);this.sd=30;this.msg={t:170,title:e.title,say:e.say};this.g.sfx('ui_round_start',{vol:.7});
-  if(this.finale&&e===this.encs[this.encs.length-1])this.g.arena.setStoryWall(this.l,this.finale.x)}   // Endgegner-Arena: Gebäude mit brechbarer Außenwand am rechten Rand
+  if(this.finale&&e===this.encs[this.encs.length-1])this.g.arena.setStoryWall(this.l,this.finale.x);
+  if(typeof e.boss==='string')this.cineStart(e.boss,'pre')}   // Endgegner-Arena: Gebäude mit brechbarer Außenwand am rechten Rand
+ // Boss-Sequenz (Video + Dialog, core/bosscine.js): vor dem Bosskampf (je Boss nur beim ersten Mal in diesem Lauf, nach einem Neustart am Checkpoint geht es direkt los) und nach dem Sieg; solange sie läuft, steht das Spiel still
+ cineStart(boss,phase,done){const d=BOSS_CINE[boss];if(!d||!d[phase])return false;
+  if(phase==='pre'){this.cineSeen=this.cineSeen||new Set();if(this.cineSeen.has(boss))return false;this.cineSeen.add(boss)}
+  this.cine=new BossCine(this.g,boss,phase,()=>{this.cine=null;if(done)done()});return true}
  spawn(q){const g=this.g,c=CHARACTERS[q.id||(q.elite?'mantisAlpha':'mantis')],boss=!!c.storyBoss;
   const f=new Fighter({char:c,x:q.side<0?this.l+40:this.r-40,facing:-q.side,input:new MobAI(boss?Math.min(3,this.lvl+1):this.lvl)});   // Story-Boss: KI eine Stufe härter
   const k=[.8,1,1.2][Math.min(2,this.lvl)];f.maxHp=f.hp=Math.round(c.hp*k);f.y=GROUND-420+Math.random()*60;f.vy=0;f.state='air';f.airJumps=0;
@@ -116,7 +122,7 @@ export class Story{
   else{this.state='walk';this.goT=0;this.setBounds(LV.x0,LV.x1);this.msg={t:130,title:'GESCHAFFT',say:'Weiter nach rechts ➜'}}}
  mobDown(v,a,quiet){const g=this.g;this.kills++;v.state='ko';v.sf=0;v.vy=-9;v.vx=a.facing*6;v.noGrav=false;v.move=null;v.koT=0;v.pop=false;
   g.fx.ps.ring(v.x,v.y-80,v.char.glow,130);g.sfx('fw_finale',{vol:.35,rate:1.3});if(quiet)return;g.shake=Math.max(g.shake,7);g.hitstop=Math.max(g.hitstop,9);g.camera.kick(.02);
-  if(v.char.storyBoss){   // Boss besiegt: Zeitlupe, Belohnung (2 Booster + Heilung), der restliche Schwarm bricht zusammen
+  if(v.char.storyBoss){if(BOSS_CINE[v.char.id])this.bossDown=v.char.id;   // Boss besiegt: Zeitlupe, Belohnung (2 Booster + Heilung), der restliche Schwarm bricht zusammen
    this.queue=[];g.slow=g.slowMax=EFFECT.koSlow;g.aberr=1;g.camera.kick(.06);g.shake=Math.max(g.shake,16);g.flash=Math.max(g.flash,10);g.flashColor=v.char.glow;g.fx.ps.ring(v.x,v.y-100,'#ffffff',240);g.sfx('fw_finale',{vol:.8});
    this.drop(v.x-34,.3,'pack');this.drop(v.x+34,.3,'pack');this.drop(v.x,.35,'heal');
    for(const m of this.alive())this.mobDown(m,a,true);return}
@@ -149,7 +155,7 @@ export class Story{
   else{const b=p.meter;p.meter=Math.min(300,p.meter+it.v);g.pop(p.x,p.y-190,'+'+Math.round(p.meter-b)+' METER',it.col,1.1,{text:true})}
   g.fx.ps.ring(p.x,p.y-80,it.col,110);g.sfx('ui_round_start',{vol:.5,rate:1.6});return true}
  // Hindernisse (Kapitel 3): beim Laufen am Boden blockiert; wer drüberspringt (Füße höher als h), kommt durch. Landen im Hindernis schiebt zur näheren Seite.
- update(){const g=this.g,p=g.p1;this.ft++;if(this.itemCd>0)this.itemCd--;this.pickups();this.relicCheck();if(this.dealer)this.dealer.update();
+ update(){const g=this.g,p=g.p1;if(this.cine){this.cine.update();return}this.ft++;if(this.itemCd>0)this.itemCd--;this.pickups();this.relicCheck();if(this.dealer)this.dealer.update();
   for(const m of this.mobs)if(m.state==='ko')m.koT=(m.koT||0)+1;
   const gone=this.mobs.filter(m=>m.state==='ko'&&m.koT>80);
   if(gone.length){this.mobs=this.mobs.filter(m=>!gone.includes(m));g.fighters=g.fighters.filter(f=>!gone.includes(f))}
@@ -160,7 +166,8 @@ export class Story{
   else if(this.state==='fight'){
    this.rageCheck();
    if(this.queue.length&&al.length<this.cap&&--this.sd<=0){this.spawn(this.queue.shift());this.sd=70}
-   if(!this.queue.length&&!al.length)this.clear()}
+   if(this.bossDown&&!this.postDone){const b=this.mobs.find(m=>m.char.id===this.bossDown);if(!b||(b.koT>=50&&g.slow<=0)){this.postDone=true;this.cineStart(this.bossDown,'post')}}   // Sieg über den Boss: erst Zeitlupe/Zusammenbruch, dann die Nach-dem-Kampf-Sequenz
+   if(!this.queue.length&&!al.length&&(!this.bossDown||(this.postDone&&!this.cine)))this.clear()}
   else if(this.state==='done')this.doneT++}
  // Boss unter 50 % Leben: Wutphase – lädt Hyper-Meter auf und ruft 2 weitere Mantis (einmal pro Kampf)
  rageCheck(){const g=this.g,b=this.mobs.find(m=>m.char.storyBoss&&m.state!=='ko');if(!b||this.rage||b.hp>b.maxHp*.5)return;

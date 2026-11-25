@@ -230,7 +230,7 @@ canvas.addEventListener('mousemove',e=>{const dl=game.story&&game.story.dealer;i
  if(arcade.state!=='select'||menuOpen||studioIsOpen()||renderer.sel.launching)return;
  if(arcade.pvp){if(arcade.vs.step===1){const j=hitStage(...logical(e));if(j>=0&&arcade.stageOpen(j))arcade.vs.stage=j}return}
  });   // Rondell: Hover ändert nichts mehr, es wird mit ◀ ▶ bzw. Klick auf die Seitenfiguren weitergeschaltet
-canvas.addEventListener('click',e=>{{const dl=game.story&&game.story.dealer;if(dl&&dl.active&&arcade.state==='fight'&&!menuOpen){const i=hitDealerOpt(...logical(e),dl.opts.length);if(i>=0)dl.click(i);return}}
+canvas.addEventListener('click',e=>{{const cn=game.story&&game.story.cine;if(cn&&cn.active&&arcade.state==='fight'&&!menuOpen){cn.advance();return}}{const dl=game.story&&game.story.dealer;if(dl&&dl.active&&arcade.state==='fight'&&!menuOpen){const i=hitDealerOpt(...logical(e),dl.opts.length);if(i>=0)dl.click(i);return}}
  {const u=renderer.lootUi;if(u.open){const L=logical(e);   // Overlay offen: nur dort klicken
   if(u.zoom){u.zoom=null;return}   // große Kartenansicht offen: Klick schließt sie
   if(u.mode==='shop'){const j=hitShopCard(...L);if(j>=0)shopBuy(j);else if(hitShopBack(...L)){u.mode='main';u.t=0}}
@@ -333,6 +333,8 @@ addEventListener('keydown',e=>{
   else if(e.code==='Enter'||e.code==='Space'||e.code==='KeyJ')startGo();
   e.preventDefault();return
  }
+ {const cn=game.story&&game.story.cine;   // Boss-Sequenz (Video + Dialog): ENTER / J weiter, LEERTASTE / Rücktaste / ESC überspringen – alle anderen Tasten gehen nicht ins Spiel
+  if(cn&&cn.active&&arcade.state==='fight'&&!menuOpen){e.preventDefault();if(e.repeat)return;if(e.code==='Enter'||e.code==='NumpadEnter'||e.code==='KeyJ'||e.code==='KeyK')cn.advance();else if(e.code==='Space'||e.code==='Backspace'||e.code==='Escape')cn.skip();return}}
  {const dl=game.story&&game.story.dealer;   // Schwarzmarkthändler (Story): E spricht an, im Gespräch gehen die Tasten an den Dialog
   if(dl&&arcade.state==='fight'&&!menuOpen){if(dl.active){if(dl.key(e.code)){e.preventDefault();return}if(e.code==='KeyM'){}else{e.preventDefault();return}}
    else if(e.code==='KeyE'&&dl.open()){e.preventDefault();return}}}
@@ -420,7 +422,7 @@ function padMenu(now){
  const pads=navigator.getGamepads?[...navigator.getGamepads()].filter(g=>g&&g.connected):[];if(!pads.length&&!padNav.prev.size)return;
  let screen;
  if(intro.active)screen='intro';else if(panelsOpen())screen=null;else if(menuOpen)screen='pause';
- else if(netMatch&&netMatch.phase!=='pick')screen='online';else if(startOpen)screen='start';else if(arcade.state==='fight')screen=game.story&&game.story.dealer&&game.story.dealer.active?'dealer':'fight';
+ else if(netMatch&&netMatch.phase!=='pick')screen='online';else if(startOpen)screen='start';else if(arcade.state==='fight')screen=game.story&&((game.story.dealer&&game.story.dealer.active)||(game.story.cine&&game.story.cine.active))?'dealer':'fight';
  else if(arcade.state==='select'&&renderer.sel.launching)screen=null;else if(arcade.state==='select'&&arcade.pvp&&!renderer.lootUi.open)screen='versus';else screen='menu';
  const over=['clear','gameover','victory','vsover'].includes(arcade.state);
  for(const e of padNav.poll(now,pads,screen!==null)){

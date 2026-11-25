@@ -71,16 +71,16 @@ const anubis={...norm({su:0,rc:0,dmg:1.05,reach:8}),
 // Stärke: sehr viel HP, harte Normals mit großer Reichweite, Klauenwellen (J/L), Rüstungs-Ansturm, Stachelschlag trifft auch hinter ihm, Blutrausch (Hyper).
 // Schwäche: langsam (Sprung, Dash), Startup der schweren Moves ist lang und auf Block bestrafbar, keine Luft-Sprünge.
 const cyberdemon={...norm({su:1,rc:1,dmg:1.15,reach:16}),
- fireball:{label:'Klauenwelle',info:'Rote Schlagwelle: J = schnell, L = stark',su:10,rc:18,proj:P({frame:10,y:-120,vx:9.5,w:120,h:84,dmg:62,hs:18,bs:10,life:84,look:'claw'}),
-  v:{L:{su:8,rc:14,proj:P({frame:8,y:-120,vx:10.5,w:100,h:70,dmg:46,hs:14,bs:8,life:66,look:'claw'})},
-     H:{su:13,rc:24,proj:P({frame:13,y:-120,vx:8.5,w:150,h:100,dmg:84,hs:22,bs:14,life:110,look:'claw'})}}},
- rising:{label:'Höllenfahrt',info:'Unverwundbarer Anti-Air-Schlag, Launcher',su:6,ac:8,rc:26,dmg:95,inv:[1,10],launch:{vx:2,vy:-17}},
- rush:{label:'Kern-Ansturm',info:'RÜSTUNG: stürmt vor, Knockdown',anim:'heavy',su:10,ac:12,rc:26,dmg:100,lunge:10,armor:[3,12],hard:true,pb:6,box:[10,-140,150,110],hstop:8,shake:5,glow:1},
- back:{label:'Stachelschlag',info:'Trifft auch hinter ihm (Anti-Cross-up)',anim:'kick',crouch:false,lv:'mid',su:9,ac:5,rc:20,dmg:72,hs:22,bs:14,pb:5,box:[-190,-110,380,110],hard:false,hstop:7,shake:4,glow:1},
- airsp:{label:'Sturzklaue',info:'Steiler Sturzangriff, Knockdown',su:8,dmg:90,box:[-10,-80,120,110],dive:{vx:3,vy:16},hard:true,land:16,hstop:9,shake:6},
- '6M':{label:'Doppelhieb',info:'Weiter Vorstoß-Poke',anim:'punch',su:8,ac:3,rc:14,dmg:64,lv:'mid',box:[10,-130,140,50],lunge:6,hs:22,bs:12},
- '6H':{label:'Dämonenhieb',info:'Überkopf-Angriff, trifft hoch',anim:'upper',su:15,ac:4,rc:20,dmg:92,lv:'high',lunge:7,box:[10,-190,140,80],hs:26,bs:16,glow:1},
- super:{label:'Blutrausch',info:'HYPER: Klauenhagel mit beiden Händen – 8 Treffer + Launcher',anim:'hyper',beam:0,glow:1,dmg:26,su:22,ac:46,rc:28,multi:5,minScale:.5,box:[20,-190,330,170],launch:{vx:5,vy:-13},inv:[0,30],hstop:2,shake:6,cost:100}};
+ fireball:{fx:'cMuzzle',label:'Klauenwelle',info:'Rote Schlagwelle: J = schnell, L = stark',su:10,rc:18,proj:P({frame:10,y:-120,vx:9.5,w:120,h:84,dmg:62,hs:18,bs:10,life:84,look:'bloodclaw'}),
+  v:{L:{su:8,rc:14,proj:P({frame:8,y:-120,vx:10.5,w:100,h:70,dmg:46,hs:14,bs:8,life:66,look:'bloodclaw'})},
+     H:{su:13,rc:24,proj:P({frame:13,y:-120,vx:8.5,w:150,h:100,dmg:84,hs:22,bs:14,life:110,look:'bloodclaw'})}}},
+ rising:{fx:'cRise',label:'Höllenfahrt',info:'Unverwundbarer Anti-Air-Schlag, Launcher',su:6,ac:8,rc:26,dmg:95,inv:[1,10],launch:{vx:2,vy:-17}},
+ rush:{fx:'cSlash',label:'Kern-Ansturm',info:'RÜSTUNG: stürmt vor, Knockdown',anim:'heavy',su:10,ac:12,rc:26,dmg:100,lunge:10,armor:[3,12],hard:true,pb:6,box:[10,-140,150,110],hstop:8,shake:5,glow:1},
+ back:{fx:'cSpin',label:'Stachelschlag',info:'Trifft auch hinter ihm (Anti-Cross-up)',anim:'kick',crouch:false,lv:'mid',su:9,ac:5,rc:20,dmg:72,hs:22,bs:14,pb:5,box:[-190,-110,380,110],hard:false,hstop:7,shake:4,glow:1},
+ airsp:{fx:'cDive',label:'Sturzklaue',info:'Steiler Sturzangriff, Knockdown',su:8,dmg:90,box:[-10,-80,120,110],dive:{vx:3,vy:16},hard:true,land:16,hstop:9,shake:6},
+ '6M':{fx:'cThrust',label:'Doppelhieb',info:'Weiter Vorstoß-Poke',anim:'punch',su:8,ac:3,rc:14,dmg:64,lv:'mid',box:[10,-130,140,50],lunge:6,hs:22,bs:12},
+ '6H':{fx:'cOver',label:'Dämonenhieb',info:'Überkopf-Angriff, trifft hoch',anim:'upper',su:15,ac:4,rc:20,dmg:92,lv:'high',lunge:7,box:[10,-190,140,80],hs:26,bs:16,glow:1},
+ super:{fx:'cBlood',label:'Blutrausch',info:'HYPER: Klauenhagel mit beiden Händen – 8 Treffer + Launcher',anim:'hyper',beam:0,glow:1,dmg:26,su:22,ac:46,rc:28,multi:5,minScale:.5,box:[20,-190,330,170],launch:{vx:5,vy:-13},inv:[0,30],hstop:2,shake:6,cost:100}};
 
 // Air-Hyper je Figur: nur Name/Beschreibung (Werte stehen in moves.js `airsuper`); reicht für unterscheidbare Hyper-Banner
 tiger.airsuper={label:'Klauen-Sturm',info:'HYPER in der Luft: Klauenhagel, am Ende rammt H!T den Gegner zu Boden'};
@@ -107,32 +107,32 @@ const rabe={...norm({su:0,rc:-1,dmg:1.02,reach:6}),
 // Stärke: hohe HP, hoher Schaden, High-Kick-Launcher mit viel Reichweite, wuchtige Specials.
 // Schwäche: mittleres Tempo, schwere Angriffe haben etwas mehr Startup.
 const leon={...norm({su:0,rc:0,dmg:1.04,reach:6}),
- fireball:{label:'Solar-Pranke',info:'Goldene Schnittwelle: J = schnell, L = stark',su:9,rc:16,proj:P({frame:9,y:-120,vx:10.5,w:104,h:68,dmg:50,hs:16,bs:9,life:76,look:'claw'}),
-  v:{L:{su:7,rc:13,proj:P({frame:7,y:-120,vx:11.5,w:84,h:54,dmg:40,hs:14,bs:8,life:60,look:'claw'})},
-     H:{su:13,rc:22,proj:P({frame:13,y:-120,vx:9.5,w:132,h:84,dmg:74,hs:20,bs:13,life:100,look:'claw'})}}},
- rising:{label:'Löwen-Kick',info:'Unverwundbarer Aufwärts-Highkick, Launcher',su:4,ac:8,rc:23,dmg:88,inv:[1,9],launch:{vx:2,vy:-17}},
- rush:{label:'Pranken-Hagel',info:'3 wuchtige Prankenhiebe + Launcher – auf Block bestrafbar',anim:'heavy',su:7,ac:12,rc:23,dmg:35,hs:18,bs:12,pb:3,multi:3,lunge:11,box:[10,-126,122,82],launch:{vx:3,vy:-13},hstop:4,shake:3,glow:1},
- back:{label:'Mähnen-Feger',info:'Rundum-Tritt, trifft auch hinter ihm (Anti-Cross-up)',anim:'kick',crouch:false,lv:'mid',su:8,ac:5,rc:19,dmg:66,hs:22,bs:13,pb:4,box:[-160,-100,310,100],hard:false,hstop:6,shake:3,glow:1},
- airsp:{label:'Meteor-Tritt',info:'Steiler Sturztritt, Knockdown',su:5,dmg:82,box:[-10,-70,105,100],dive:{vx:3.3,vy:17},hard:true,land:12,hstop:8,shake:5},
- '6M':{label:'Löwen-Stoß',info:'Schneller Vorstoß-Poke',anim:'punch',su:7,ac:3,rc:13,dmg:54,lv:'mid',box:[10,-124,110,44],lunge:6,hs:21,bs:12},
- '6H':{label:'Prankenhieb',info:'Überkopf-Angriff, trifft hoch',anim:'upper',su:13,ac:4,rc:19,dmg:86,lv:'high',lunge:7,box:[10,-160,118,66],hs:26,bs:16,glow:1},
- super:{label:'Solar-Inferno',info:'HYPER: Prankenhagel mit Schockwellen-Stoß – 10 Treffer + Launcher',anim:'hyper',beam:0,glow:1,dmg:30,su:18,ac:52,rc:26,multi:5,minScale:.5,box:[30,-210,520,210],launch:{vx:5,vy:-13},inv:[0,34],hstop:2,shake:6}};
+ fireball:{fx:'cMuzzle',label:'Solar-Pranke',info:'Goldene Schnittwelle: J = schnell, L = stark',su:9,rc:16,proj:P({frame:9,y:-120,vx:10.5,w:104,h:68,dmg:50,hs:16,bs:9,life:76,look:'solar'}),
+  v:{L:{su:7,rc:13,proj:P({frame:7,y:-120,vx:11.5,w:84,h:54,dmg:40,hs:14,bs:8,life:60,look:'solar'})},
+     H:{su:13,rc:22,proj:P({frame:13,y:-120,vx:9.5,w:132,h:84,dmg:74,hs:20,bs:13,life:100,look:'solar'})}}},
+ rising:{fx:'cRise',label:'Löwen-Kick',info:'Unverwundbarer Aufwärts-Highkick, Launcher',su:4,ac:8,rc:23,dmg:88,inv:[1,9],launch:{vx:2,vy:-17}},
+ rush:{fx:'cSlash',label:'Pranken-Hagel',info:'3 wuchtige Prankenhiebe + Launcher – auf Block bestrafbar',anim:'heavy',su:7,ac:12,rc:23,dmg:35,hs:18,bs:12,pb:3,multi:3,lunge:11,box:[10,-126,122,82],launch:{vx:3,vy:-13},hstop:4,shake:3,glow:1},
+ back:{fx:'cSpin',label:'Mähnen-Feger',info:'Rundum-Tritt, trifft auch hinter ihm (Anti-Cross-up)',anim:'kick',crouch:false,lv:'mid',su:8,ac:5,rc:19,dmg:66,hs:22,bs:13,pb:4,box:[-160,-100,310,100],hard:false,hstop:6,shake:3,glow:1},
+ airsp:{fx:'cDive',label:'Meteor-Tritt',info:'Steiler Sturztritt, Knockdown',su:5,dmg:82,box:[-10,-70,105,100],dive:{vx:3.3,vy:17},hard:true,land:12,hstop:8,shake:5},
+ '6M':{fx:'cThrust',label:'Löwen-Stoß',info:'Schneller Vorstoß-Poke',anim:'punch',su:7,ac:3,rc:13,dmg:54,lv:'mid',box:[10,-124,110,44],lunge:6,hs:21,bs:12},
+ '6H':{fx:'cOver',label:'Prankenhieb',info:'Überkopf-Angriff, trifft hoch',anim:'upper',su:13,ac:4,rc:19,dmg:86,lv:'high',lunge:7,box:[10,-160,118,66],hs:26,bs:16,glow:1},
+ super:{fx:'cSolar',label:'Solar-Inferno',info:'HYPER: Prankenhagel mit Schockwellen-Stoß – 10 Treffer + Launcher',anim:'hyper',beam:0,glow:1,dmg:30,su:18,ac:52,rc:26,multi:5,minScale:.5,box:[30,-210,520,210],launch:{vx:5,vy:-13},inv:[0,34],hstop:2,shake:6}};
 leon.airsuper={label:'Sternschnuppen-Sturz',info:'HYPER in der Luft: Sturzangriff mit Boden-Prall',dmg:32};
 
 // ---------- URSUS: Bärenkrieger – Schwergewicht, Klauenhiebe, Body-Slam ----------
 // Stärke: sehr hohe HP, hoher Schaden, wuchtige Normals mit viel Reichweite, Body-Slam und Klauen-Sturm mit Launcher.
 // Schwäche: etwas langsam, große Trefferfläche, Spezialangriffe haben mehr Startup und sind auf Block bestrafbar.
 const bear={...norm({su:1,rc:1,dmg:1.08,reach:8}),
- fireball:{label:'Erdschock',info:'Schockwelle am Boden: J = schnell, L = stark',su:10,rc:17,proj:P({frame:10,y:-70,vx:8.5,w:112,h:64,dmg:56,hs:17,bs:10,life:74,look:'claw'}),
-  v:{L:{su:8,rc:14,proj:P({frame:8,y:-70,vx:9.5,w:92,h:52,dmg:44,hs:15,bs:9,life:60,look:'claw'})},
-     H:{su:14,rc:23,proj:P({frame:14,y:-70,vx:7.5,w:140,h:80,dmg:80,hs:21,bs:14,life:100,look:'claw'})}}},
- rising:{label:'Bärenhieb',info:'Unverwundbarer Aufwärtshieb, Launcher',su:5,ac:8,rc:24,dmg:92,inv:[1,9],launch:{vx:2,vy:-16}},
- rush:{label:'Klauen-Sturm',info:'3 wuchtige Klauenhiebe + Launcher – auf Block bestrafbar',anim:'heavy',su:8,ac:12,rc:24,dmg:38,hs:18,bs:12,pb:3,multi:3,lunge:11,box:[10,-126,126,84],launch:{vx:3,vy:-13},hstop:4,shake:3,glow:1},
- back:{label:'Wirbel-Klaue',info:'Rundum-Hieb, trifft auch hinter ihm (Anti-Cross-up)',anim:'heavy',crouch:false,lv:'mid',su:9,ac:5,rc:20,dmg:70,hs:22,bs:13,pb:4,box:[-160,-110,320,110],hard:false,hstop:6,shake:3,glow:1},
- airsp:{label:'Body-Slam',info:'Wuchtiger Sturzangriff mit Boden-Prall, Knockdown',anim:'slam',su:6,dmg:90,box:[-10,-70,110,100],dive:{vx:3.1,vy:17},hard:true,land:14,hstop:9,shake:7},
- '6M':{label:'Pranken-Stoß',info:'Schneller Vorstoß-Poke',anim:'punch',su:8,ac:3,rc:14,dmg:58,lv:'mid',box:[10,-124,112,46],lunge:6,hs:21,bs:12},
- '6H':{label:'Überkopf-Hieb',info:'Überkopf-Angriff, trifft hoch',anim:'upper',su:14,ac:4,rc:20,dmg:92,lv:'high',lunge:7,box:[10,-160,120,68],hs:26,bs:16,glow:1},
- super:{label:'Bärenzorn',info:'HYPER: Klauensturm mit Erdbeben-Schlag – 10 Treffer + Launcher',anim:'hyper',beam:0,glow:1,dmg:32,su:19,ac:54,rc:27,multi:5,minScale:.5,box:[30,-210,520,210],launch:{vx:5,vy:-13},inv:[0,34],hstop:2,shake:7}};
+ fireball:{fx:'cMuzzle',label:'Erdschock',info:'Schockwelle am Boden: J = schnell, L = stark',su:10,rc:17,proj:P({frame:10,y:-70,vx:8.5,w:112,h:64,dmg:56,hs:17,bs:10,life:74,look:'quake'}),
+  v:{L:{su:8,rc:14,proj:P({frame:8,y:-70,vx:9.5,w:92,h:52,dmg:44,hs:15,bs:9,life:60,look:'quake'})},
+     H:{su:14,rc:23,proj:P({frame:14,y:-70,vx:7.5,w:140,h:80,dmg:80,hs:21,bs:14,life:100,look:'quake'})}}},
+ rising:{fx:'cRise',label:'Bärenhieb',info:'Unverwundbarer Aufwärtshieb, Launcher',su:5,ac:8,rc:24,dmg:92,inv:[1,9],launch:{vx:2,vy:-16}},
+ rush:{fx:'cSlash',label:'Klauen-Sturm',info:'3 wuchtige Klauenhiebe + Launcher – auf Block bestrafbar',anim:'heavy',su:8,ac:12,rc:24,dmg:38,hs:18,bs:12,pb:3,multi:3,lunge:11,box:[10,-126,126,84],launch:{vx:3,vy:-13},hstop:4,shake:3,glow:1},
+ back:{fx:'cSpin',label:'Wirbel-Klaue',info:'Rundum-Hieb, trifft auch hinter ihm (Anti-Cross-up)',anim:'heavy',crouch:false,lv:'mid',su:9,ac:5,rc:20,dmg:70,hs:22,bs:13,pb:4,box:[-160,-110,320,110],hard:false,hstop:6,shake:3,glow:1},
+ airsp:{fx:'cDive',label:'Body-Slam',info:'Wuchtiger Sturzangriff mit Boden-Prall, Knockdown',anim:'slam',su:6,dmg:90,box:[-10,-70,110,100],dive:{vx:3.1,vy:17},hard:true,land:14,hstop:9,shake:7},
+ '6M':{fx:'cThrust',label:'Pranken-Stoß',info:'Schneller Vorstoß-Poke',anim:'punch',su:8,ac:3,rc:14,dmg:58,lv:'mid',box:[10,-124,112,46],lunge:6,hs:21,bs:12},
+ '6H':{fx:'cOver',label:'Überkopf-Hieb',info:'Überkopf-Angriff, trifft hoch',anim:'upper',su:14,ac:4,rc:20,dmg:92,lv:'high',lunge:7,box:[10,-160,120,68],hs:26,bs:16,glow:1},
+ super:{fx:'cQuake',label:'Bärenzorn',info:'HYPER: Klauensturm mit Erdbeben-Schlag – 10 Treffer + Launcher',anim:'hyper',beam:0,glow:1,dmg:32,su:19,ac:54,rc:27,multi:5,minScale:.5,box:[30,-210,520,210],launch:{vx:5,vy:-13},inv:[0,34],hstop:2,shake:7}};
 bear.airsuper={label:'Meteor-Slam',info:'HYPER in der Luft: Sturzangriff mit gewaltigem Boden-Prall',dmg:36};
 
 export const MODS={tiger,st3g0,kitsune,anubis,cyberdemon,rabe,leon,bear};

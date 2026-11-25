@@ -65,7 +65,7 @@ export class Game{
  step(){const T=this.terrain;for(const f of this.fighters)f.terrain=T;if(T&&T.platforms.length)T.tick(this.frame,this.fighters);if(this.god&&this.p1.hp>0)this.p1.hp=this.p1.maxHp;
   this.frame++;
   for(const f of this.fighters)this.hyperFx(f);
-  const talk=!!(this.story&&this.story.dealer&&this.story.dealer.active);   // Gespräch mit dem Händler: Spieler steht still, Tasten/Pad-Eingaben gehen nicht in den Puffer (kein Schlag nach dem Gespräch)
+  const talk=!!(this.story&&((this.story.dealer&&this.story.dealer.active)||this.story.cine));   // Gespräch mit dem Händler: Spieler steht still, Tasten/Pad-Eingaben gehen nicht in den Puffer (kein Schlag nach dem Gespräch)
   for(const f of this.fighters){if(talk&&f===this.p1){if(f.input.sample)f.input.sample();f.input.feed(0,0,[],false);continue}f.input.tick(f,this.foe(f),this)}
   this.particles.update();this.arena.update();
   if(this.celeb){this.celeb.t++;this.fx.celebrate(this.celeb.f,this.celeb.t,this.camera)}

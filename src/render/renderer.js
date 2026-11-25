@@ -12,9 +12,10 @@ import{Hud}from'./hud.js';
 import{drawLoot,shopSelRect,startSelRect,boosterRect,coinsRect}from'./lootui.js';
 import{HoverFx,drawEndBtns}from'./hover.js';
 import{drawMeleeHud,meleeHalo,meleeStage}from'./meleehud.js';
-import{drawFighter,drawTrail}from'./rig.js';
+import{drawFighter,drawTrail,PROJ_LOOKS}from'./rig.js';
 import{SelectScreen}from'./select.js';
 import{Stage,THEMES}from'./stage.js';
+import{drawBossCine}from'./bosscine.js';
 import{drawStoryHud,storyMobBars,storyWorld}from'./storyhud.js';
 // Render-Pipeline:  [Screen-Shake] → [Kamera-Transform: Stage, Fighter, Projektile, Partikel, Debug-Boxen] → restore → [HUD unskaliert]
 export class Renderer{
@@ -76,7 +77,7 @@ export class Renderer{
   if(this.useGL){this.post.dust(g,W,H,t,'#cdbbff',26,.6);this.glFinish(this.sceneParams(game))}else this.post.scene(g,this.cv,game,game.frame);
   this.post.impact(ui,game);if(!this.useGL)this.post.dust(ui,W,H,t,'#cdbbff',26,.6);
   if(game.phase==='intro'&&game.pf<26){ui.save();ui.globalAlpha=1-game.pf/26;ui.fillStyle='#000';ui.fillRect(0,0,W,H);ui.restore()}   // Einblenden aus Schwarz
-  this.stage.overlay(ui);if(ST)drawStoryHud(ui,this.hud,game,t,this.cv);else this.hud.draw(ui,game);if(ML)drawMeleeHud(ui,this.hud,game,t);this.hud.flash(ui,game);this.areaBanner(ui,game,t);   // HUD/UI: unskaliert und scharf
+  this.stage.overlay(ui);if(ST)drawStoryHud(ui,this.hud,game,t,this.cv);else this.hud.draw(ui,game);if(ML)drawMeleeHud(ui,this.hud,game,t);this.hud.flash(ui,game);this.areaBanner(ui,game,t);if(ST)drawBossCine(ui,this.hud,game,t);   // HUD/UI: unskaliert und scharf
   drawEndBtns(ui,this.hud,this.endBtns,this.endHot,game.frame);drawLoot(ui,this.hud,this.lootUi);this.hov.draw(ui);
   if(game.debug)this.debugText(ui,game)}
 // Ausdauer-Anzeige unter den Kämpfern im Demokampf (die Startseite hat kein HUD): kleine Leiste, gleiche Farben und Zustände wie im HUD (gold / orange knapp / rot erschöpft / mint verschnaufen)
@@ -263,6 +264,7 @@ drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTr
   g.save();g.globalAlpha=Math.max(0,a);this.hud.fancy(g,'DURCH DIE WAND!',W/2,200,22,['#ffffff','#bfe9ff'],'center','#8f7bff',t,false,false,700,4);
   const ex=m.dir>0?W-56:56,p=.6+.4*Math.sin(t*10);g.globalAlpha=Math.max(0,a)*p;this.hud.fancy(g,m.dir>0?'»»':'««',ex,276,28,['#ffffff','#9fe8ff'],'center','#8f7bff',t,false,false,700,0);g.restore()}
  look(g,p,col){const L=p.def.look,t=p.age;g.save();g.translate(p.x,p.y);g.globalCompositeOperation='lighter';
+  if(PROJ_LOOKS[L]){PROJ_LOOKS[L](g,p,col,t);g.restore();return}   // neue Looks (solar/quake/bloodclaw) aus rig.js
   if(L==='claw'){const d=Math.sign(p.vx);g.strokeStyle='#fff';g.shadowColor=col;g.shadowBlur=14;g.lineWidth=4;
    for(const o of[-12,0,12]){g.beginPath();g.moveTo(-d*34,o*1.3);g.quadraticCurveTo(0,o-8,d*30,o*.8+6);g.stroke()}g.strokeStyle=col;g.lineWidth=2;g.stroke()}
   else if(L==='sickle'){const d=Math.sign(p.vx)||1,R=Math.max(26,p.h*.62),sp=t*.42*d,a=Math.min(1,t/3);   // Schattensichel: drehende, leuchtende Mondsichel mit Nachbildern + Schweif
