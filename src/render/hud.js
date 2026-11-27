@@ -99,6 +99,34 @@ export class Hud {
     this.pop = [0, 0];
     this.prevHits = [0, 0];
     this.wave = null;
+    this.backdrop = null;
+    this.backdropCtx = null;
+    this.backdropW = 0;
+    this.backdropH = 0;
+  }
+  // Erstellt eine Momentaufnahme der bereits gezeichneten Szene. Darauf kann die UI
+  // einen echten Hintergrund-Blur zeichnen; die großen Konsolen rufen das bewusst nicht auf.
+  captureBackdrop(g) {
+    const src = g && g.canvas;
+    if (!src || typeof document === 'undefined') return;
+    if (!this.backdrop) this.backdrop = document.createElement('canvas');
+    if (this.backdrop.width !== src.width || this.backdrop.height !== src.height) {
+      this.backdrop.width = src.width; this.backdrop.height = src.height;
+      this.backdropCtx = this.backdrop.getContext('2d');
+    }
+    const c = this.backdropCtx;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, src.width, src.height); c.drawImage(src, 0, 0);
+    this.backdropW = this.W; this.backdropH = this.H;
+  }
+  backdropBlur(g, x, y, w, h, corner, flip = false, amount = 9) {
+    if (!this.backdrop || !this.backdropCtx) return;
+    g.save();
+    this.kChamfer(g, x, y, w, h, corner, flip); g.clip();
+    g.filter = `blur(${amount}px) saturate(1.3)`;
+    g.globalAlpha = .92;
+    g.drawImage(this.backdrop, 0, 0, this.backdropW, this.backdropH);
+    g.restore();
+    g.filter = 'none';
   }
   // ---------- Text ----------
   fancy(
@@ -409,13 +437,14 @@ export class Hud {
   // durchscheinendes Glas im Parallelogramm, helle Kante, Laserlinie oben, Leuchten in Eis-Blau (cyan) oder Violett.
   // o.col: Farbton wählt nur die Laserfarbe (violette Töne -> violett, sonst cyan); o.on = aktiv/hover (heller, weiße Kante); o.al = Deckkraft.
   kPlate(g, x, y, w, h, o = {}) {
-    const { col = ICE, on = false, al = 1, t = 0, flip = false } = o;
+    const { col = ICE, on = false, al = 1, t = 0, flip = false, blur = false } = o;
     const L = laserOf(o.laser || col), sk = Math.max(3, Math.round(h * 0.21)), rgb = L.join(',');
     const path = (ix = 0, iy = 0) => {
       g.beginPath(); g.moveTo(x + ix + sk, y + iy); g.lineTo(x + w - ix, y + iy);
       g.lineTo(x + w - ix - sk, y + h - iy); g.lineTo(x + ix, y + h - iy); g.closePath();
     };
     g.save(); g.globalAlpha = al;
+    if (blur) this.backdropBlur(g, x, y, w, h, sk, false, 8);
     // flip: der ganze Knopf (Schräge, Lichtkante, Laserlinie) wird an seiner eigenen Mittelachse gespiegelt (rechte Hälfte der oberen Leiste)
     if (flip) { g.translate(x + w / 2, 0); g.scale(-1, 1); g.translate(-(x + w / 2), 0); }
     path();

@@ -15,11 +15,13 @@ import{drawMeleeHud,meleeHalo,meleeStage}from'./meleehud.js';
 import{drawFighter,drawTrail}from'./rig.js';
 import{SelectScreen}from'./select.js';
 import{Stage,THEMES}from'./stage.js';
+import{Rain}from'./rain.js';
+import{weatherMode,weatherPick}from'../core/weather.js';
 import{drawBossCine}from'./bosscine.js';
 import{drawStoryHud,storyMobBars,storyWorld}from'./storyhud.js';
 // Render-Pipeline:  [Screen-Shake] → [Kamera-Transform: Stage, Fighter, Projektile, Partikel, Debug-Boxen] → restore → [HUD unskaliert]
 export class Renderer{
- constructor(canvas){this.cv=canvas;this.g=canvas.getContext('2d');this.applyGfx();this.stages=THEMES.map(t=>new Stage(W,H,GROUND,WORLD,t));this.stage=this.stages[0];this.hud=new Hud(W,H);this.sel=new SelectScreen(this.hud);this.bd=new Backdrop();this.hov=new HoverFx();this.endBtns=null;this.endHot=-1;this.post=new PostFX();this.selT=0;this.lootUi={open:false,mode:'main',rewards:null,t:0};this.scale=canvas.width/W}
+ constructor(canvas){this.cv=canvas;this.g=canvas.getContext('2d');this.applyGfx();this.stages=THEMES.map(t=>new Stage(W,H,GROUND,WORLD,t));this.stage=this.stages[0];this.hud=new Hud(W,H);this.sel=new SelectScreen(this.hud);this.bd=new Backdrop();this.hov=new HoverFx();this.endBtns=null;this.endHot=-1;this.post=new PostFX();this.selT=0;this.lootUi={open:false,mode:'main',rewards:null,t:0};this.rain=new Rain();this.wxMode='leaves';this.wx=weatherPick('leaves');this.wxLatch=false;this.scale=canvas.width/W}
  // Qualität anwenden. Niedrig: shadowBlur (Leuchten) am Canvas aus, Nachbearbeitung aus, alles direkt auf den sichtbaren Canvas.
  // Mittel/Hoch: Szene (gs) wird in ein Offscreen-Canvas gezeichnet und per WebGL (gl.js) veredelt; HUD/UI (g) liegt als transparenter Canvas darüber.
  // Ohne WebGL (oder bei Kontextverlust) bleibt es beim 2D-Pfad (fx.js): gs und g sind dann derselbe Canvas.
@@ -39,17 +41,17 @@ export class Renderer{
  // Startmenü (Charakterwahl): Stage 1 als Hintergrund, Kamera neutral
  drawSelect(game){const g=this.gs,s=this.scale,A=game.arcade;if(this.useGL)this.uiClear();{const n=performance.now(),d=this._selLast?Math.min(3,(n-this._selLast)/16.667):1;this._selLast=n;this.selT+=d}g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);
   const st=this.stages[0],T=this.selT/60;if(!this.bd.draw(g,W,H,'select',{dimAdd:0,key:'start',cam:game.camera})){st.draw(g,T)}   // eigener Hintergrund (Bild/Video) oder Stage 1; bewusst KEIN abdunkelnder Schleier mehr: Sterne und Himmel scheinen dort durch, wo keine HUD-Fläche liegt
-  this.post.beams(g,W,H,T,'#7a5cff');this.post.dust(g,W,H,T,'#c9b8ff',60,.8);st.overlay(g,.3);this.sel.draw(g,A,this.selT,W,H);
+  this.post.beams(g,W,H,T,'#7a5cff');this.post.dust(g,W,H,T,'#c9b8ff',60,.8);st.overlay(g,.3);this.hud.captureBackdrop(g);this.sel.draw(g,A,this.selT,W,H);
   if(this.useGL)this.glFinish({bloom:.5*GFX.bloom,ab:0,vc:[0,0,.03],va:0,grain:GFX.grain?.06:0,t:this.selT});else{this.post.bloom(g,this.cv,.5);this.post.grain(g,this.cv,.06)}
   const u=this.g;u.setTransform(s,0,0,s,0,0);if(!this.sel.launching){const h=this.hud,t=this.selT,pk=LOOT.packs>0,bb=boosterRect(),cb=coinsRect();   // Booster + Coins oben rechts (Anzahl der gesammelten)
    // Obere Leiste rechts = exaktes Spiegelbild der Modus-Leiste links (modePill in select.js): Schräge gespiegelt (flip), Farbwechsel cyan/violett spiegelbildlich, gleiche Schriftgröße
    //   links:  ARCADE(cyan) · STORY(violett) · 2 SPIELER(cyan) · MELEE(violett)   rechts: STARTSEITE(violett) · SHOP/KI-KAMPF(cyan) · BOOSTER(violett) · COINS(cyan)
-   h.kBtn(u,bb.x,bb.y,bb.w,bb.h,'BOOSTER '+LOOT.packs,{col:'#b98bff',on:pk,dim:!pk,t,size:12,flip:true});
-   h.kBtn(u,cb.x,cb.y,cb.w,cb.h,'COINS '+LOOT.coins,{col:'#7fe8ff',t,size:12,flip:true});
-   {const r=startSelRect();h.kBtn(u,r.x,r.y,r.w,r.h,'STARTSEITE',{col:'#b98bff',t,size:12,flip:true})}   // 4. Knopf rechts: zurück zur Startseite (Demokampf)
-   if(!A.pvp){const sb=shopSelRect();h.kBtn(u,sb.x,sb.y,sb.w,sb.h,'SHOP',{col:'#7fe8ff',t,size:12,flip:true});   // Shop-Knopf neben dem Booster-Zähler
+   h.kBtn(u,bb.x,bb.y,bb.w,bb.h,'BOOSTER '+LOOT.packs,{col:'#b98bff',on:pk,dim:!pk,t,size:12,flip:true,blur:true});
+   h.kBtn(u,cb.x,cb.y,cb.w,cb.h,'COINS '+LOOT.coins,{col:'#7fe8ff',t,size:12,flip:true,blur:true});
+   {const r=startSelRect();h.kBtn(u,r.x,r.y,r.w,r.h,'STARTSEITE',{col:'#b98bff',t,size:12,flip:true,blur:true})}   // 4. Knopf rechts: zurück zur Startseite (Demokampf)
+   if(!A.pvp){const sb=shopSelRect();h.kBtn(u,sb.x,sb.y,sb.w,sb.h,'SHOP',{col:'#7fe8ff',t,size:12,flip:true,blur:true});   // Shop-Knopf neben dem Booster-Zähler
     this.sel.tagPlate(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'right','#6fdeeb',6,0);h.txt(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'#a9b4f0','right')}
-   else if(A.mode==='versus'||A.mode==='aivsai'){const sb=shopSelRect(),ai=A.mode==='aivsai';h.kBtn(u,sb.x,sb.y,sb.w,sb.h,ai?'2 SPIELER':'KI-KAMPF',{col:'#7fe8ff',on:ai,t,size:12,flip:true});
+   else if(A.mode==='versus'||A.mode==='aivsai'){const sb=shopSelRect(),ai=A.mode==='aivsai';h.kBtn(u,sb.x,sb.y,sb.w,sb.h,ai?'2 SPIELER':'KI-KAMPF',{col:'#7fe8ff',on:ai,t,size:12,flip:true,blur:true});
     this.sel.tagPlate(u,ai?'B – 2 SPIELER':'B – KI-KAMPF',cb.x+cb.w,cb.y+cb.h+16,10,'right','#6fdeeb',6,0);h.txt(u,ai?'B – 2 SPIELER':'B – KI-KAMPF',cb.x+cb.w,cb.y+cb.h+16,10,'#a9b4f0','right')}}
   drawLoot(u,this.hud,this.lootUi);this.hov.draw(u)}
  draw(game){if(this.useGL&&!this.glp.ok)this.applyGfx();if(game.arcade&&game.arcade.state==='select')return this.drawSelect(game);
@@ -72,7 +74,7 @@ export class Renderer{
   for(const p of game.projectiles)this.projectile(g,p,p.owner);
   game.particles.draw(g,true);
   if(game.debug)this.debugBoxes(g,game);                 // Kollisionsboxen skalieren mit der Welt
-  g.restore();g.restore();                               this.petals(g,game.frame);this.heaps(g,game);   // Kirschblüten-Effekt (wie im Titelmenü) auch in Kampf, Story und Melee: vor der Welt, hinter dem HUD
+  g.restore();g.restore();                               this.weather(g,game,0);   // Wetter (Blätter und/oder Regen, Optionen-Menü) auch in Kampf, Story und Melee: vor der Welt, hinter dem HUD
   // --- zurück in den Screen-Space ---
   if(game.flash>0){const a=game.flash/EFFECT.screenFlash;g.save();g.fillStyle=game.flashColor;g.globalAlpha=.45*a;g.fillRect(0,0,W,H);g.restore()}
   if(this.useGL){this.post.dust(g,W,H,t,'#cdbbff',26,.6);this.glFinish(this.sceneParams(game))}else this.post.scene(g,this.cv,game,game.frame);
@@ -91,7 +93,11 @@ demoStam(g,f,t){if(!f.stamOn)return;const S=STAMINA,w=72,h=4,x=f.x-w/2,y=GROUND+
   const txt=exh?'ERSCHÖPFT':rest?'ATMEN':'';if(txt){const c=exh?'#ff7b91':'#7dffd0';this.hud.lab(g,txt,f.x,y+17,8,c,'center',2,c,'700')}
   g.restore()}
 // Demokampf im Hintergrund der Startseite: nur die beiden Fighter + Projektile + Partikel, kein Hintergrund/HUD/Häuser
-drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);if(!this.bd.draw(g,W,H,'title',{dimAdd:0,key:'start',cam:game.camera,anchor:{wy:GROUND,dy:40}})){g.fillStyle='#020312';g.fillRect(0,0,W,H)}const cam=game.camera,DY=40;g.save();g.translate(0,DY);cam.apply(g);game.particles.drawFw(g);this.celeb(g,game);for(const f of[...game.fighters].filter(f=>!(f.dead>0)).sort((a,b)=>drawPri(a)-drawPri(b)||a.y-b.y))drawFighter(g,f,game.frame/60,1,GROUND);for(const f of game.fighters)if(!(f.dead>0))this.demoStam(g,f,game.frame);this.celeb(g,game,true);for(const p of game.projectiles)this.projectile(g,p,p.owner);game.particles.draw(g,true);g.restore();this.petals(g,game.frame);this.heaps(g,game);if(this.useGL){this.glFinish({bloom:.3*GFX.bloom,ab:0,vc:[0,0,.02],va:.1,grain:GFX.grain?.03:0,t:game.frame})}else this.post.dust(g,this.cv,game.frame/60,'#55eaff',12,.18)}
+drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);if(!this.bd.draw(g,W,H,'title',{dimAdd:0,key:'start',cam:game.camera,anchor:{wy:GROUND,dy:40}})){g.fillStyle='#020312';g.fillRect(0,0,W,H)}const cam=game.camera,DY=40;g.save();g.translate(0,DY);cam.apply(g);game.particles.drawFw(g);this.celeb(g,game);for(const f of[...game.fighters].filter(f=>!(f.dead>0)).sort((a,b)=>drawPri(a)-drawPri(b)||a.y-b.y))drawFighter(g,f,game.frame/60,1,GROUND);for(const f of game.fighters)if(!(f.dead>0))this.demoStam(g,f,game.frame);this.celeb(g,game,true);for(const p of game.projectiles)this.projectile(g,p,p.owner);game.particles.draw(g,true);g.restore();this.weather(g,game,40);if(this.useGL){this.glFinish({bloom:.3*GFX.bloom,ab:0,vc:[0,0,.02],va:.1,grain:GFX.grain?.03:0,t:game.frame})}else this.post.dust(g,this.cv,game.frame/60,'#55eaff',12,.18)}
+ // Wetter (Optionen-Menü): 'leaves' | 'rain' | 'both' | 'random'. Bei 'random' wird zu Beginn jedes Kampfes (Runde 1, Intro) neu gewürfelt, auch beim Demokampf der Startseite.
+ setWeather(m){this.wxMode=weatherMode(m);this.wx=weatherPick(this.wxMode);this.wxLatch=false}
+ weather(g,game,oy){if(this.wxMode==='random'){const ro=game.phase==='intro'&&game.round===1;if(ro&&!this.wxLatch)this.wx=weatherPick('random');this.wxLatch=ro}
+  if(this.wx.leaves){this.petals(g,game.frame);this.heaps(g,game)}if(this.wx.rain)this.rain.draw(g,game,oy)}
  // Kirschblütenblätter im Vordergrund (Titelmenü): dezent, rein zeitgesteuert (kein Zustand). Größere = näher an der Kamera = schneller + deckender.
  petals(g,fr){const t=fr/60,N=28;g.save();for(let i=0;i<N;i++){const h=n=>{const q=Math.sin((i+1)*n)*43758.5453;return q-Math.floor(q)},d=.4+h(12.9898)*.6,y=((t*(22+d*38)+h(78.233)*(H+60))%(H+60))-30,x=(((h(39.346)*W+Math.sin(t*(.5+h(11.135))+i)*28*d+t*8*d)%(W+40))+W+40)%(W+40)-20,r=2+d*3.6;
   g.save();g.translate(x,y);g.rotate(t*(.8+h(5.7))+i);g.scale(1,.55+.45*Math.abs(Math.sin(t*1.3+i)));g.globalAlpha=.35+d*.45;g.fillStyle=i%3?'#ff9bd0':'#ffd0e8';g.beginPath();g.ellipse(0,0,r*1.25,r*.8,0,0,7);g.fill();g.restore()}g.restore()}

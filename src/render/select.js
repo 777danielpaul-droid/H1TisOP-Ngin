@@ -56,6 +56,8 @@ export const FIG={tiger:.9,st3g0:.88,kitsune:.86,rabe:.88,leon:.9,bear:.88};   /
 // Combatant Bay (links) und Subject-Data-Konsole (rechts) sind exakte Spiegelbilder an der Mittelachse x=W/2: gleiche Größe, gleicher Randabstand, Schrägen gespiegelt.
 export const BAY={x:16,y:104,w:460,h:394};
 export const PNL={x:W-BAY.x-BAY.w,y:BAY.y,w:BAY.w,h:BAY.h};
+// Die beiden großen Karten sind geometrische Spiegelbilder: Inhalt bleibt in seiner normalen Leserichtung.
+const BAY_FLIP=false,PNL_FLIP=true;
 export const PX=PNL.x+20,PW=PNL.w-34;   // Profilbereich rechts (x, Breite) – liegt innerhalb von PNL (PX-20 .. PX+PW+14)
 export const VTEXT={tiger:['LET\'S GO','上吧！'],st3g0:['UNLIKELY','不太可能'],kitsune:['TRY!','试试吧！'],anubis:['JUDGMENT','审判'],rabe:['NEVERMORE','永不复返',1],leon:['ROAR!','咆哮！'],bear:['CRUSH!','粉碎！'],cyberdemon:['DEVOUR','吞噬']};   // Schriftzug im Übergangsvideo + chinesische Übersetzung
 export const DIM='#8f95d8',TXT='#d6dcff';
@@ -118,15 +120,14 @@ export class SelectScreen{
  fake(id,t){const ch=CHARACTERS[id],f=this.fakes[id]||(this.fakes[id]={x:0,y:0,facing:1,char:ch,anim:'idle',animU:0,sf:0,mf:0,move:null,state:'idle',trail:[],vx:0,vy:0,menu:true});f.sf=t;f.char=ch;return f}
  // Text in Zeilen umbrechen (Breite in Logik-Pixeln)
  // Lesefläche: abgedunkelte, halbtransparente Platte (rgba(10, 10, 18, 0.72)) mit dezentem Neon-Rahmen. Liegt hinter Balken, Texten und Hinweisen, damit sie auch vor dem hellen Grid lesbar bleiben.
- plate(g,x,y,w,h,col='#6fdeeb',r=7){g.save();this.hud.kChamfer(g,x,y,w,h,r);g.fillStyle='rgba(10, 10, 18, 0.72)';g.fill();
-  const al=g.globalAlpha;g.strokeStyle=col;g.lineWidth=3;g.globalAlpha=al*.12;g.stroke();g.lineWidth=1;g.globalAlpha=al*.5;g.stroke();g.restore()}
+ plate(g,x,y,w,h,col='#6fdeeb',r=7){this.glassPanel(g,{x,y,w,h},col,.92,r)}
  // Platte hinter einer einzelnen Textzeile (Breite aus dem Text gemessen); x bezieht sich auf die Ausrichtung des Textes (left | right | center)
  tagPlate(g,txt,x,y,size,align='left',col,pad=8,sp=2){const w=this.hud.mw(g,txt,size)+txt.length*sp+pad*2,x0=align==='right'?x-w+pad:align==='center'?x-w/2:x-pad;this.plate(g,x0,y-size-3,w,size+9,col,5)}
  wrap(g,s,size,maxW){const out=[];let line='';for(const w of String(s).split(' ')){const tr=line?line+' '+w:w;if(line&&this.hud.mw(g,tr,size)>maxW){out.push(line);line=w}else line=tr}if(line)out.push(line);return out}
  draw(g,arcade,t,W,H){if(arcade.pvp)return this.drawVs(g,arcade,t,W,H);const hud=this.hud;
   // Main character bay: dark glass console, machined corners and restrained cyan telemetry. Spiegelbild der Subject-Data-Konsole rechts (profile()).
   const bay=g.createLinearGradient(0,BAY.y,0,BAY.y+BAY.h);bay.addColorStop(0,'rgba(7,19,28,.54)');bay.addColorStop(1,'rgba(10,10,18,.40)');
-  this.consoleFrame(g,BAY,false,bay);g.save();
+  this.consoleFrame(g,BAY,BAY_FLIP,bay);g.save();
   {const sc=CHARACTERS[[...ROSTER,'custom'][arcade.cursor]];hud.kVRule(g,BAY.x+BAY.w-8,138,492,(sc&&sc.glow)||'#3fe0ff',.72)}   // Gegenstück zur senkrechten Linie am inneren Rand der Subject-Data-Konsole (profile())
   hud.lab(g,'HOLOGRAPHIC COMBATANT BAY',BAY.x+18,122,9,'#78d8e7','left',2,null,'700');hud.kRule(g,BAY.x+18,BAY.x+18+260,129,'#4faebe','r',.55);
   hud.lab(g,'BIO-SIGNATURE',BAY.x+18,475,8,'#668e9c','left',1,null,'700');hud.lab(g,'SYNC  /  READY',BAY.x+BAY.w-18,475,8,'#7be5ee','right',1,null,'700');g.restore();
@@ -172,10 +173,7 @@ export class SelectScreen{
     if(behind(o)&&'filter' in g)g.filter='blur('+(1+ad*.9).toFixed(1)+'px) brightness(.85)';   // Tiefenunschärfe: Figuren hinter dem Nebel
     // Physischer Character-Dock: eingelassene Obsidian-Kapsel mit gefräster Chromkante.
     const podW=132*k,podH=218*k,podX=cx-podW/2,podY=base-podH+28*k;
-    g.save();hud.kChamfer(g,podX,podY,podW,podH,14);const pg=g.createLinearGradient(podX,podY,podX+podW,podY+podH);
-    pg.addColorStop(0,'rgba(95,137,148,.34)');pg.addColorStop(.18,'rgba(18,37,47,.92)');pg.addColorStop(.62,'rgba(3,10,16,.96)');pg.addColorStop(1,'rgba(36,54,62,.72)');g.fillStyle=pg;g.fill();
-    g.strokeStyle=sel?'rgba(180,250,252,.9)':'rgba(112,161,174,.42)';g.lineWidth=sel?1.6:1;g.stroke();
-    hud.kChamfer(g,podX+4,podY+4,podW-8,podH-8,11);g.strokeStyle='rgba(255,255,255,.12)';g.lineWidth=.7;g.stroke();
+    g.save();this.glassPanel(g,{x:podX,y:podY,w:podW,h:podH},col,sel?1:.72,14);
     g.save();hud.kChamfer(g,podX+8,podY+12,podW-16,podH-42,10);g.clip();
     const well=g.createRadialGradient(cx,podY+podH*.52,4,cx,podY+podH*.52,podW*.72);well.addColorStop(0,col+(sel?'30':'16'));well.addColorStop(1,'#0000');g.fillStyle=well;g.fillRect(podX+8,podY+12,podW-16,podH-42);
     g.fillStyle='rgba(220,250,255,.055)';for(let yy=podY+20;yy<podY+podH-34;yy+=7)g.fillRect(podX+8,yy,podW-16,1);
@@ -205,9 +203,15 @@ export class SelectScreen{
    g.save();for(let k=0;k<N;k++){const on=k===cur;g.globalAlpha=on?1:.4;g.fillStyle=on?'#ffffff':'#8f95d8';g.beginPath();g.arc(CAR.cx+(k-(N-1)/2)*16,CAR.base+82+0,on?4:3,0,7);g.fill()}g.restore()}}
  // Rahmen einer Konsole: Fläche, Außenkante, innere Haarlinie, Akzentstriche oben + unten. flip=true ergibt das exakte Spiegelbild (Schrägen, Akzente, Farben vertauscht).
  // Die Combatant Bay (BAY, flip=false) und die Subject-Data-Konsole (PNL, flip=true) benutzen dieselbe Funktion -> immer symmetrisch.
+  glassPanel(g,box,col='#7fe8ff',al=1,corner=18,flip=false,useBlur=true){const hud=this.hud,{x,y,w,h}=box;g.save();g.globalAlpha*=al;
+  if(useBlur)hud.backdropBlur(g,x,y,w,h,corner,flip,10);hud.kChamfer(g,x,y,w,h,corner,flip);const glass=g.createLinearGradient(0,y,0,y+h);
+  glass.addColorStop(0,'rgba(235,248,255,.16)');glass.addColorStop(.22,'rgba(105,172,240,.08)');glass.addColorStop(.62,'rgba(7,12,25,.16)');glass.addColorStop(1,'rgba(4,8,18,.24)');g.fillStyle=glass;g.fill();
+  g.save();hud.kChamfer(g,x+2,y+2,w-4,h-4,Math.max(6,corner-2),flip);g.clip();g.fillStyle=`${col}10`;g.fillRect(x+2,y+2,w-4,h-4);g.restore();
+  g.save();hud.kChamfer(g,x,y,w,h,corner,flip);g.clip();const sheen=g.createLinearGradient(x,0,x+w,0);sheen.addColorStop(0,'rgba(255,255,255,.22)');sheen.addColorStop(.18,'rgba(255,255,255,0)');sheen.addColorStop(.78,'rgba(255,255,255,0)');sheen.addColorStop(1,'rgba(255,255,255,.10)');g.fillStyle=sheen;g.fillRect(x,y,w,h);g.restore();
+  g.strokeStyle='rgba(255,255,255,.42)';g.lineWidth=1;g.stroke();hud.kChamfer(g,x+5,y+5,w-10,h-10,Math.max(8,corner-4),flip);g.strokeStyle=`${col}55`;g.stroke();
+  g.fillStyle='rgba(255,255,255,.32)';g.fillRect(x+corner+8,y+2,Math.max(24,w*.18),1.5);g.restore()}
  consoleFrame(g,r,flip,fill){const hud=this.hud,{x,y,w,h}=r,ax=(off,len)=>flip?x+w-off-len:x+off;   // ax: Akzentstrich von der äußeren Ecke aus gemessen
-  g.save();hud.kChamfer(g,x,y,w,h,18,flip);g.fillStyle=fill;g.fill();g.strokeStyle='rgba(111,222,235,.42)';g.lineWidth=1;g.stroke();
-  hud.kChamfer(g,x+5,y+5,w-10,h-10,14,flip);g.strokeStyle='rgba(255,255,255,.08)';g.stroke();
+  this.glassPanel(g,r,'#7fe8ff',1,18,flip,false);g.save();
   g.fillStyle='rgba(83,222,239,.65)';g.fillRect(ax(18,82),y+2,82,2);g.fillStyle='rgba(132,112,255,.55)';g.fillRect(ax(w-100,82),y+2,82,2);   // oben: cyan außen/violett innen (Bay) bzw. gespiegelt (Konsole)
   g.fillStyle='rgba(107,226,240,.45)';g.fillRect(ax(18,58),y+h-16,58,2);g.fillStyle='rgba(107,226,240,.14)';g.fillRect(ax(82,w-100),y+h-16,w-100,1);   // unten: Akzent + Haarlinie
   g.restore()}
@@ -224,8 +228,8 @@ export class SelectScreen{
   g.save();
   // Charakterdaten liegen in einer eigenen, eingelassenen Holo-Konsole = Spiegelbild der Combatant Bay (gleiche Größe, Schrägen/Akzente gespiegelt, Titel rechtsbündig).
   const panelGrad=g.createLinearGradient(0,PNL.y,0,PNL.y+PNL.h);
-  panelGrad.addColorStop(0,'rgba(10,24,34,.92)');panelGrad.addColorStop(.45,'rgba(4,12,20,.94)');panelGrad.addColorStop(1,'rgba(2,6,12,.97)');
-  this.consoleFrame(g,PNL,true,panelGrad);g.save();
+  panelGrad.addColorStop(0,'rgba(235,248,255,.16)');panelGrad.addColorStop(.45,'rgba(94,154,210,.08)');panelGrad.addColorStop(1,'rgba(4,8,18,.30)');
+  this.consoleFrame(g,PNL,PNL_FLIP,panelGrad);g.save();
   hud.lab(g,'SUBJECT DATA  /  LIVE ANALYSIS',PNL.x+PNL.w-18,122,9,'#83dce9','right',2,null,'700');hud.kRule(g,PNL.x+PNL.w-18-260,PNL.x+PNL.w-18,129,'#4faebe','l',.55);
   hud.kVRule(g,PNL.x+8,138,492,col,.72);g.restore();
   if(!ch){   // leerer Slot
@@ -277,14 +281,14 @@ export class SelectScreen{
  foot(g,arcade,t,W,label,hasCustom){const hud=this.hud,d=arcade.difficulty;
   this.plate(g,26,480,326,60,'#8f7bff',9);   // Start-Hinweis + Bedienhinweise links
   {const id=[...ROSTER,'custom'][arcade.cursor],ch=CHARACTERS[id];if(ch&&skinCount(ch.sprites)>1){const ft='C = FARBE: '+skinName(ch.sprites,arcade.skinOf(id));this.tagPlate(g,ft,W-24,516,10,'right','#b98bff');hud.lab(g,ft,W-24,516,10,'#d6c8ff','right',2,null,'700')}}
-  if(!this.ln&&Math.sin(t*.14)>-.4)hud.fam(F_DISP,()=>hud.fancy(g,label,34,496,24,['#ffffff','#9fe8ff'],'left','#8f7bff',t,false,false,400,2));
-  hud.lab(g,'◀ ▶  KÄMPFER',34,516,11,DIM,'left',2,null,'700');hud.lab(g,'▲ ▼  SCHWIERIGKEIT',34,532,11,DIM,'left',2,null,'700');hud.lab(g,DIFF[d],190,532,11,DCOL[d],'left',2,DCOL[d],'800');
+  if(!this.ln&&Math.sin(t*.14)>-.4)hud.fam(F_DISP,()=>hud.fancy(g,label,38,503,15,['#ffffff','#9fe8ff'],'left','#8f7bff',t,false,false,400,1));
+  hud.lab(g,'◀ ▶  KÄMPFER',38,520,10,DIM,'left',2,null,'700');hud.lab(g,'▲ ▼  SCHWIERIGKEIT',38,535,10,DIM,'left',2,null,'700');hud.lab(g,DIFF[d],190,535,10,DCOL[d],'left',2,DCOL[d],'800');
   if(hasCustom){const ft='E = EIGENE FIGUR BEARBEITEN';this.tagPlate(g,ft,W-24,532,10,'right','#8f7bff');hud.lab(g,ft,W-24,532,10,'#a899e0','right',2,null,'600')}
   if(arcade.mode==='story'){const c=CHAPTERS[arcade.chapter-1],nx=CHAPTERS[arcade.chapter],lock=nx&&!arcade.chapterOpen(arcade.chapter+1);   // Kapitelwahl (K / Klick): Kapitel 2+ erst nach Abschluss des Vorgängers
    {const ft='K = KAPITEL '+arcade.chapter+':  '+c.name;this.tagPlate(g,ft,W-24,500,12,'right','#7dff9a');hud.lab(g,ft,W-24,500,12,'#7dff9a','right',2,'#7dff9a','800')}
    if(lock){const ft='KAPITEL '+(arcade.chapter+1)+' GESPERRT – schließe Kapitel '+arcade.chapter+' ab';this.tagPlate(g,ft,W-24,480,10,'right','#8f7bff');hud.lab(g,ft,W-24,480,10,'#a899e0','right',2,null,'600')}}}
 modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':A.mode,k=['arcade','story','versus','melee'].indexOf(shown),sw=m.w/4;
-  ['ARCADE','STORY','2 SPIELER','MELEE'].forEach((n,i)=>{const on=i===k,x=m.x+i*sw+(i?3:0),w=sw-6;hud.kBtn(g,x,m.y,w,m.h,n,{col:i%2?'#b98bff':'#7fe8ff',on,dim:!on,t,size:12})});
+  ['ARCADE','STORY','2 SPIELER','MELEE'].forEach((n,i)=>{const on=i===k,x=m.x+i*sw+(i?3:0),w=sw-6;hud.kBtn(g,x,m.y,w,m.h,n,{col:i%2?'#b98bff':'#7fe8ff',on,dim:!on,t,size:12,blur:true})});
   this.tagPlate(g,'TAB = Modus wechseln',m.x+6,m.y+m.h+14,10,'left','#6fdeeb',6,0);hud.txt(g,'TAB = Modus wechseln',m.x+6,m.y+m.h+14,10,'#a9b4f0','left')}
  title(g,t,W,sub,col='#9fe8ff'){const hud=this.hud;
   hud.fam(F_TECH,()=>{g.save();g.globalCompositeOperation='lighter';hud.fancy(g,'H!TisOP',W/2-2,64,40,['#7fe8ff','#7fe8ff'],'center',null,t,false,true,900,4);g.restore();
@@ -294,7 +298,7 @@ modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':
  // ---- 2-Spieler-Modus: Kämpferwahl (zwei Cursor) ----
  drawVs(g,A,t,W,H){const hud=this.hud,v=A.vs,M=A.mode==='melee',AI=A.mode==='aivsai';
   // Beide Konsolen wie im Arcade-Menü: Bay links, Profil-Konsole rechts als exaktes Spiegelbild (consoleFrame)
-  this.consoleFrame(g,BAY,false,'rgba(10, 10, 18, 0.56)');this.consoleFrame(g,PNL,true,'rgba(10, 10, 18, 0.72)');g.save();
+  this.consoleFrame(g,BAY,BAY_FLIP,'rgba(10, 10, 18, 0.56)');this.consoleFrame(g,PNL,PNL_FLIP,'rgba(10, 10, 18, 0.72)');g.save();
   // Titel beide in der Bay (die Profil-Konsole rechts hat in der obersten Zeile „wählt …“ und keinen Platz für einen Titel)
   hud.lab(g,AI?'AI COMBAT LINK':'DUAL COMBAT LINK',BAY.x+18,122,9,'#78d8e7','left',2,null,'700');
   hud.lab(g,AI?'AUTONOMOUS SYNC':'PLAYER SYNC',BAY.x+BAY.w-18,122,9,'#83dce9','right',2,null,'700');g.restore();this.modePill(g,A,t);
@@ -305,7 +309,7 @@ modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':
   this.vsRondell(g,A,t,1,slots);this.vsRondell(g,A,t,2,slots);
   g.save();g.globalAlpha=.5;hud.kRule(g,BAY.x+14,BAY.x+BAY.w-14,302,'#4a4c9a','r',.9);g.restore();
   // Profil rechts wie im Arcade-Menü, je Spieler ein Block; die senkrechten Spielerlinien sitzen links an der Konsole und – gespiegelt – rechts an der Bay
-  g.save();this.consoleFrame(g,PNL,true,'rgba(4,12,19,.82)');
+  g.save();this.consoleFrame(g,PNL,PNL_FLIP,'rgba(4,12,19,.82)');
   hud.kVRule(g,PNL.x+8,138,292,P1C,.85);hud.kVRule(g,PNL.x+8,312,492,P2C,.85);hud.kVRule(g,BAY.x+BAY.w-8,138,292,P1C,.85);hud.kVRule(g,BAY.x+BAY.w-8,312,492,P2C,.85);
   hud.kRule(g,PX+8,PX+PW-8,302,'#4e8290','r',.8);g.restore();
   this.vsProfile(g,A,t,1,slots[v.c1],104,P1C,M);this.vsProfile(g,A,t,2,slots[v.c2],304,P2C,M);
@@ -330,8 +334,7 @@ modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':
    g.save();g.globalAlpha=lerp(1,.5,ad)*fade;
    // Player-specific docking capsule, machined black chrome with a live edge light.
    const dw=lerp(108,78,ad),dh=lerp(126,102,ad),dx=cx-dw/2,dy=base-dh+16;
-   hud.kChamfer(g,dx,dy,dw,dh,12);const dg=g.createLinearGradient(dx,dy,dx+dw,dy+dh);dg.addColorStop(0,'#405b65');dg.addColorStop(.2,'#10242d');dg.addColorStop(.72,'#030a10');dg.addColorStop(1,'#263d46');g.fillStyle=dg;g.fill();
-   g.strokeStyle=sel?pc:'rgba(124,177,188,.44)';g.lineWidth=sel?1.4:1;g.stroke();hud.kChamfer(g,dx+4,dy+4,dw-8,dh-8,9);g.strokeStyle='rgba(255,255,255,.12)';g.stroke();
+   this.glassPanel(g,{x:dx,y:dy,w:dw,h:dh},pc,sel?1:.72,12);
    g.fillStyle=pc;g.globalAlpha*=sel?.8:.24;g.fillRect(dx+10,dy+dh-13,dw-20,1.5);g.globalAlpha=lerp(1,.5,ad)*fade;
    if(sel){g.shadowColor=pc;g.shadowBlur=15;g.strokeStyle=pc;g.lineWidth=1;hud.kChamfer(g,dx-3,dy-3,dw+6,dh+6,14);g.stroke();g.shadowBlur=0}
    const rw=lerp(66,34,ad),gl=g.createRadialGradient(cx,base+4,2,cx,base+4,rw);gl.addColorStop(0,col+(ad<.5?'aa':'33'));gl.addColorStop(1,'#0000');g.fillStyle=gl;g.beginPath();g.ellipse(cx,base+4,rw,rw*.22,0,0,7);g.fill();
@@ -369,14 +372,14 @@ modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':
   if(ch.cons){hud.lab(g,'–',px,sy+15,13,'#c9b8ff','left',0,null,'800');hud.txt(g,fit(ch.cons),px+16,sy+15,11,'#c9b8ff','left')}}
  // Melee-Optionen (rechts oben, klickbar): Spieler 2 = Mensch/CPU (B), CPU-Stärke (▲▼ bzw. Klick), Stocks (T)
  meleeOpts(g,A,t,W){const hud=this.hud,c='#bfe9ff',on='#9fe8ff';
-  const row=(i,txt,col,hot)=>{const r=MELEE_OPTS[i];hud.kBtn(g,r.x,r.y,r.w,r.h,txt,{col,on:hot,dim:i===0&&!hot,t,size:i?10:12,flip:true})};   // flip: rechte Leiste = Spiegelbild der linken
+  const row=(i,txt,col,hot)=>{const r=MELEE_OPTS[i];hud.kBtn(g,r.x,r.y,r.w,r.h,txt,{col,on:hot,dim:i===0&&!hot,t,size:i?10:12,flip:true,blur:true})};   // flip: rechte Leiste = Spiegelbild der linken
   row(0,'GEGEN CPU',A.cpu?on:c,A.cpu);
   if(A.cpu){row(1,`CPU: ${DIFF[A.difficulty]}`,DCOL[A.difficulty],true);row(2,`STOCKS: ${A.stocks}`,c,false)}   // nur bei aktivem CPU sichtbar
   const lr=MELEE_OPTS[A.cpu?1:0];
   hud.txt(g,A.cpu?'klicken oder  B · ▲▼ · T':'klicken oder  B · T',W-14,lr.y+lr.h+14,10,'#8f95d8','right')}
  // ---- 2-Spieler-Modus: Stage-Wahl ----
  drawStagePick(g,A,t,W,H){const hud=this.hud,v=A.vs,N=THEMES.length+1,slots=Arcade.slotIds();
-  g.save();hud.kChamfer(g,24,108,912,302,20);g.fillStyle='rgba(10, 10, 18, 0.72)';g.fill();g.strokeStyle='rgba(96,210,226,.3)';g.stroke();hud.lab(g,'TACTICAL ENVIRONMENT SELECT  /  STAGE DATA',44,128,9,'#78d8e7','left',2,null,'700');g.restore();
+  g.save();this.glassPanel(g,{x:24,y:108,w:912,h:302},'#7fe8ff',.96,20);hud.lab(g,'TACTICAL ENVIRONMENT SELECT  /  STAGE DATA',44,128,9,'#78d8e7','left',2,null,'700');g.restore();
   if(this.ln&&this.ln.vs)return this.drawVsLaunch(g,A,t,W,H,slots);
   this.title(g,t,W,A.mode==='aivsai'?'KI VS KI – STAGE WÄHLEN':A.mode==='melee'?'MELEE – STAGE WÄHLEN':'STAGE WÄHLEN',A.mode==='aivsai'?'#7fe8ff':A.mode==='melee'?'#bfe9ff':undefined);
   for(let i=0;i<N;i++){const r=stageRect(i,N),T=THEMES[i],sel=v.stage===i,pulse=.5+.5*Math.sin(t*.12),cx=r.x+r.w/2,col=T?T.lights[0]:'#9fe8ff';

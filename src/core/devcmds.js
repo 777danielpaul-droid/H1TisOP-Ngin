@@ -22,7 +22,7 @@ export function registerDevCommands(con,{game,arcade}){
  con.add('give','Gibt dir Booster, Münzen oder Items',a=>{const what=String(a[0]||'').toLowerCase(),ids=['pack','coins',...ITEMS.map(i=>i.id)];
   if(!ids.includes(what))throw new Error('Benutzung: give <'+ids.join('|')+'> [Anzahl]');const n=num(a[1]);
   if(what==='pack'){addPack(n);return`+${n} Booster (jetzt ${LOOT.packs}).`}
-  if(what==='coins'){LOOT.coins+=n;saveLoot();return`+${n} Münzen (jetzt ${LOOT.coins}).`}
+  if(what==='coins'){LOOT.coins=Math.min(999999,(+LOOT.coins||0)+n);saveLoot();return`+${n} Münzen (jetzt ${LOOT.coins}).`}
   addItem(what,n);return`+${n} ${itemOf(what).name} (jetzt ${itemCount(what)}).`},'<pack|coins|item> [n]');
  con.add('unlock','Schaltet alle Farben, Arenen und Kapitel frei',()=>{unlockAll();for(let c=2;c<=CHAPTERS.length;c++)arcade.unlockChapter(c);return'Alle Farben, Arenen und Kapitel freigeschaltet.'});
 }

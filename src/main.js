@@ -8,6 +8,7 @@ import{CHARACTERS,ROSTER}from'./core/characters.js';
 import{ovrApplyAll,ovrSuspend}from'./core/overrides.js';
 import{MOVE_LIST,charMoves}from'./core/moves.js';
 import{SPEED,GFX,setGfx}from'./core/config.js';
+import{weatherMode}from'./core/weather.js';
 import{openPack,buyPack,LOOT,SHOP,CHAR_SHOP,CHAR_REQ,charReqMet,CARDS,shopCount,buyChar,ownsChar,ownsSkin,ownedStages,sellAdjust,sellCards,sellSelectDupes,sellPreview}from'./core/loot.js';
 import{NetClient,netServerUrl,connectPatient}from'./core/netclient.js';
 import{NetMatch}from'./core/netmatch.js';
@@ -53,7 +54,7 @@ const applyPl=k=>sound.setPlaylist(k,musicStore.items(k),musicStore.on[k],musicS
 const musicUi=new MusicPanel(musicStore,{onOpen:()=>clearInputs(),onClose:()=>{clearInputs();canvas.focus()},onChange:applyPl,now:k=>sound.plNow(k)});musicUi.mount();
 musicStore.init().then(()=>{for(const k of['menu','fight'])applyPl(k);musicUi.refresh()});
 // ---- Entwicklerkonsole (Strg+Alt+D): Eingabezeile + Ausgabebereich, Befehle per devUi.add(). Nicht im Intro, Online-Kampf, Pausenmenü oder bei offenem Panel. Offen = Kampf pausiert. ----
-const devUi=new DevConsole({blocked:()=>intro.active||shopClip.active||menuOpen||!!netMatch||studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen,onOpen:()=>clearInputs(),onClose:()=>{clearInputs();canvas.focus()}});registerDevCommands(devUi,{game,arcade});devUi.mount();
+const devUi=new DevConsole({deny:()=>!!netMatch,blocked:()=>intro.active||shopClip.active||menuOpen||!!netMatch||studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen,onOpen:()=>clearInputs(),onClose:()=>{clearInputs();canvas.focus()}});registerDevCommands(devUi,{game,arcade});devUi.mount();
 // ---- Sound: Lautstärke/Stumm gemerkt; Audio startet erst nach der ersten Tasten-/Klick-Geste (Browser-Regel) ----
 game.stamPref=load('tf_stam',STAMINA.on?'1':'0')==='1';   // Ausdauer-System: Menü-Schalter (Optionen), gemerkt in localStorage tf_stam
 const sound=new Sound();game.audio=sound;sound.setVolume(+load('tf_volume',.7));sound.setMuted(load('tf_mute','0')==='1');
@@ -69,8 +70,9 @@ function resize(){const dpr=Math.min(GFX.dpr,window.devicePixelRatio||1);const w
 window.addEventListener('resize',resize);if(gfxMode!=='auto')setGfx(+gfxMode);renderer.applyGfx();resize();
 // ---- Menü ----
 const menu=$('menu'),tabs=[...document.querySelectorAll('.tabs button')],names=tabs.map(b=>b.dataset.tab);let tab=0;
-const ml=$('movelist');const row=r=>`<tr><td class="mv">${r[0]}</td><td class="key">${r[1]}</td><td class="note">${r[2]}</td></tr>`;
-const fillMoves=()=>{if(!ml)return;const c=p1.char;ml.innerHTML=`<tr><td colspan="3" class="mv">${c.name} – Stärken: ${c.pros||''} · Schwächen: ${c.cons||''}</td></tr>`+charMoves(c).map(row).join('')+MOVE_LIST.map(row).join('')};fillMoves();
+const ml=$('movelist');const _hx=t=>String(t==null?'':t).replace(/[&<>"'`]/g,c=>'&#'+c.charCodeAt(0)+';');   // HTML-Escape: Namen/Moves aus Custom-/Community-Daten sind nicht vertrauenswürdig
+const row=r=>`<tr><td class="mv">${_hx(r[0])}</td><td class="key">${_hx(r[1])}</td><td class="note">${_hx(r[2])}</td></tr>`;
+const fillMoves=()=>{if(!ml)return;const c=p1.char;ml.innerHTML=`<tr><td colspan="3" class="mv">${_hx(c.name)} – Stärken: ${_hx(c.pros||'')} · Schwächen: ${_hx(c.cons||'')}</td></tr>`+charMoves(c).map(row).join('')+MOVE_LIST.map(row).join('')};fillMoves();
 function showTab(i){tab=(i+names.length)%names.length;names.forEach((n,k)=>{const s=$('tab-'+n);if(s)s.classList.toggle('hidden',k!==tab);if(tabs[k])tabs[k].classList.toggle('on',k===tab)})}
 tabs.forEach((b,i)=>b.onclick=()=>showTab(i));showTab(0);
 let padFocus=null;   // vom Controller markiertes Element im Pausenmenü
@@ -155,6 +157,7 @@ if(mvol){mvol.value=String(sound.mvol);mvol.oninput=()=>{sound.setMusicVolume(+m
 const showMusic=()=>{if(mmute){mmute.textContent=sound.mmuted?'Aus':'An';mmute.classList.toggle('on',!sound.mmuted)}};showMusic();
 if(mmute)mmute.onclick=()=>{sound.setMusicMuted(!sound.mmuted);save('tf_music_mute',sound.mmuted?'1':'0');showMusic()};
 const gsel=$('gfx');if(gsel){gsel.value=String(gfxMode);gsel.onchange=()=>{gfxMode=gsel.value;save('tf_gfx',gfxMode);if(gfxMode==='auto')setGfx(2);autoT=0;applyGfx()}}
+const wsel=$('weather');{const wm=weatherMode(load('tf_weather','leaves'));renderer.setWeather(wm);if(wsel){wsel.value=wm;wsel.onchange=()=>{save('tf_weather',weatherMode(wsel.value));renderer.setWeather(wsel.value)}}}   // Wetter: Blätter / Regen / Beides / Zufällig, gemerkt in localStorage tf_weather
 const sp=$('speed');if(sp)sp.oninput=()=>{speed=+sp.value;$('speedval').textContent=speed.toFixed(1)+'×'};
 if(sp){sp.value=speed;$('speedval').textContent=speed.toFixed(1)+'×'}
 // ---- Startmenü (Charakterwahl): Tastatur + Maus ----
@@ -450,4 +453,6 @@ function loop(now){if(intro.active){last=now;padMenu(now);sound.music('menu');re
 requestAnimationFrame(loop);
 sound.unlock();sound.music('menu');   // Menümusik schon beim Intro: Audio sofort vorbereiten (Browser geben es frei, sobald sie dürfen, spätestens bei der ersten Taste/Klick)
 intro.start();   // als Letztes: alles ist eingerichtet, das Video startet sofort (kein Startknopf), die Menümusik setzt ein, sobald der Browser Ton erlaubt
-window.__net=()=>netMatch;window.__intro=intro;window.__shopclip=shopClip;window.__music=musicUi;window.__dev=devUi;window.__bgui=bgUi;window.__reveal=lootReveal;window.__lootOpen=lootOpen;window.__renderer=renderer;window.__demo=demo;window.__game=game;window.__arcade=arcade;
+// Test-/Debug-Hooks (für e2e-Tests) nur lokal (localhost, Datei, LAN) – auf dem öffentlichen Host sind keine Spiel-Objekte per Browser-Konsole erreichbar
+const _localHost=(()=>{try{const h=location.hostname;return location.protocol==='file:'||h===''||h==='localhost'||h==='127.0.0.1'||h==='[::1]'||/^(192\.168|10)\./.test(h)}catch(e){return false}})();
+if(_localHost){window.__net=()=>netMatch;window.__intro=intro;window.__shopclip=shopClip;window.__music=musicUi;window.__dev=devUi;window.__bgui=bgUi;window.__reveal=lootReveal;window.__lootOpen=lootOpen;window.__renderer=renderer;window.__demo=demo;window.__game=game;window.__arcade=arcade};
