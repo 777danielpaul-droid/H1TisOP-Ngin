@@ -1,7 +1,8 @@
 import{CHARACTERS}from'../core/characters.js';
 import{CUS_SHEETS,CUS_ANIMS,CUS_ANIM_LABELS,CUS_ATLAS_W,CUS_STAND_H,CUS_AIR_CENTER,CUS_TEMPLATES,CUS_LIMITS,CUS_DEFAULT,CUS_MOVE_GROUPS,CUS_MOVE_KEYS,CUS_MAX_MOVE_FRAMES,CUS_ADJ_LIMITS,CUS_ADJ_DEFAULT,CUS_MOVE_SPECS,cusMovePrompt,cusDetectGrid,cusMoveKeyFromName,cusKeyOut,cusPlanSheet,cusBuildAnims,cusCompleteAnims,cusClean,cusMakeChar,cusPrompt,
  cusCleanMoves,cusCleanProps,cusFrameGeom,cusMoveAnims,cusMoveImgs,cusMoveName,cusNewId,cusPlanImage,cusPlanMoveSheet,cusMvMove,cusMvRemove,cusMvInsert,cusMvReplace}from'../core/custom.js';
-import{registerSpriteChar}from'./sprites.js';
+import{registerSpriteChar,SPRITE_CHARS,sheet}from'./sprites.js';
+import{ovrAll,ovrSet,ovrReset,ovrHas,ovrSpriteAnims}from'../core/overrides.js';
 // Eigene Figur: Editor-Fenster (Upload der Sprite-Sheets, Vorschau, Werte, Speichern). Die Bildverarbeitung läuft komplett im Browser, gespeichert wird in IndexedDB.
 // Reiter „Einzelne Moves“ (Move-Editor): jede Attacke/Bewegung bekommt eigene Frames (Sheet oder Einzelbilder), einzelne Frames sind austauschbar, löschbar und umsortierbar; Logik in core/custom.js (cusPlanMoveSheet, cusPlanImage, cusMoveAnims …).
 // Logik (Hintergrund, Raster, Maßstab, Animationen): core/custom.js. Draußen nutzbar: studioOpen / studioIsOpen / studioLoadSaved / studioDelete / studioHas.
@@ -15,6 +16,81 @@ const STUDIO=(()=>{
  // ---- Speicher (IndexedDB) ----
  const idb=()=>new Promise((ok,no)=>{try{const r=indexedDB.open('hitisop',1);r.onupgradeneeded=()=>r.result.createObjectStore('custom');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}});
  const tx=async(mode,fn)=>{const db=await idb();return new Promise((ok,no)=>{const t=db.transaction('custom',mode),r=fn(t.objectStore('custom'));t.oncomplete=()=>{db.close();ok(r&&r.result)};t.onerror=()=>{db.close();no(t.error)};t.onabort=()=>{db.close();no(t.error)}})};
+ // ---- Figuren-Bibliothek: beliebig viele eigene Figuren; die gewählte ist im Spiel aktiv (Slot „custom“) ----
+ // Speicher: 'lib:<id>' = eine Figur, 'index' = {ids (Reihenfolge), active (im Spiel), names}. Der alte Einzel-Eintrag 'fighter' wird beim ersten Start automatisch übernommen.
+ const LIB='lib:';
+ async function getIndex(){let ix=null;try{ix=await tx('readonly',s=>s.get('index'))}catch(e){}
+  if(ix&&Array.isArray(ix.ids))return{ids:ix.ids.filter(x=>typeof x==='string'),active:ix.active||null,names:ix.names&&typeof ix.names==='object'?{...ix.names}:{}};
+  try{const old=await tx('readonly',s=>s.get('fighter'));
+   if(old&&old.meta&&old.atlas){const id=cusNewId(),names={[id]:cusClean(old.profile).name};
+    await tx('readwrite',s=>{s.put(old,LIB+id);s.put({ids:[id],active:id,names},'index');s.delete('fighter')});return{ids:[id],active:id,names}}}catch(e){}
+  return{ids:[],active:null,names:{}}}
+ function refreshLib(){const u=S.ui;if(!u)return;const ix=S.ix||{ids:[],active:null,names:{}};u.fig.innerHTML='';const gc=el('optgroup');gc.label='Eigene Figuren';u.fig.appendChild(gc);
+  for(const id of ix.ids){const o=el('option');o.value=id;o.textContent=(ix.names[id]||'FIGUR')+(id===ix.active?'  · im Spiel':'');gc.appendChild(o)}
+  if(!S.cur){const o=el('option');o.value='__new';o.textContent='＋ Neue Figur (noch nicht gespeichert)';u.fig.appendChild(o);u.fig.value='__new'}
+  const gb=el('optgroup');gb.label='Spielfiguren';u.fig.appendChild(gb);   // eingebaute Figuren: Werte änderbar (core/overrides.js)
+  for(const id of BASE_IDS()){const o=el('option');o.value='base:'+id;o.textContent=CHARACTERS[id].name+' · '+id+(ovrHas(id)?' · angepasst':'');gb.appendChild(o)}
+  u.fig.value=S.base?'base:'+S.base:S.cur||'__new';u.newBtn.disabled=!S.cur&&!S.base}
+ function syncUi(){if(!S.ui)return;fillForm();refreshAll();fillAnims();applyMode();refreshLib();if(S.tab==='moves')setTab('moves')}
+ const leaveOk=()=>!S.dirty||confirm('Ungespeicherte Änderungen an dieser Figur gehen verloren. Trotzdem wechseln?');
+ async function switchFig(id){if(id.startsWith('base:'))return openBase(id.slice(5));if(id==='__new')return newFig();if(id===S.cur&&!S.base)return refreshLib();if(!leaveOk())return refreshLib();S.base=null;setLimits(false);
+  try{const ix=await getIndex();ix.active=id;await tx('readwrite',s=>s.put({ids:ix.ids,active:ix.active,names:ix.names},'index'));S.ix=ix}catch(e){}
+  if(await loadFig(id)){syncUi();setStatus('„'+S.profile.name+'“ ist jetzt deine Figur im Spiel.')}else{syncUi();setStatus('Diese Figur konnte nicht geladen werden.',1)}}
+ function newFig(force){if(!force&&!S.cur&&!S.base)return;if(!force&&!leaveOk())return;S.base=null;setLimits(false);   // die gespeicherten Figuren bleiben unverändert; die im Spiel aktive wechselt erst beim Speichern
+  S.cur=null;S.dirty=false;S.gen++;clearTimeout(S.timer);S.timer=0;S.saved=null;S.built=null;S.files={};S.cache={};S.moves={};S.imgs={};S.undo=[];S.redo=[];S.ready=false;
+  const n=((S.ix&&S.ix.ids.length)||0)+1;S.profile={...CUS_DEFAULT,name:n>1?'FIGUR '+n:CUS_DEFAULT.name};S.desc='';syncUi();setStatus('Neue Figur – deine gespeicherten Figuren bleiben erhalten.')}
+ // ---- Ersatz-Sprites: ein Sprite-Satz (CHARACTERS[id].sprites) wird durch einen selbst gebauten ersetzt; alle Figuren/Bosse mit diesem Satz ziehen mit. Gespeichert als 'spr:<Satz>' ----
+ const SPR='spr:',SPR_ORIG={};
+ const sprOf=id=>CHARACTERS[id]&&CHARACTERS[id].sprites;
+ async function applySprites(sid,meta,blob){const first=!SPR_ORIG[sid];if(first)sheet(sid);   // erst Original initialisieren (setzt dessen Anim-Liste vollständig), dann sichern
+  const url=URL.createObjectURL(blob),img=new Image();img.src=url;
+  try{await img.decode()}catch(e){await new Promise(r=>{img.onload=r;img.onerror=r})}
+  const o=SPR_ORIG[sid]||(SPR_ORIG[sid]={def:SPRITE_CHARS[sid],S:window.__SPRITES__&&window.__SPRITES__[sid]});
+  if(o.url)URL.revokeObjectURL(o.url);o.url=url;
+  registerSpriteChar(sid,{anims:ovrSpriteAnims(o.def&&o.def.anims,meta.anims),fist:[104,-130],height:190});
+  (window.__SPRITES__=window.__SPRITES__||{})[sid]={meta,img,replaced:true}}
+ function restoreSprites(sid){const o=SPR_ORIG[sid];if(!o)return;registerSpriteChar(sid,o.def);if(window.__SPRITES__){if(o.S)window.__SPRITES__[sid]=o.S;else delete window.__SPRITES__[sid]}if(o.url)URL.revokeObjectURL(o.url);delete SPR_ORIG[sid]}
+ async function loadSprites(){let keys=[];try{keys=await tx('readonly',s=>s.getAllKeys())}catch(e){}
+  for(const k of keys||[]){if(typeof k!=='string'||!k.startsWith(SPR))continue;const sid=k.slice(SPR.length);if(!SPRITE_CHARS[sid])continue;
+   try{const r=await tx('readonly',s=>s.get(k));if(r&&r.meta&&r.atlas){if(r.meta.anims){const a=cusCompleteAnims(r.meta.anims);if(a)r.meta.anims=a}await applySprites(sid,r.meta,r.atlas)}}catch(e){}}}
+ // ---- Spielfiguren bearbeiten: Werte der eingebauten Figuren (Name, Leben, Tempo, Schaden, Abwehr, Farbe). Logik + Speicher: core/overrides.js; das Original bleibt jederzeit wiederherstellbar ----
+ const BASE_IDS=()=>Object.keys(CHARACTERS).filter(id=>id!=='custom'&&CHARACTERS[id].sprites);
+ const BASE_LIM={hp:[50,3000,1],tempo:[40,200,1],dmg:[20,300,1],abwehr:[50,250,1]};   // Regler-Bereiche für Spielfiguren (von Mantis bis Endboss); eigene Figuren behalten CUS_LIMITS
+ function setLimits(wide){const u=S.ui;if(!u)return;for(const k of['hp','tempo','dmg','abwehr']){const l=wide?BASE_LIM[k]:[CUS_LIMITS[k][0],CUS_LIMITS[k][1],k==='hp'?10:1];u[k].min=l[0];u[k].max=l[1];u[k].step=l[2]}}
+ const baseForm=id=>{const c=CHARACTERS[id];return{name:c.name,template:CUS_DEFAULT.template,hp:Math.round(c.hp),tempo:Math.round(c.walk*100),dmg:Math.round(c.dmg*100),abwehr:Math.round(100/c.def),glow:c.glow||'#ffffff'}};
+ // Nur Felder übernehmen, die im Formular wirklich geändert wurden (sonst würde Runden z. B. 1.073 -> 1.07 stillschweigend verändern)
+ function readBase(){const u=S.ui,i=S.baseInit,v={name:u.name.value,hp:+u.hp.value,tempo:+u.tempo.value,dmg:+u.dmg.value,abwehr:+u.abwehr.value,glow:u.glow.value},o={};
+  if(v.name!==i.name)o.name=v.name;if(v.hp!==i.hp)o.hp=v.hp;if(v.tempo!==i.tempo)o.walk=v.tempo/100;if(v.dmg!==i.dmg)o.dmg=v.dmg/100;if(v.abwehr!==i.abwehr)o.def=100/v.abwehr;if(v.glow!==i.glow)o.glow=v.glow;return o}
+ async function loadBase(id){const sid=sprOf(id);S.base=id;S.dirty=false;S.sprDirty=false;S.gen++;clearTimeout(S.timer);S.timer=0;setLimits(true);const f=baseForm(id);S.profile=f;S.baseInit={...f};
+  S.built=null;S.cache={};S.files={};S.moves={};S.imgs={};S.undo=[];S.redo=[];S.ready=false;S.saved=null;S.desc='';   // Editor-Zustand = Ersatz-Sprites dieser Figur (leer, solange das Original gilt)
+  try{const r=await tx('readonly',s=>s.get(SPR+sid));if(r&&r.meta&&r.atlas&&S.base===id){S.desc=r.desc||'';S.files=r.files||{};S.moves=cusCleanMoves(r.moves);
+    for(const mid of cusMoveImgs(S.moves))if(r.frameBlobs&&r.frameBlobs[mid])S.imgs[mid]={blob:r.frameBlobs[mid]};
+    S.saved={profile:S.profile,meta:r.meta,atlasBlob:r.atlas,files:S.files,moves:JSON.parse(JSON.stringify(S.moves))}}}catch(e){}
+  if(S.base!==id)return;syncUi();
+  setStatus('Spielfigur „'+CHARACTERS[id].name+'“ ('+id+'): Werte gelten im ganzen Spiel (nicht online). Die Vorschau zeigt '+(S.saved?'deine Ersatz-Sprites':'die Standard-Sprites')+'; eigene Sheets ersetzen den Sprite-Satz „'+sid+'“ für alle Figuren, die ihn nutzen.')}
+ function openBase(id){if(!CHARACTERS[id])return refreshLib();if(!leaveOk())return refreshLib();loadBase(id)}
+ async function saveBase(){const id=S.base,sid=sprOf(id);if(!id)return;
+  if(S.sprDirty){   // Ersatz-Sprites: wie bei einer eigenen Figur zuerst bauen und prüfen (Idle nötig), erst dann irgendetwas speichern
+   if(S.timer){clearTimeout(S.timer);S.timer=0;await rebuild()}
+   let meta=null,blob=null;
+   if(S.built){if(!S.built.anims||!S.built.real.idle){setStatus('Es fehlt noch „Idle“ (Sheet „Idle – Teil 1“ oder eigene Frames im Reiter „Einzelne Moves“) – ohne das geht es nicht.',1);return}
+    meta={frames:S.built.frames,standH:CUS_STAND_H,anims:S.built.anims};blob=await toBlob(S.built.canvas)}
+   else if(S.saved&&S.saved.meta){meta=S.saved.meta;blob=S.saved.atlasBlob}
+   if(meta){setStatus('Speichere …');const mv=cusCleanMoves(S.moves),fb={};
+    for(const mid of cusMoveImgs(mv)){const e=S.imgs[mid];if(!e)continue;if(!e.blob)e.blob=await canvasPng(e.canvas);fb[mid]=e.blob}
+    try{await tx('readwrite',s=>s.put({v:2,desc:S.desc,files:S.files,meta,atlas:blob,moves:mv,frameBlobs:fb},SPR+sid));await applySprites(sid,meta,blob)}
+    catch(e){alert('Die Sprites konnten nicht dauerhaft im Browser gespeichert werden (nur für diese Sitzung).');try{await applySprites(sid,meta,blob)}catch(x){}}}}
+  const ok=ovrSet(id,{...ovrAll()[id],...readBase()});
+  if(!ok)alert('Die Änderung konnte nicht dauerhaft im Browser gespeichert werden (nur für diese Sitzung).');S.dirty=false;S.sprDirty=false;close()}
+ async function resetBase(){const id=S.base,sid=sprOf(id);if(!id||!confirm('Alle Änderungen an „'+CHARACTERS[id].name+'“ ('+id+') zurücksetzen – Werte und eigene Sprites?'))return;
+  ovrReset(id);try{await tx('readwrite',s=>s.delete(SPR+sid))}catch(e){}restoreSprites(sid);await loadBase(id);setStatus('Zurückgesetzt – wieder die Originalwerte und Original-Sprites.')}
+ async function leaveBase(){S.base=null;S.dirty=false;setLimits(false);   // zurück zur eigenen Figur (gespeicherter Stand), sonst leerer Editor
+  try{const ix=await getIndex();S.ix=ix;const id=S.cur&&ix.ids.includes(S.cur)?S.cur:ix.ids.includes(ix.active)?ix.active:ix.ids[0];if(id&&await loadFig(id)){syncUi();return}}catch(e){}
+  newFig(true)}
+ function applyMode(){const u=S.ui;if(!u)return;const b=!!S.base;
+  for(const e of[u.tplRow,u.fightBtn])e.style.display=b?'none':'';   // Spielfiguren behalten ihre eigenen Moves (keine Vorlage); „Speichern & kämpfen“ gibt es nur für die eigene Figur
+  u.title.innerHTML=b?'SPIEL<span>FIGUR</span>':'EIGENE <span>FIGUR</span>';
+  u.del.textContent=b?'Zurücksetzen':'Figur löschen';u.del.hidden=b?!(ovrHas(S.base)||S.saved):!S.saved}
  const toBlob=async c=>{let b=await new Promise(r=>c.toBlob(r,'image/webp',.92));if(!b)b=await new Promise(r=>c.toBlob(r,'image/png'));return b};
  // ---- Bildverarbeitung ----
  async function decode(file){const bm=await createImageBitmap(file),w=bm.width,h=bm.height;
@@ -42,7 +118,7 @@ const STUDIO=(()=>{
    if(!S.cache[sh.key]||S.cache[sh.key].file!==f){S.cache[sh.key]={file:f,pending:true};refreshSlots();await tick();if(my!==S.gen)return;
     S.cache[sh.key]=await processSheet(sh.key,f);if(my!==S.gen)return;refreshSlots()}}
   repack();S.ready=true;refreshAll();setStatus('')}
- const schedule=()=>{clearTimeout(S.timer);S.timer=setTimeout(rebuild,250)};
+ const schedule=()=>{S.dirty=true;S.sprDirty=true;clearTimeout(S.timer);S.timer=setTimeout(rebuild,250)};
  function setFile(key,file){if(file)S.files[key]=file;else delete S.files[key];schedule();refreshSlots()}
  function addFiles(list){S.loose=[];let first=null;
   for(const f of list){if(!/^image\//.test(f.type)&&!/\.(png|jpe?g|webp)$/i.test(f.name)){S.loose.push(f.name);continue}
@@ -82,7 +158,7 @@ const STUDIO=(()=>{
  // Änderungen laufen nacheinander in einer Warteschlange: ein Klick während der Verarbeitung geht nicht verloren (Bereich bekommt .busy)
  function enqueue(fn,quiet){const run=async()=>{S.busy++;if(!quiet)S.ui.paneM.classList.add('busy');try{return await fn()}catch(e){setStatus(String(e&&e.message||e),1)}finally{if(!--S.busy)S.ui.paneM.classList.remove('busy')}};return S.q=S.q.then(run,run)}
  const edit=fn=>enqueue(async()=>{await prepare();const snap=JSON.stringify(S.moves),r=await fn();if(r===false)return;S.undo.push(snap);if(S.undo.length>40)S.undo.shift();S.redo=[];afterEdit()});
- function afterEdit(){repack();S.mv.sel=Math.max(0,Math.min(S.mv.sel,curLen()-1));refreshAll()}
+ function afterEdit(){S.dirty=true;S.sprDirty=true;repack();S.mv.sel=Math.max(0,Math.min(S.mv.sel,curLen()-1));refreshAll()}
  const curLen=()=>{const A=curr(),o=ovr(S.mv.key),a=A&&A.anims[S.mv.key];return o?o.frames.length:a?a.frames.length:0};
  function undo(){return enqueue(()=>{if(!S.undo.length)return;S.redo.push(JSON.stringify(S.moves));S.moves=JSON.parse(S.undo.pop());afterEdit()})}
  function redo(){return enqueue(()=>{if(!S.redo.length)return;S.undo.push(JSON.stringify(S.moves));S.moves=JSON.parse(S.redo.pop());afterEdit()})}
@@ -237,22 +313,27 @@ const STUDIO=(()=>{
   setStatus('Speichere …');await activate(p,meta,blob);S.profile=p;S.desc=S.ui.desc.value;
   const mv=cusCleanMoves(S.moves),fb={};for(const id of cusMoveImgs(mv)){const e=S.imgs[id];if(!e)continue;if(!e.blob)e.blob=await canvasPng(e.canvas);fb[id]=e.blob}   // Move-Frames: Daten + Bilder (PNG)
   S.saved={profile:p,meta,atlasBlob:blob,files:{...S.files},moves:JSON.parse(JSON.stringify(mv))};
-  try{await tx('readwrite',s=>s.put({v:2,profile:p,desc:S.desc,files:S.files,meta,atlas:blob,moves:mv,frameBlobs:fb},'fighter'))}
+  try{const id=S.cur||cusNewId(),ix=await getIndex();if(!ix.ids.includes(id))ix.ids.push(id);ix.active=id;ix.names[id]=p.name;   // jede Figur ein eigener Eintrag, der Index merkt Reihenfolge, Namen und die aktive Figur
+  await tx('readwrite',s=>{s.put({v:2,profile:p,desc:S.desc,files:S.files,meta,atlas:blob,moves:mv,frameBlobs:fb},LIB+id);s.put({ids:ix.ids,active:ix.active,names:ix.names},'index')});S.cur=id;S.ix=ix;S.dirty=false}
   catch(e){alert('Die Figur konnte nicht dauerhaft im Browser gespeichert werden (nur für diese Sitzung).')}
   close(true);if(S.onDone)S.onDone({saved:true,fight:!!fight})}
- async function loadSaved(){try{const r=await tx('readonly',s=>s.get('fighter'));if(!r||!r.meta||!r.atlas)return false;
+ async function loadSaved(){try{const ix=await getIndex();S.ix=ix;const id=ix.ids.includes(ix.active)?ix.active:ix.ids[0];return id?await loadFig(id):false}catch(e){return false}}
+ async function loadFig(id){try{const r=await tx('readonly',s=>s.get(LIB+id));if(!r||!r.meta||!r.atlas)return false;S.cur=id;S.dirty=false;S.gen++;clearTimeout(S.timer);S.timer=0;S.built=null;S.cache={};
    S.profile=cusClean(r.profile);S.desc=r.desc||'';S.files=r.files||{};S.moves=cusCleanMoves(r.moves);S.imgs={};S.undo=[];S.redo=[];S.ready=false;   // v1-Speicherstände haben keine Moves
     for(const id of cusMoveImgs(S.moves))if(r.frameBlobs&&r.frameBlobs[id])S.imgs[id]={blob:r.frameBlobs[id]};
     if(r.meta.anims){const a=cusCompleteAnims(r.meta.anims);if(a)r.meta.anims=a}   // neue Animationen (z. B. Hyper) bekommen einen Behelf, vorhandene bleiben unangetastet
     S.saved={profile:S.profile,meta:r.meta,atlasBlob:r.atlas,files:S.files,moves:JSON.parse(JSON.stringify(S.moves))};await activate(S.profile,r.meta,r.atlas);return true}catch(e){return false}}
- async function remove(){if(!confirm('Deine eigene Figur wirklich löschen?'))return;
-  try{await tx('readwrite',s=>s.delete('fighter'))}catch(e){}
+ async function remove(){if(!confirm('Diese Figur wirklich löschen? Deine anderen Figuren bleiben erhalten.'))return;
+  let next=null;try{const ix=await getIndex(),id=S.cur;if(id){ix.ids=ix.ids.filter(x=>x!==id);delete ix.names[id]}next=ix.ids[0]||null;ix.active=next;
+   await tx('readwrite',s=>{if(id)s.delete(LIB+id);s.put({ids:ix.ids,active:ix.active,names:ix.names},'index')});S.ix=ix}catch(e){}
+  if(next&&await loadFig(next)){syncUi();setStatus('Figur gelöscht – „'+S.profile.name+'“ ist jetzt deine Figur im Spiel.');return}   // noch andere Figuren da: im Editor bleiben
   delete CHARACTERS.custom;registerSpriteChar('custom',undefined);if(window.__SPRITES__)delete window.__SPRITES__.custom;
-  S.saved=null;S.built=null;S.files={};S.cache={};S.moves={};S.imgs={};S.undo=[];S.redo=[];S.ready=false;S.profile={...CUS_DEFAULT};S.desc='';close(true);if(S.onDone)S.onDone({deleted:true})}
+  S.cur=null;S.dirty=false;S.saved=null;S.built=null;S.files={};S.cache={};S.moves={};S.imgs={};S.undo=[];S.redo=[];S.ready=false;S.profile={...CUS_DEFAULT};S.desc='';close(true);if(S.onDone)S.onDone({deleted:true})}
  // ---- Oberfläche ----
  function build(){const m=el('div');m.id='studio';m.className='hidden';
   const opts=CUS_TEMPLATES.map(t=>`<option value="${t[0]}">${t[1]} – ${t[2]}</option>`).join('');
   m.innerHTML=`<div class="panel st"><h1>EIGENE <span>FIGUR</span></h1>
+  <div class="st-figs" style="display:flex;gap:10px;align-items:center;margin:0 0 10px"><label style="display:flex;gap:8px;align-items:center;flex:1">Figur<select id="st-fig" style="flex:1;min-width:0"></select></label><button id="st-new" title="Weitere Figur anlegen – die bisherigen bleiben gespeichert">＋ Neue Figur</button></div>
   <p class="st-lead">Lade deine Sprite-Sheets hoch und kämpfe mit deinem eigenen Charakter. Nötig ist nur <b>Idle – Teil 1</b>; alles andere kannst du nach und nach nachliefern, bis dahin übernehmen Behelfe. Im Reiter <b>Einzelne Moves</b> bekommt jede Attacke und Bewegung eigene Bilder – einzelne Frames lassen sich dort austauschen, löschen und umsortieren.</p>
   <div class="st-cols"><div class="st-l"><div class="st-tabs tabs"><button id="st-tab-sheets" class="on">Sheets</button><button id="st-tab-moves">Einzelne Moves</button></div><div id="st-pane-sheets">
    <div class="st-drop" id="st-drop"><b>Sheets hier hineinziehen</b><br>oder <button id="st-pick">Dateien wählen</button><div class="st-sm">Dateinamen wie <code>idle_1.png</code>, <code>punch.png</code> … werden automatisch zugeordnet.</div></div>
@@ -273,7 +354,7 @@ const STUDIO=(()=>{
   <div class="foot st-foot"><span id="st-status" class="st-status"></span><span class="st-btns"><button id="st-del" class="warn">Figur löschen</button><button id="st-close">Schließen</button><button id="st-save">Speichern</button><button id="st-fight" class="primary">Speichern &amp; kämpfen!</button></span></div></div>`;
   document.body.appendChild(m);
   const q=id=>m.querySelector('#'+id),u={root:m,paneS:q('st-pane-sheets'),paneM:q('st-pane-moves'),tabS:q('st-tab-sheets'),tabM:q('st-tab-moves'),drop:q('st-drop'),pick:q('st-pick'),files:q('st-files'),slots:q('st-slots'),prev:q('st-prev'),anim:q('st-anim'),name:q('st-name'),tpl:q('st-tpl'),
-   hp:q('st-hp'),tempo:q('st-tempo'),dmg:q('st-dmg'),abwehr:q('st-abwehr'),glow:q('st-glow'),report:q('st-report'),desc:q('st-desc'),status:q('st-status'),del:q('st-del'),rows:{}};
+   hp:q('st-hp'),tempo:q('st-tempo'),dmg:q('st-dmg'),abwehr:q('st-abwehr'),glow:q('st-glow'),report:q('st-report'),desc:q('st-desc'),status:q('st-status'),del:q('st-del'),fig:q('st-fig'),newBtn:q('st-new'),title:m.querySelector('h1'),left:m.querySelector('.st-l'),lead:m.querySelector('.st-lead'),help:m.querySelector('.st-help'),fightBtn:q('st-fight'),tplRow:q('st-tpl').parentElement,rows:{}};
   u.pick.onclick=()=>u.files.click();u.files.onchange=()=>{addFiles([...u.files.files]);u.files.value=''};
   const stop=e=>{e.preventDefault();e.stopPropagation()};
   ['dragenter','dragover'].forEach(n=>u.drop.addEventListener(n,e=>{stop(e);u.drop.classList.add('over')}));
@@ -291,7 +372,7 @@ const STUDIO=(()=>{
      const b=e.target;b.textContent=ok?'Kopiert ✓':'Fehler';setTimeout(()=>b.textContent='Prompt',1600)};
     u.rows[sh.key]={row,st:row.querySelector('.st-s')};box.appendChild(row)}
    u.slots.appendChild(box)});
-  m.querySelector('#st-close').onclick=()=>close();m.querySelector('#st-save').onclick=()=>save(false);m.querySelector('#st-fight').onclick=()=>save(true);m.querySelector('#st-del').onclick=remove;
+  m.querySelector('#st-close').onclick=()=>close();m.querySelector('#st-save').onclick=()=>S.base?saveBase():save(false);m.querySelector('#st-fight').onclick=()=>save(true);m.querySelector('#st-del').onclick=()=>S.base?resetBase():remove();u.fig.onchange=()=>switchFig(u.fig.value);u.newBtn.onclick=()=>newFig();m.querySelector('.st-form').addEventListener('input',()=>{S.dirty=true});
   m.addEventListener('mousedown',e=>{if(e.target===m)close()});
   addEventListener('keydown',e=>{if(S.open&&e.code==='Escape'){e.preventDefault();close()}});
   addEventListener('dragover',e=>{if(S.open)e.preventDefault()});addEventListener('drop',e=>{if(S.open)e.preventDefault()});
@@ -310,12 +391,15 @@ const STUDIO=(()=>{
   if(S.over&&S.over.length)L.push(`<div class="mute">Eigene Frames haben Vorrang vor dem Sheet: ${S.over.map(k=>CUS_ANIM_LABELS[k]).map(esc).join(', ')} (im Reiter „Einzelne Moves“ zurücksetzbar).</div>`);
   S.ui.report.innerHTML=L.join('')}
  function fillAnims(){const u=S.ui,A=curr();if(!A)return;const old=u.anim.value;u.anim.innerHTML='';
-  for(const k of Object.keys(CUS_ANIM_LABELS)){if(!A.anims[k])continue;const o=el('option');o.value=k;o.textContent=CUS_ANIM_LABELS[k]+(S.built&&!S.built.real[k]?' (Behelf)':'');u.anim.appendChild(o)}
+  const std=S.base&&!S.built&&!S.saved;   // Standard-Sprites einer Spielfigur: eigene Animationsnamen der Figur (z. B. „fireball“, „rising“), sonst die Namen der Sheet-Pipeline
+  for(const k of std?Object.keys(A.anims):Object.keys(CUS_ANIM_LABELS)){if(!A.anims[k])continue;const o=el('option');o.value=k;o.textContent=(CUS_ANIM_LABELS[k]||k)+(S.built&&!S.built.real[k]?' (Behelf)':'');u.anim.appendChild(o)}
   u.anim.value=A.anims[old]?old:A.anims.idle?'idle':Object.keys(A.anims)[0]||'';if(S.tab==='moves'&&A.anims[S.mv.key])u.anim.value=S.mv.key}
  function focusAnim(key){const u=S.ui;if(!u)return;S.focus=Object.keys(CUS_ANIMS).find(k=>CUS_ANIMS[k].parts[0][0]===key)||null}
  function refreshAll(){refreshSlots();refreshReport();fillAnims();refreshMoves();if(S.focus&&S.ui.anim.querySelector(`option[value="${S.focus}"]`)&&S.built&&S.built.real[S.focus]){S.ui.anim.value=S.focus;S.focus=null}}
  // aktuelle Daten für die Vorschau: frisch gebaut oder gespeichert
- function curr(){if(S.built)return{img:S.built.canvas,frames:S.built.frames,anims:S.built.anims||S.built.real};const sp=window.__SPRITES__&&window.__SPRITES__.custom;return sp&&S.saved?{img:sp.img,frames:sp.meta.frames,anims:sp.meta.anims}:null}
+ function curr(){if(S.built)return{img:S.built.canvas,frames:S.built.frames,anims:S.built.anims||S.built.real};
+  if(S.base){const sid=sprOf(S.base),sp=sid&&sheet(sid);return sp&&sp.meta&&sp.img?{img:sp.img,frames:sp.meta.frames,anims:(SPRITE_CHARS[sid]&&SPRITE_CHARS[sid].anims)||sp.meta.anims||{}}:null}   // Spielfigur ohne neue Sheets: der Sprite-Satz, der gerade im Spiel gilt (Standard oder gespeicherter Ersatz)
+  const sp=window.__SPRITES__&&window.__SPRITES__.custom;return sp&&S.saved?{img:sp.img,frames:sp.meta.frames,anims:sp.meta.anims}:null}
  function draw(){const u=S.ui,c=u.prev,g=c.getContext('2d'),W=c.width,H=c.height,floor=H-34;
   const bg=g.createRadialGradient(W/2,floor,10,W/2,floor-60,230);bg.addColorStop(0,'#2a1a5e');bg.addColorStop(1,'#0a0618');g.fillStyle=bg;g.fillRect(0,0,W,H);
   g.strokeStyle='#3a2a6b';g.beginPath();g.moveTo(0,floor);g.lineTo(W,floor);g.stroke();
@@ -329,9 +413,9 @@ const STUDIO=(()=>{
  const loop=()=>{if(!S.open)return;try{draw()}catch(e){}S.raf=requestAnimationFrame(loop)};
  function fillForm(){const u=S.ui,p=S.profile;u.name.value=p.name;u.tpl.value=p.template;u.hp.value=p.hp;u.tempo.value=p.tempo;u.dmg.value=p.dmg;u.abwehr.value=p.abwehr;u.glow.value=p.glow;u.desc.value=S.desc||'';
   for(const k of['hp','tempo','dmg','abwehr'])u[k].oninput()}
- function open(onDone){if(!S.ui)S.ui=build();S.onDone=onDone;S.loose=[];fillForm();refreshAll();fillAnims();S.ui.del.hidden=!S.saved;S.ui.root.classList.remove('hidden');S.open=true;setStatus('');if(S.tab==='moves')setTab('moves');cancelAnimationFrame(S.raf);loop()}
- function close(silent){if(!S.ui)return;S.open=false;cancelAnimationFrame(S.raf);S.ui.root.classList.add('hidden');if(!silent&&S.onDone)try{S.onDone({closed:true})}catch(e){}}
- return{open,isOpen:()=>S.open,loadSaved,has:()=>!!CHARACTERS.custom}
+ function open(onDone){if(!S.ui)S.ui=build();S.onDone=onDone;S.loose=[];setLimits(!!S.base);fillForm();refreshAll();fillAnims();applyMode();refreshLib();getIndex().then(ix=>{S.ix=ix;refreshLib()});S.ui.root.classList.remove('hidden');S.open=true;setStatus('');if(S.tab==='moves')setTab('moves');cancelAnimationFrame(S.raf);loop()}
+ function close(silent){if(!S.ui)return;S.open=false;cancelAnimationFrame(S.raf);S.ui.root.classList.add('hidden');if(S.base)leaveBase();if(!silent&&S.onDone)try{S.onDone({closed:true})}catch(e){}}
+ return{open,isOpen:()=>S.open,loadSaved:async()=>{try{await loadSprites()}catch(e){}return loadSaved()},has:()=>!!CHARACTERS.custom}
 })();
 export const studioOpen=cb=>STUDIO.open(cb);
 export const studioIsOpen=()=>STUDIO.isOpen();

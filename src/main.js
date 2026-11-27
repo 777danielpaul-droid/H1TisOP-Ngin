@@ -5,6 +5,7 @@ import{AIController,AI_LEVELS}from'./core/ai.js';
 import{PadNav,menuKey,padLabel}from'./core/gamepad.js';
 import{Arcade}from'./core/arcade.js';
 import{CHARACTERS,ROSTER}from'./core/characters.js';
+import{ovrApplyAll,ovrSuspend}from'./core/overrides.js';
 import{MOVE_LIST,charMoves}from'./core/moves.js';
 import{SPEED,GFX,setGfx}from'./core/config.js';
 import{openPack,buyPack,LOOT,SHOP,CHAR_SHOP,CHAR_REQ,charReqMet,CARDS,shopCount,buyChar,ownsChar,ownsSkin,ownedStages,sellAdjust,sellCards,sellSelectDupes,sellPreview}from'./core/loot.js';
@@ -167,6 +168,7 @@ const startVersus=()=>{if(renderer.sel.launching)return;const v=arcade.vs,ids=Ar
  renderer.sel.launch(ids[v.c1],()=>{useInputs(true,cpu);arcade.vsStart()},(n,o)=>game.sfx(n,o),ids[v.c2])};   // erst Videos + Feuerwerk, dann Kampf
 const startFight=i=>{const id=SLOTS()[i];if(id==='custom'&&!CHARACTERS.custom){openStudio();return}if(renderer.sel.launching)return;useInputs(false);
  renderer.sel.launch(id,()=>{useInputs(false);arcade.start(id)},(n,o)=>game.sfx(n,o))};   // erst Feuerwerk, dann Kampfbildschirm
+ovrApplyAll();   // Anpassungen an den Spielfiguren (Editor) über die Originalwerte legen
 studioLoadSaved();   // gespeicherte eigene Figur aus dem Browser laden
 // Farbwahl (C im Menü; 2 Spieler: C / L) merkt sich der Browser
 const SKIN_KEY='hitisop.skins';
@@ -297,12 +299,12 @@ function netPaired(c){if(netMatch)return;
   hooks:{onChange:()=>{netUi.render();netBarUpdate()},onLaunch:netLaunch,onStart:()=>{clearInputs();netBarUpdate()},onEnd:netEnded}});
  const first=ROSTER[Math.min(arcade.cursor,ROSTER.length-1)]||ROSTER[0];netMatch.pick(first,arcade.skinOf(first));netUi.say('');netUi.render()}
 function netLaunch(cfg,o){netUi.close();netLeaveAsk=false;
- const go=()=>{if(!netMatch||netMatch.phase!=='launch')return;p1.input=netInputs[0];p2.input=netInputs[1];clearInputs();arcade.startOnline(cfg);netMatch.launched()};
+ const go=()=>{if(!netMatch||netMatch.phase!=='launch')return;p1.input=netInputs[0];p2.input=netInputs[1];clearInputs();ovrSuspend(true);arcade.startOnline(cfg);netMatch.launched()};
  if(o.rematch){go();return}
  const ids=Arcade.slotIds(),i1=ids.indexOf(cfg.ids[0]),i2=ids.indexOf(cfg.ids[1]);   // Start-Animation (Videos + Feuerwerk) wie im 2-Spieler-Modus; fehlt eine Figur im eigenen Rondell (z. B. noch nicht freigeschaltet), direkt starten
  if(i1>=0&&i2>=0&&arcade.state==='select'&&!renderer.sel.launching){arcade.mode='versus';Object.assign(arcade.vs,{c1:i1,c2:i2,s1:cfg.skins[0],s2:cfg.skins[1],locked:[true,true],step:1,stage:cfg.stage});
   renderer.sel.launch(cfg.ids[0],go,(n,x)=>game.sfx(n,x),cfg.ids[1])}else go()}
-function netEnded(reason){netMatch=null;netLeaveAsk=false;p1.input=kb;p2.input=ai;clearInputs();
+function netEnded(reason){netMatch=null;netLeaveAsk=false;ovrSuspend(false);p1.input=kb;p2.input=ai;clearInputs();
  if(arcade.state!=='select')arcade.toSelect();else{arcade.online=false;arcade.vsReset()}
  arcade.mode='versus';netUi.setBar('','');
  if(netClient&&netClient.state==='closed')netClient=null;

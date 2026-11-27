@@ -41,7 +41,7 @@ export const CHAPTERS=[
  // Kapitel 3: gemischte Wellen (mix = [[Figur, Anzahl], …], gleichmäßig durchgemischt) aus Mantis + Mini-A1LIEN.
  // parkour = Kletterstrecke pro Kapitel (Generator core/parkour.js): deco = Kulisse (neon/crane/reactor/obelisk/pagoda, render/storyhud.js), name = Schatz, width = Plattformbreite, segs = Kürzel-Folge (S Stufe, L flach, H hoch, N schmal, D Doppelsprung-Lücke, F gerade, B Rast, M beweglich, C bröckelnd, T Wende). Je Kapitel höher, schmaler und mit mehr D/M/C. Daraus entstehen platforms + relic (Schatz oben: Leben voll, +100 Meter, +2 Booster). Zone x -300..800 (links der Händler, rechts vor den Kanten); solange man oben klettert (>110 px über dem Boden), startet keine Welle.
  // ledges = Kanten/Ebenen des Kapitels [{x0,x1,h}] – AKTUELL IN ALLEN KAPITELN LEER: keine festen Hindernisse auf der Straße (die Parkour-Gebäude bleiben). Das System (core/terrain.js) bleibt erhalten, auch für die Parkour-Plattformen. Wenn befüllt: ein Plateau, h Pixel über dem Boden. Von unten stoppt die Kante (Wand) – man springt hinauf, läuft oben weiter und fällt am Ende wieder hinunter; sich überlappende Plateaus ergeben Treppen. Siehe core/terrain.js.
- {id:3,name:'DER BERGTEMPEL',stage:1,capBase:3,cap:7,look:{ground:['#2a1a0c','#0a0603'],line:'#e0a05a',lamp:'255,200,120',acc:'#e08a4a'},
+ {id:3,name:'DER BERGTEMPEL',stage:1,bg:'berge',capBase:3,cap:7,look:{ground:['#2a1a0c','#0a0603'],line:'#e0a05a',lamp:'255,200,120',acc:'#e08a4a'},
   intro:['Der Hafen ist gefallen – die Spur des Schwarms führt hinauf zum Bergtempel: Nebel, Stein und Kirschblüten.','Dort haust, was selbst den Schwarm erzittern lässt. Er lässt dich nicht kampflos vorbei.'],
   win:{title:'URSUS BESIEGT',say:'Der Bär ist gefallen – der Berg schweigt. Doch unter dem Tempel öffnet sich ein Pfad hinab ins Totenreich.'},
   ledges:[],parkour:{deco:'pagoda',name:'DRACHENPERLE',width:160,segs:'LSFNFSLMMSMSSSDHDSDSNHSSB'},
@@ -66,7 +66,7 @@ export const CHAPTERS=[
    {x:1380,mix:[['mantis',3],['miniDemon',3]],boss:1,at:2,title:'DER ALPHA',say:'Der Alpha der Gruft führt die letzte Vorhut an.'},
    {x:1800,mix:[['miniDemon',2]],boss:'anubisBoss',at:0,title:'ANUBIS',say:'Das Tor zur Unterwelt öffnet sich – Anubis, der Wächter der Unterwelt, tritt hervor.'}]},
   // Kapitel 5: Der Kern (Stage 1), Finale: A1LIEN ('cyberdemonBoss'). Kapitel 5 ist das letzte Kapitel: Abschluss = Story durchgespielt (zählt als Durchlauf, schaltet LEON frei und A1LIEN im Shop; URSUS nach 5 Durchläufen, siehe CLEAR_UNLOCKS).
-  {id:5,name:'DER KERN',stage:1,capBase:4,cap:9,look:{ground:['#2a0c14','#0a0206'],line:'#ff5a6e',lamp:'255,130,110',acc:'#ffb347'},
+  {id:5,name:'DER KERN',stage:1,bg:'ufo',capBase:4,cap:9,look:{ground:['#2a0c14','#0a0206'],line:'#ff5a6e',lamp:'255,130,110',acc:'#ffb347'},
    intro:['Das Totenreich liegt hinter dir – doch das Glühen kommt von noch weiter unten, aus dem Kern der Stadt.','Zwischen den Wellen versperren Trümmer den Weg. Spring drüber – und halte dich bereit.'],
    win:{title:'A1LIEN BESIEGT',say:'Das Glühen im Kern erlischt – die Stadt ist endlich sicher.'},
    ledges:[],parkour:{deco:'reactor',name:'KERNSPLITTER',width:125,segs:'SSSNNFCDCLCDCMNMCMNSDSDMDSCLFMSMSNB'},

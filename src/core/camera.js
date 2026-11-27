@@ -35,7 +35,7 @@ export class Camera{
  focus(x,y,zoom,w=1){this.cine=x==null?null:{x,y,zoom,w}}
  update(fighters){this.punch=this.punch>.0004?this.punch*.84:0;let t=this.compute(fighters);const C=CAMERA,K=this.cine;let lp=C.lerpPos,lz=C.lerpZoom;
   if(K&&K.w>0){const z=t.zoom+(Math.max(K.zoom,t.zoom)-t.zoom)*K.w,hw=W/2/z,hh=H/2/z;
-   t={x:clamp(t.x+(K.x-t.x)*K.w,this.wd.x0+hw,this.wd.x1-hw),y:clamp(t.y+(K.y-t.y)*K.w,this.wd.y0+hh,this.wd.y1-hh),zoom:z};
+   t={x:clamp(t.x+(K.x-t.x)*K.w,this.wd.x0+hw,this.wd.x1-hw),y:clamp(t.y+(K.y-t.y)*K.w,this.story?-1e9:this.wd.y0+hh,this.wd.y1-hh),zoom:z};
    lp=C.lerpPos+(C.cine.lerpPos-C.lerpPos)*K.w;lz=C.lerpZoom+(C.cine.lerpZoom-C.lerpZoom)*K.w}
   this.target=t;this.x+=(t.x-this.x)*lp;this.y+=(t.y-this.y)*lp;this.zoom+=(t.zoom-this.zoom)*lz}
  snap(fighters){const t=this.target=this.compute(fighters);this.x=t.x;this.y=t.y;this.zoom=t.zoom}

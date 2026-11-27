@@ -73,7 +73,6 @@ function head(g,C,mouth,dead){g.lineJoin='round';
  if(C.wolf){g.strokeStyle='#b52a3a';g.lineWidth=1.8;g.beginPath();g.moveTo(2,-40);g.lineTo(12,-18);g.stroke()}}
 // Leuchten an der Faust + Hyper-Beam (gemeinsam für Vektor- und Sprite-Figuren; im lokalen, nach vorn gespiegelten Raum)
 export function attackFx(g,f,fist,glow){const m=f.move;
- if(f.state==='attack'&&m&&SP_FX[m.fx])SP_FX[m.fx](g,f,m,glow);   // Spezial-Effekte LEON/URSUS/A1LIEN (Block „Spezial-Effekte“ weiter unten)
  if(f.state==='attack'&&m&&m.glow){
   const act=f.mf>=m.su-3&&f.mf<=m.su+m.ac+4,charge=m.proj&&f.mf>4&&f.mf<m.su+8;
   g.save();g.globalCompositeOperation='lighter';
@@ -96,122 +95,6 @@ function superFx(g,f,m,glow){const t=f.mf,su=m.su,end=su+m.ac;if(t<su-14||t>end+
   const beam=g.createLinearGradient(cx,0,cx+reach,0);beam.addColorStop(0,'#ffffff');beam.addColorStop(.12,glow);beam.addColorStop(1,'#0000');g.globalAlpha=a*.38;g.fillStyle=beam;g.beginPath();g.moveTo(cx,cy-18);g.lineTo(cx+reach,cy-6);g.lineTo(cx+reach,cy+6);g.lineTo(cx,cy+18);g.closePath();g.fill();
   g.globalAlpha=a*.6;g.strokeStyle='#fff';g.lineWidth=1.2;g.beginPath();g.arc(0,0,26+((t-su)*3%28),0,Math.PI);g.stroke()}
  g.restore()}
-// ======================================================================================================================
-// Spezial-Effekte für LEON (Solar), URSUS (Erdbeben) und A1LIEN (Blut): gut sichtbare Klauenbögen, Schockwellen und Hyper-Kulissen.
-// Gezeichnet über attackFx() im lokalen Raum der Figur (Ursprung = Fußmitte, nach vorn = +x, nach oben = -y); die Moves setzen dafür
-// m.fx = 'cSlash' | 'cRise' | 'cSpin' | 'cDive' | 'cThrust' | 'cOver' | 'cMuzzle' | 'cSolar' | 'cQuake' | 'cBlood' (movesets.js).
-// Projektil-Looks 'solar' | 'quake' | 'bloodclaw' kommen über PROJ_LOOKS in Renderer.look(). Alles additiv und deterministisch (kein Math.random).
-// ======================================================================================================================
-const SPX_PAL={leon:{a:'#ffb43a',b:'#fff3c2',c:'#ff6a00'},bear:{a:'#e8944e',b:'#ffe6c4',c:'#8a3f12'},cyberdemon:{a:'#ff3b4e',b:'#ffd0d4',c:'#8a0018'}};
-const spxPal=(f,glow)=>SPX_PAL[String(f&&f.char&&f.char.id||'').replace('Boss','')]||{a:glow||'#fff',b:'#fff',c:glow||'#fff'};
-const spxH=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)};
-const spxEase=u=>1-Math.pow(1-Math.min(1,Math.max(0,u)),3);
-// Klauenbogen (Halbmond): Außenbogen r, Innenbogen verjüngt (w = größte Dicke), Spitzen an den Enden, weißer Glanzkern
-function spxCres(g,cx,cy,r,a0,a1,w,P,al){if(al<=.01||Math.abs(a1-a0)<.03)return;const am=(a0+a1)/2,ri=Math.max(2,r-w),ccw=a1<a0;
- g.save();g.globalCompositeOperation='source-over';g.globalAlpha=Math.min(1,al*.95);g.beginPath();g.arc(cx,cy,r,a0,a1,ccw);g.quadraticCurveTo(cx+Math.cos(am)*ri,cy+Math.sin(am)*ri,cx+Math.cos(a0)*r,cy+Math.sin(a0)*r);g.closePath();
- const gr=g.createRadialGradient(cx,cy,ri*.8,cx,cy,r);gr.addColorStop(0,P.c);gr.addColorStop(.55,P.a);gr.addColorStop(1,P.b);g.fillStyle=gr;g.shadowColor=P.a;g.shadowBlur=22;g.fill();
- g.shadowBlur=0;g.strokeStyle=P.b;g.lineWidth=2;g.beginPath();g.arc(cx,cy,r-w*.1,a0+(a1-a0)*.1,a1-(a1-a0)*.1,ccw);g.stroke();g.restore()}
-function spxRing(g,x,y,rx,ry,col,al,lw){if(al<=.01)return;g.save();g.globalAlpha=Math.min(1,al);g.strokeStyle=col;g.lineWidth=lw||3;g.shadowColor=col;g.shadowBlur=14;g.beginPath();g.ellipse(x,y,Math.max(1,rx),Math.max(1,ry),0,0,7);g.stroke();g.restore()}
-function spxGlow(g,x,y,r,col,al){if(al<=.01||r<2)return;const gr=g.createRadialGradient(x,y,1,x,y,r);gr.addColorStop(0,'#fff');gr.addColorStop(.3,col);gr.addColorStop(1,'#0000');g.save();g.globalAlpha=Math.min(1,al);g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill();g.restore()}
-// verjüngter Streifen (Tempo-/Klauenspur) von (x0,y0) nach (x1,y1), Breite w in der Mitte, optional gebogen
-function spxStreak(g,x0,y0,x1,y1,w,P,al,curve){if(al<=.01)return;const dx=x1-x0,dy=y1-y0,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L,mx=(x0+x1)/2+nx*(curve||0),my=(y0+y1)/2+ny*(curve||0);
- g.save();g.globalAlpha=Math.min(1,al);const gr=g.createLinearGradient(x0,y0,x1,y1);gr.addColorStop(0,P.c+'00');gr.addColorStop(.55,P.a);gr.addColorStop(1,P.b);g.fillStyle=gr;g.shadowColor=P.a;g.shadowBlur=16;
- g.beginPath();g.moveTo(x0,y0);g.quadraticCurveTo(mx+nx*w,my+ny*w,x1,y1);g.quadraticCurveTo(mx-nx*w,my-ny*w,x0,y0);g.fill();
- g.shadowBlur=0;g.strokeStyle='#fff';g.globalAlpha=Math.min(1,al)*.9;g.lineWidth=1.6;g.beginPath();g.moveTo(x0+dx*.3,y0+dy*.3);g.quadraticCurveTo(mx,my,x1,y1);g.stroke();g.restore()}
-const spxWin=(f,m,pre,post)=>{const su=m.su,end=su+(m.ac||1),t=f.mf;return t<su-pre||t>end+post?null:{t,su,end,u:(t-su)/Math.max(4,m.ac||1)}};
-// Klauenhiebe (Rush / Pranken-Hagel / Klauen-Sturm / Kern-Ansturm): pro Treffer ein breiter, gut sichtbarer Schlagbogen vor der Figur
-function spxSlashFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,3,14);if(!w)return;const n=Math.max(1,m.multi||1),span=Math.max(6,m.ac||6),per=n>1?span/n:span;
- g.save();g.globalCompositeOperation='lighter';
- for(let i=0;i<n;i++){const u=(w.t-(w.su+i*per-1))/11;if(u<0||u>1.15)continue;const dir=i%2?-1:1,sw=spxEase(u*1.5)*2.6,a0=-1.35*dir+(i%3-1)*.5,head=a0+dir*sw,tail=a0+dir*Math.max(0,sw-1.6),cx=54+i*8,cy=-98+(i%2?16:-8);
-  spxCres(g,cx,cy,122,tail,head,36,P,(1.15-u)*1.5);if(u<.6)spxGlow(g,cx+Math.cos(head)*122,cy+Math.sin(head)*122,36,P.b,(1-u/.6)*.8)}
- g.restore()}
-// Aufwärtshaken (Löwen-Kick / Bärenhieb / Höllenfahrt): Bogen von unten vorn über den Kopf + Energiesäule + aufsteigende Funken
-function spxRiseFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,3,16);if(!w)return;const al=w.t>w.end?Math.max(0,1-(w.t-w.end)/16):1,u=(w.t-w.su)/Math.max(7,(m.ac||8)+3),sw=spxEase(u*1.25),a0=1.3,head=a0-3.7*sw,tail=a0-3.7*Math.max(0,sw-.62);
- g.save();g.globalCompositeOperation='lighter';
- const cg=g.createLinearGradient(0,0,0,-250);cg.addColorStop(0,P.a);cg.addColorStop(1,P.c+'00');g.globalAlpha=.34*al;g.fillStyle=cg;g.fillRect(14,-250,76,250);
- spxCres(g,30,-100,128,tail,head,46,P,al*1.3);spxGlow(g,30+Math.cos(head)*128,-100+Math.sin(head)*128,44,P.b,.8*al);
- for(let i=0;i<9;i++){const k=((w.t*.07+spxH(i)*3)%1),x=26+(spxH(i*3.3)-.5)*90,y=-k*250;spxGlow(g,x,y,10+spxH(i*5)*8,P.b,(1-k)*.9*al)}
- spxRing(g,38,-3,40+u*60,10+u*10,P.a,.7*al,3);g.restore()}
-// Rundum-Hieb (Mähnen-Feger / Wirbel-Klaue / Stachelschlag): drei kreisende Bögen um die Figur + Bodenring; A1LIEN bekommt Stacheln
-function spxSpinFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,4,14);if(!w)return;const id=String(f.char&&f.char.id||''),al=(w.t<w.su?(w.t-w.su+4)/4:w.t>w.end?Math.max(0,1-(w.t-w.end)/14):1);
- g.save();g.globalCompositeOperation='lighter';
- if(/cyberdemon/.test(id)){for(let i=0;i<10;i++){const a=w.t*.5+i*.628,r0=58,r1=128+(i%2)*26,c=Math.cos(a),s=Math.sin(a),px=-s*9,py=c*9*.8;g.globalAlpha=al*.9;g.fillStyle=i%2?P.a:P.b;g.shadowColor=P.a;g.shadowBlur=12;
-   g.beginPath();g.moveTo(c*r0+px,-96+s*r0*.8+py);g.lineTo(c*r1,-96+s*r1*.8);g.lineTo(c*r0-px,-96+s*r0*.8-py);g.closePath();g.fill()}}
- for(let k=0;k<3;k++){const a=w.t*.62+k*2.094;spxCres(g,0,-96,112,a,a+1.55,28,P,al)}
- spxRing(g,0,-96,126,92,P.b,.55*al,3);spxRing(g,0,-4,132,20,P.a,.6*al,4);
- if(/bear/.test(id))for(let i=0;i<6;i++){const a=i*1.047+w.t*.2;spxGlow(g,Math.cos(a)*118,-6+Math.sin(a)*12,26,P.c,.5*al)}
- g.restore()}
-// Sturzangriff (Meteor-Tritt / Body-Slam / Sturzklaue): Kometenschweif gegen die Flugrichtung + Glut am Aufprallpunkt
-function spxDiveFx(g,f,m,glow){if(f.grounded)return;const P=spxPal(f,glow),t=f.mf;if(t<m.su-2)return;const v=m.dive||{vx:3,vy:16},L=Math.hypot(v.vx,v.vy)||1,dx=v.vx/L,dy=v.vy/L,al=Math.min(1,(t-m.su+3)/6),cy=-88;
- g.save();g.globalCompositeOperation='lighter';
- spxStreak(g,-dx*250,cy-dy*250,dx*14,cy+dy*14,40,P,al*.95,0);
- for(let i=-2;i<=2;i++){if(!i)continue;const o=i*20;spxStreak(g,-dx*170-dy*o,cy-dy*170+dx*o,-dx*30-dy*o*.7,cy-dy*30+dx*o*.7,9,P,al*.7,0)}
- spxGlow(g,dx*46,cy+dy*46,84,P.b,.8*al);spxRing(g,dx*34,cy+dy*34,62,40,P.a,.55*al,3);g.restore()}
-// Vorstoß (6M): schneller, spitzer Stoßstreifen nach vorn mit Druckring an der Spitze
-function spxThrustFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,2,10);if(!w)return;const e=spxEase((w.t-w.su+2)/6),al=w.t>w.end?Math.max(0,1-(w.t-w.end)/10):1,L=(m.box?m.box[0]+m.box[2]:120)*1.15,y=m.box?m.box[1]+m.box[3]/2:-90;
- g.save();g.globalCompositeOperation='lighter';spxStreak(g,10,y,10+L*e,y,24,P,al,0);spxStreak(g,20,y-16,20+L*e*.8,y-26,8,P,al*.6,6);spxStreak(g,20,y+16,20+L*e*.8,y+24,8,P,al*.6,-6);
- spxGlow(g,10+L*e,y,46,P.b,.85*al);spxRing(g,10+L*e,y,12+e*26,26+e*20,P.a,.7*al,3);g.restore()}
-// Überkopf-Hieb (6H): großer Bogen von oben nach vorn unten + Aufschlag-Blitz
-function spxOverFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,3,16);if(!w)return;const al=w.t>w.end?Math.max(0,1-(w.t-w.end)/16):1,sw=spxEase((w.t-w.su+3)/9),a0=-2.05,head=a0+2.7*sw,tail=a0+2.7*Math.max(0,sw-.6);
- g.save();g.globalCompositeOperation='lighter';spxCres(g,30,-120,138,tail,head,48,P,al*1.3);
- if(sw>.7){const k=(sw-.7)/.3;spxGlow(g,30+Math.cos(head)*138,-120+Math.sin(head)*138,70*k,P.b,.9*al);spxRing(g,30+Math.cos(head)*138,-40,30+k*70,14+k*18,P.a,.8*al,4)}g.restore()}
-// Mündungsblitz + Aufladen bei Projektil-Specials (fireball)
-function spxMuzzleFx(g,f,m,glow){const d=m.proj?[].concat(m.proj)[0]:null;if(!d)return;const P=spxPal(f,glow),t=f.mf,fr=d.frame,y=d.y||-96;if(t<fr-9||t>fr+9)return;
- g.save();g.globalCompositeOperation='lighter';
- if(t<fr){const k=(t-fr+9)/9;spxGlow(g,64,y,24+k*40,P.a,.5+k*.4);spxRing(g,64,y,60-k*40,60-k*40,P.b,k*.8,3)}
- else{const k=(t-fr)/9;spxGlow(g,74,y,70*(1-k*.4),P.b,(1-k)*.95);spxRing(g,74,y,20+k*80,20+k*80,P.a,(1-k)*.9,4);
-  for(let i=0;i<8;i++){const a=i*.785+spxH(i)*.4,r=24+k*90;spxGlow(g,74+Math.cos(a)*r,y+Math.sin(a)*r,9,P.b,(1-k)*.9)}}g.restore()}
-// ---- HYPER-Kulissen ----
-// LEON · Solar-Inferno: Sonne mit Strahlenkranz, goldener Klauenhagel über die ganze Trefferbox, Schockwellenringe nach vorn
-function spxSolarFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,16,22);if(!w)return;const grow=Math.min(1,(w.t-w.su+16)/16),fade=w.t>w.end?Math.max(0,1-(w.t-w.end)/22):1,al=grow*fade,L=m.box?m.box[2]:520,R=104+14*Math.sin(w.t*.35);
- g.save();g.globalCompositeOperation='lighter';
- spxGlow(g,-6,-120,R*2,P.c,.26*al);spxGlow(g,-6,-120,R,P.b,.28*al);
- g.save();g.translate(-6,-120);g.rotate(w.t*.045);g.globalAlpha=.26*al;g.fillStyle=P.a;for(let i=0;i<14;i++){g.rotate(Math.PI*2/14);g.beginPath();g.moveTo(R*.9,-8);g.lineTo(R*2.1+(i%2)*46,0);g.lineTo(R*.9,8);g.fill()}g.restore();
- spxRing(g,-6,-120,R*1.05,R*1.05,P.b,.5*al,3);
- if(w.t>=w.su-2&&w.t<=w.end+6)for(let k=0;k<5;k++){const idx=Math.floor((w.t-w.su)/3)-k;if(idx<0)continue;const u=(w.t-(w.su+idx*3))/12;if(u<0||u>1)continue;
-  const dir=idx%2?-1:1,x=70+spxH(idx*3.7)*L*.62,y=-60-spxH(idx*5.1)*150,r=70+spxH(idx*2.3)*54,a0=-1.2+spxH(idx*9.1)*1.2;spxCres(g,x,y,r,a0,a0+dir*spxEase(u*1.6)*2.3,28,P,(1-u)*al*1.2)}
- if(w.t>=w.su)for(let k=0;k<3;k++){const u=((w.t-w.su)*.045+k/3)%1;spxRing(g,30+u*L*.9,-92,18+u*40,70+u*120,P.b,(1-u)*.85*al,4)}
- g.restore()}
-// URSUS · Bärenzorn: Anlauf mit Staubring, dann Bodenrisse nach vorn, fliegende Felsbrocken, Schockringe am Boden, wuchtige Klauenbögen
-function spxQuakeFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,16,22);if(!w)return;const grow=Math.min(1,(w.t-w.su+16)/16),fade=w.t>w.end?Math.max(0,1-(w.t-w.end)/22):1,al=grow*fade,L=m.box?m.box[2]:520,act=w.t>=w.su,k=Math.max(0,Math.min(1,(w.t-w.su)/Math.max(10,m.ac*.55)));
- g.save();g.globalCompositeOperation='lighter';
- spxGlow(g,0,-4,90+14*Math.sin(w.t*.5),P.c,.4*al);spxRing(g,0,-4,70+((w.t*3)%50),14+((w.t*3)%50)*.18,P.a,.7*al*(1-((w.t*3)%50)/70),4);
- if(act){for(let c=0;c<3;c++){const yo=(c-1)*7,len=L*k*(1-c*.12);g.globalAlpha=al*(.9-c*.18);g.strokeStyle=c?P.a:P.b;g.shadowColor=P.a;g.shadowBlur=18;g.lineWidth=c?5:8;g.beginPath();g.moveTo(34,yo-1);
-   for(let x=34;x<=34+len;x+=18){g.lineTo(x,yo-1+(spxH(x*.13+c*7)-.5)*14)}g.stroke()}g.shadowBlur=0;spxGlow(g,34+L*k,-6,64,P.a,.7*al);for(let i=0;i<7;i++){spxGlow(g,40+spxH(i*2.7)*L*k,-8-spxH(i*4.1)*26,30+spxH(i)*22,P.c,.5*al)}
-  for(let i=0;i<11;i++){const p=((w.t-w.su)*.05+spxH(i)*.7)%1,x0=60+spxH(i*3.1)*L*.8,hh=150+spxH(i*1.7)*150,x=x0+p*40,y=-p*hh+p*p*hh*1.1;if(y>0)continue;const s=7+spxH(i*5.9)*8;
-   g.globalAlpha=al*(1-p*.6);g.fillStyle=P.c;g.strokeStyle=P.b;g.lineWidth=1.5;g.beginPath();g.moveTo(x-s,y);g.lineTo(x-s*.3,y-s*1.1);g.lineTo(x+s,y-s*.4);g.lineTo(x+s*.6,y+s*.7);g.closePath();g.fill();g.stroke()}
-  for(let r=0;r<3;r++){const u=((w.t-w.su)*.04+r/3)%1;spxRing(g,40+u*L*.95,-3,16+u*30,6+u*14,P.b,(1-u)*.9*al,4)}
-  for(let i=0;i<4;i++){const idx=Math.floor((w.t-w.su)/4)-i;if(idx<0)continue;const u=(w.t-(w.su+idx*4))/12;if(u<0||u>1)continue;const dir=idx%2?-1:1,a0=-1.1+spxH(idx*4.1)*1.2;
-   spxCres(g,60+spxH(idx*2.7)*L*.3,-92+spxH(idx*6.1)*30,92+spxH(idx*1.3)*30,a0,a0+dir*spxEase(u*1.6)*2.3,32,P,(1-u)*al*1.2)}}
- g.restore()}
-// A1LIEN · Blutrausch: Blutmond hinter der Figur, gekreuzte Doppelklauen-Schnitte über die Trefferbox, rote Tempolinien
-function spxBloodFx(g,f,m,glow){const P=spxPal(f,glow),w=spxWin(f,m,16,22);if(!w)return;const grow=Math.min(1,(w.t-w.su+16)/16),fade=w.t>w.end?Math.max(0,1-(w.t-w.end)/22):1,al=grow*fade*(.82+.18*Math.sin(w.t*1.7)),L=m.box?m.box[2]:330,R=104+10*Math.sin(w.t*.3);
- g.save();g.globalCompositeOperation='lighter';
- spxGlow(g,10,-124,R*2.1,P.c,.34*al);spxGlow(g,10,-124,R,P.a,.24*al);spxRing(g,10,-124,R,R,P.b,.55*al,4);spxRing(g,10,-124,R*1.35,R*1.35,P.a,.35*al,2);
- if(w.t>=w.su-2&&w.t<=w.end+6){for(let k=0;k<6;k++){const idx=Math.floor((w.t-w.su)/2.5)-k;if(idx<0)continue;const u=(w.t-(w.su+idx*2.5))/10;if(u<0||u>1)continue;
-   const x=50+spxH(idx*3.9)*L*.72,y=-70-spxH(idx*5.3)*130,r=62+spxH(idx*2.1)*46,a0=-1.5+spxH(idx*9.7)*.8,e=spxEase(u*1.7);   // gekreuzt: zwei Bögen mit entgegengesetzter Richtung
-   spxCres(g,x,y,r,a0,a0+2.1*e,26,P,(1-u)*al*1.3);spxCres(g,x+14,y,r,a0+.5+2.1,a0+.5+2.1-2.1*e,26,P,(1-u)*al*1.3)}
-  for(let i=0;i<7;i++){const p=((w.t*.09+spxH(i)*4)%1),y=-30-spxH(i*7.1)*190,x=30+p*(L+80);spxStreak(g,x-120,y,x,y,4,P,(1-p)*.8*al,0)}}
- g.restore()}
-const SP_FX={cSlash:spxSlashFx,cRise:spxRiseFx,cSpin:spxSpinFx,cDive:spxDiveFx,cThrust:spxThrustFx,cOver:spxOverFx,cMuzzle:spxMuzzleFx,cSolar:spxSolarFx,cQuake:spxQuakeFx,cBlood:spxBloodFx};
-// ---- Projektil-Looks (Renderer.look ruft PROJ_LOOKS[def.look] auf; Ursprung = Mitte des Projektils, g steht schon im Weltraum, additiv) ----
-export const PROJ_LOOKS={
- solar(g,p,col,t){const d=Math.sign(p.vx)||1,P=SPX_PAL.leon,R=Math.max(34,p.h*.64),a=Math.min(1,t/3);g.scale(d,1);   // Leon: goldene Sonnenwelle mit Funkenschweif
-  spxStreak(g,-R*3.4,0,-R*.2,0,R*.55,P,a*.9,0);spxGlow(g,R*.15,0,R*1.3,P.c,.5*a);spxGlow(g,R*.3,0,R*.7,P.b,.7*a);
-  spxCres(g,-R*.45,0,R*1.25,-1.2,1.2,R*.62,P,a);spxCres(g,-R*.75,0,R*1.0,-1.0,1.0,R*.4,P,a*.8);
-  for(let i=0;i<7;i++){const k=((t*.06+spxH(i)*3)%1);spxGlow(g,-R*.4-k*R*2.6,(spxH(i*4.1)-.5)*R*1.5,5+spxH(i*2)*5,P.b,(1-k)*.9*a)}},
- quake(g,p,col,t){const d=Math.sign(p.vx)||1,P=SPX_PAL.bear,h=Math.max(70,p.h*1.45),fl=70,a=Math.min(1,t/3);g.scale(d,1);   // URSUS: rollende Bodenwelle mit Staub und Brocken (Boden = 70 px unter der Projektilmitte)
-  const gr=g.createLinearGradient(0,fl-h,0,fl);gr.addColorStop(0,P.a);gr.addColorStop(.5,P.c);gr.addColorStop(1,'#3a1806');g.globalCompositeOperation='source-over';g.globalAlpha=a*.96;g.fillStyle=gr;g.shadowColor=P.a;g.shadowBlur=18;
-  g.beginPath();g.moveTo(-p.w*1.7,fl);for(let i=0;i<=8;i++){const x=-p.w*1.7+i*(p.w*1.7+p.w*.35)/8,k=i/8,hh=h*(.15+.85*Math.pow(k,1.7))*(.85+.3*spxH(i*3.3+Math.floor(t/3)));g.lineTo(x,fl-hh)}
-  g.lineTo(p.w*.35,fl-h*.35);g.lineTo(p.w*.35,fl);g.closePath();g.fill();g.shadowBlur=0;g.globalCompositeOperation='lighter';spxStreak(g,-p.w*2.2,fl-3,p.w*.4,fl-3,9,P,a*.9,0);
-  g.globalAlpha=a;g.strokeStyle=P.b;g.lineWidth=3;g.beginPath();g.moveTo(-p.w*.2,fl-h*.75);g.quadraticCurveTo(p.w*.2,fl-h*1.0,p.w*.38,fl-h*.3);g.stroke();
-  for(let i=0;i<6;i++){const k=((t*.07+spxH(i)*3)%1);spxGlow(g,-p.w*(.2+k*1.5),fl-4-spxH(i*5)*20,16+spxH(i*2)*16,P.c,(1-k)*.55*a)}
-  for(let i=0;i<5;i++){const k=((t*.06+spxH(i*2)*2)%1),x=-p.w*(.1+k*1.1),y=fl-h*.7*Math.sin(k*3.14)-8,s=5+spxH(i*7)*5;g.globalAlpha=a*(1-k*.5);g.fillStyle=P.c;g.strokeStyle=P.b;g.lineWidth=1.3;g.beginPath();g.moveTo(x-s,y);g.lineTo(x,y-s);g.lineTo(x+s,y);g.lineTo(x,y+s*.8);g.closePath();g.fill();g.stroke()}},
- bloodclaw(g,p,col,t){const d=Math.sign(p.vx)||1,P=SPX_PAL.cyberdemon,R=Math.max(34,p.h*.7),a=Math.min(1,t/3),fl=.5+.5*Math.sin(t*1.3);g.scale(d,1);   // A1LIEN: drei blutrote Krallenspuren mit zuckendem Schweif
-  spxGlow(g,R*.1,0,R*1.5,P.c,.55*a);spxStreak(g,-R*3.2,0,-R*.1,0,R*.5,P,a*.7,0);
-  for(const o of[-.62,0,.62]){const y=o*R*.9;spxCres(g,-R*.5,y,R*1.3,-.95+o*.35,.95+o*.35,R*.34,P,a);}
-  g.globalAlpha=a*.9;g.strokeStyle=P.b;g.lineWidth=1.6;g.shadowColor=P.a;g.shadowBlur=10;g.beginPath();g.moveTo(-R*.8,0);for(let i=1;i<=8;i++){g.lineTo(-R*.8-i*R*.36,(spxH(i*3.1+Math.floor(t/2))-.5)*R*.7*(i/8)*(.6+fl*.6))}g.stroke();
-  for(let i=0;i<5;i++){const k=((t*.07+spxH(i)*3)%1);spxGlow(g,-R*.6-k*R*2,(spxH(i*4.1)-.5)*R*1.2,5+spxH(i*2)*4,P.b,(1-k)*.9*a)}}};
 // Rabenschwarm (Korvus-Hyper): ein Schwarm dunkler Raben mit violettem Schweif stürmt über die Trefferbox nach vorn. Weltmaß wie tailsFx (Ursprung = Körpermitte, nach vorn = +x).
 function swarmFx(g,f,m){const t=f.mf,t0=m.su-6,t1=m.su+m.ac;if(t<t0||t>t1+14)return;
  const grow=Math.min(1,(t-t0)/10),fade=t>t1?Math.max(0,1-(t-t1)/14):1,L=(m.box?m.box[2]+m.box[0]:460)*.95,N=11,oy=-92,VIO='#b57cff',HOT='#ecd9ff';
@@ -254,14 +137,16 @@ function tailsFx(g,f,m,glow){const t=f.mf,t0=m.su-8,t1=m.su+m.ac;if(t<t0||t>t1+1
  g.restore()}
 // Drachen-Feuersturm (ST3-G0-Hyper): Feuerstrom aus dem Maul, kegelförmig nach vorn leicht abwärts. Glutballen wandern nach außen, werden größer und verlöschen; Weltmaß (Länge = m.box[2]).
 function breathFx(g,f,m){const t=f.mf,t0=m.su-6,t1=m.su+m.ac;if(t<t0||t>t1+12)return;
- const grow=Math.min(1,(t-t0)/10),fade=t>t1?Math.max(0,1-(t-t1)/12):1,L=(m.box?m.box[2]:520)*grow,MX=59,MY=-158,N=30,slope=.14;
+ // Feuerstrom: Ursprung m.fxAt=[x,y] (Maul bzw. Hände), Länge m.fxLen, Größe m.fxSize, Deckkraft m.fxAlpha, Neigung m.fxSlope, Farben m.fxPal=[Kern,Mitte,außen,Rand]; ohne Angaben = Feuerstrom aus dem Maul (ST3-G0, Anubis)
+ const grow=Math.min(1,(t-t0)/10),fade=t>t1?Math.max(0,1-(t-t1)/12):1,L=(m.box?m.box[2]:520)*grow*(m.fxLen||1),MX=m.fxAt?m.fxAt[0]:59,MY=m.fxAt?m.fxAt[1]:-158,N=30,slope=m.fxSlope==null?.14:m.fxSlope;
+ const PAL=m.fxPal||['#fffbd0','#ffc531','#ff5a14cc','#c0180000'],SZ=m.fxSize||1,AL=m.fxAlpha||1,EDGE=PAL[2].slice(0,7)+'00';
  g.save();g.globalCompositeOperation='lighter';
- for(let j=N-1;j>=0;j--){const p=(j/N+t*.042)%1,x=MX+p*L,y=MY+p*L*slope+Math.sin(t*.45+j*2.1)*p*16,r=9+p*(70+14*Math.sin(t*.6+j)),a=fade*Math.pow(1-p,.55)*(p<.04?p/.04:1);
+ for(let j=N-1;j>=0;j--){const p=(j/N+t*.042)%1,x=MX+p*L,y=MY+p*L*slope+Math.sin(t*.45+j*2.1)*p*16*SZ,r=(9+p*(70+14*Math.sin(t*.6+j)))*SZ,a=fade*Math.pow(1-p,.55)*(p<.04?p/.04:1)*AL;
   if(a<=.02)continue;g.globalAlpha=Math.min(1,a);
-  const gr=g.createRadialGradient(x,y,r*.1,x,y,r);gr.addColorStop(0,'#fffbd0');gr.addColorStop(.35,'#ffc531');gr.addColorStop(.7,'#ff5a14cc');gr.addColorStop(1,'#c0180000');
+  const gr=g.createRadialGradient(x,y,r*.1,x,y,r);gr.addColorStop(0,PAL[0]);gr.addColorStop(.35,PAL[1]);gr.addColorStop(.7,PAL[2]);gr.addColorStop(1,PAL[3]);
   g.fillStyle=gr;g.beginPath();g.arc(x,y,r,0,7);g.fill()}
- g.globalAlpha=fade;const mg=g.createRadialGradient(MX,MY,2,MX,MY,38);mg.addColorStop(0,'#fff');mg.addColorStop(.4,'#ffc531');mg.addColorStop(1,'#ff5a1400');g.fillStyle=mg;g.beginPath();g.arc(MX,MY,38,0,7);g.fill();   // Leuchten am Maul
- for(let i=0;i<10;i++){const p=((i*.137+t*.03)%1),x=MX+p*L*(.5+.5*((i*7)%3)/2),y=MY+p*L*slope*1.1-(10+(i*13)%40)*p-Math.sin(t*.3+i)*8;g.globalAlpha=fade*(1-p);g.fillStyle='#ffd27a';g.beginPath();g.arc(x,y,2.2,0,7);g.fill()}   // Funken
+ g.globalAlpha=fade*AL;const mg=g.createRadialGradient(MX,MY,2,MX,MY,38*SZ);mg.addColorStop(0,'#fff');mg.addColorStop(.4,PAL[1]);mg.addColorStop(1,EDGE);g.fillStyle=mg;g.beginPath();g.arc(MX,MY,38*SZ,0,7);g.fill();   // Leuchten am Maul
+ for(let i=0;i<10;i++){const p=((i*.137+t*.03)%1),x=MX+p*L*(.5+.5*((i*7)%3)/2),y=MY+p*L*slope*1.1-(10+(i*13)%40)*p-Math.sin(t*.3+i)*8;g.globalAlpha=fade*(1-p)*AL;g.fillStyle=m.fxPal?PAL[1]:'#ffd27a';g.beginPath();g.arc(x,y,2.2,0,7);g.fill()}   // Funken
  g.restore()}
 // Blitz-Kamehameha (H!T-Hyper): 1) Blitz schlägt von oben in den Kopf ein, 2) Körper knistert / lädt sich auf, 3) Blitzkugel zwischen den Händen, 4) breiter Blitzstrahl nach vorn.
 // Weltmaß; Zeitpunkte relativ zu m.su (Startup) und m.ac (aktiv). Zackenlinien sind pro Frame neu gewürfelt (deterministisch) = Flackern.

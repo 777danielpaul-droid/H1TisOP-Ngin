@@ -237,7 +237,7 @@ export const SPRITE_CHARS={
 export function registerSpriteChar(id,def){SPRITE_CHARS[id]=def}
 // Umgefärbtes Atlas-Bild (Skin >0) als Canvas; ohne Canvas/DOM oder bei gesperrtem Canvas (file://) -> Original
 export function skinImg(S,id,skin){
- if(!skin||!skinCount(id)||typeof document==='undefined')return S.img;
+ if(!skin||S.replaced||!skinCount(id)||typeof document==='undefined')return S.img;   // S.replaced = eigener Ersatz-Atlas (Editor): die Umfärbung ist auf die Original-Farben abgestimmt
  const c=S.skinCv||(S.skinCv={});if(c[skin]!==undefined)return c[skin]||S.img;
  try{const w=S.img.naturalWidth||S.img.width,h=S.img.naturalHeight||S.img.height,cv=document.createElement('canvas');cv.width=w;cv.height=h;
   const x=cv.getContext('2d',{willReadFrequently:true});x.drawImage(S.img,0,0);const d=x.getImageData(0,0,w,h);recolor(id,d.data,skin);x.putImageData(d,0,0);c[skin]=cv}

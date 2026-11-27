@@ -7,6 +7,8 @@
 // Der Zeichencode läuft im Renderer (Canvas 2D): Videos/Bilder werden per drawImage als erste Ebene gezeichnet.
 export const BG_SLOTS=['all','title','select','fight'];
 export const BG_NAMES={all:'Überall',title:'Titelmenü',select:'Auswahlbildschirme',fight:'Kampf'};
+// Eingebaute Standard-Hintergründe (assets/bg/<name>.jpg, vom Build als window.__BGS__ eingebettet). Level-Reihenfolge = THEMES in stage.js.
+export const STD_BG=['neon_city','tempel','hafen','labyrinth'];
 export const BG_DEFAULTS={dim:.25,fit:'cover',parallax:true,houses:true};
 export const BG_IMG_EXT=/\.(png|jpe?g|webp|gif|avif|bmp|svg)$/i,BG_VID_EXT=/\.(mp4|m4v|webm|ogv|ogg|mov)$/i;
 // Dateityp bestimmen: MIME zuerst, sonst Endung. -> 'image' | 'video' | null
@@ -17,7 +19,7 @@ export const resolveSlot=(items,slot)=>{const e=items[slot];if(e&&e.off)return n
 export const bgClamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const bgHasDoc=()=>typeof document!=='undefined'&&!!document.body;
 export class Backdrop{
- constructor(){this.items={};this.media={};this.opts={...BG_DEFAULTS};this.persist=true;this.ready=false;this.onchange=null;this.db=null;this._timer=null;this.mem={};
+ constructor(){this.items={};this.media={};this.opts={...BG_DEFAULTS};this.persist=true;this.std={};this.ready=false;this.onchange=null;this.db=null;this._timer=null;this.mem={};
   try{const o=JSON.parse(localStorage.getItem('hitisop.bg.opts')||'null');if(o&&typeof o==='object'){this.opts.dim=bgClamp(+o.dim,0,.9);if(isNaN(this.opts.dim))this.opts.dim=BG_DEFAULTS.dim;this.opts.fit=o.fit==='contain'?'contain':'cover';this.opts.parallax=o.parallax!==false;this.opts.houses=o.v===2?!!o.houses:true}}catch(e){}}
  saveOpts(){try{localStorage.setItem('hitisop.bg.opts',JSON.stringify({...this.opts,v:2}))}catch(e){}}
  setOpt(k,v){if(k==='dim')v=bgClamp(+v||0,0,.9);if(k==='fit')v=v==='contain'?'contain':'cover';if(k==='parallax'||k==='houses')v=!!v;this.opts[k]=v;this.saveOpts();this.emit()}
@@ -27,7 +29,9 @@ export class Backdrop{
  idb(mode,fn){return new Promise(res=>{if(!this.db)return res(null);try{const tx=this.db.transaction('bg',mode),st=tx.objectStore('bg'),r=fn(st);tx.oncomplete=()=>res(r&&r.result!==undefined?r.result:true);tx.onerror=tx.onabort=()=>res(null)}catch(e){res(null)}})}
  async init(){if(this.ready)return;this.db=await this.openDb();this.persist=!!this.db;
   if(this.db)for(const s of BG_SLOTS){const e=await this.idb('readonly',st=>st.get(s));if(e&&(e.off||e.blob)){this.items[s]={name:e.name||'',kind:e.kind||null,off:!!e.off};if(!e.off)try{await this.load(s,e.blob,e.kind)}catch(err){delete this.items[s]}}}
-  this.ready=true;this.startTimer();this.emit()}
+  this.loadStd();this.ready=true;this.startTimer();this.emit()}
+ // Eingebaute Bilder laden (nur wenn der Build sie eingebettet hat). Gilt für jeden Bereich, in dem der Spieler nichts Eigenes gesetzt hat.
+ loadStd(){const B=typeof window!=='undefined'&&window.__BGS__;if(!B||typeof Image==='undefined')return;for(const k in B){const im=new Image();im.onload=()=>{if(im.naturalWidth)this.std[k]={kind:'image',el:null,src:()=>im,w:()=>im.naturalWidth,h:()=>im.naturalHeight,url:null,use:0}};im.src=B[k]}}
  // ---- Medien laden ----
  // Videos: stumm, Endlosschleife, unsichtbar im DOM (sonst pausieren manche Browser). Bilder: große Bilder einmal auf max. 2560 px verkleinern; GIF/animiertes WebP werden in Frames zerlegt (siehe frames()).
  async load(slot,blob,kind){this.unload(slot);const url=URL.createObjectURL(blob);let m;
@@ -66,14 +70,17 @@ export class Backdrop{
  async clear(slot){this.unload(slot);delete this.items[slot];if(this.persist)await this.idb('readwrite',st=>st.delete(slot));this.emit()}
  // ---- Zeichnen ----
  // Welches Medium gilt jetzt für den Bereich? (null = Originalhintergrund; auch solange das Medium noch lädt)
- pick(area){const s=resolveSlot(this.items,area),m=s&&this.media[s];if(!m)return null;
+ pick(area,key){const s=resolveSlot(this.items,area),m=s&&this.media[s];if(!m)return this.std[key||area]||null;
   if(m.kind==='video'){const v=m.el;if(v.error||v.readyState<2||!v.videoWidth)return null;m.use=performance.now();if(v.paused&&!(typeof document!=='undefined'&&document.hidden))v.play().catch(()=>{})}
   else if(!m.w())return null;return m}
- has(area){return !!this.pick(area)}
+ has(area,key){return !!this.pick(area,key)}
  // Hintergrund im Bildschirmraum zeichnen (0,0)-(W,H). o.cam = Kamera für leichte Parallaxe (Kampf), o.dimAdd = zusätzliche Abdunklung (Menüs: Lesbarkeit).
- draw(g,W,H,area,o={}){const m=this.pick(area);if(!m)return false;const sw=m.w(),sh=m.h(),P=this.opts;
+ draw(g,W,H,area,o={}){const m=this.pick(area,o.key);if(!m)return false;const sw=m.w(),sh=m.h(),P=this.opts;
   if(P.fit==='contain'){g.fillStyle='#000';g.fillRect(-60,-60,W+120,H+120);const s=Math.min(W/sw,H/sh),dw=sw*s,dh=sh*s;g.drawImage(m.src(),(W-dw)/2,(H-dh)/2,dw,dh)}
-  else{const c=o.cam,par=P.parallax&&c,mul=par?1.1+Math.max(0,(c.z||1)-1)*.25:1.04,k=Math.max(W/sw,H/sh)*mul,dw=sw*k,dh=sh*k;
+  else if(o.anchor&&P.parallax&&o.cam){   // Boden-Anker (Startbildschirm): Bild liegt wie eine Ebene in der Welt, Zoom/Kamerahöhe ziehen es mit -> die Füße (Boden-Y o.anchor.wy) bleiben auf gleicher Höhe im Bild
+   const c=o.cam,z=c.z||1,k0=Math.max(W/sw,H/sh)*1.25,dh0=sh*k0,dy=o.anchor.dy||0,fy=(o.anchor.wy+dy-(H-dh0)/2)/dh0,k=k0*Math.max(.8,z),dw=sw*k,dh=sh*k,yf=(o.anchor.wy-c.y)*z+H/2+dy;
+   const dx=bgClamp(-(c.x-W/2)*.04,-(dw-W)/2,(dw-W)/2);g.drawImage(m.src(),(W-dw)/2+dx,bgClamp(yf-fy*dh,H-dh,0),dw,dh)}
+  else{const c=o.cam,par=P.parallax&&c,mul=par?Math.max(1.03,1.25*Math.pow(Math.max(.3,c.z||1),.4)):1.04,k=Math.max(W/sw,H/sh)*mul,dw=sw*k,dh=sh*k;
    let dx=0,dy=0;if(par){dx=bgClamp(-(c.x-W/2)*.04,-(dw-W)/2,(dw-W)/2);dy=bgClamp(-(c.y-H/2)*.04,-(dh-H)/2,(dh-H)/2)}
    g.drawImage(m.src(),(W-dw)/2+dx,(H-dh)/2+dy,dw,dh)}
   const d=bgClamp(P.dim+(o.dimAdd||0),0,.95);if(d>0){g.fillStyle='rgba(5,2,12,'+d+')';g.fillRect(-60,-60,W+120,H+120)}return true}

@@ -3,7 +3,7 @@ import{sparkDraw,sparkIdx}from'../core/particles.js';
 import{LOOT}from'../core/loot.js';
 
 
-import{Backdrop}from'./backdrop.js';
+import{Backdrop,STD_BG}from'./backdrop.js';
 import{PostFX}from'./fx.js';
 import{GLPost}from'./gl.js';
 import{buildHouse}from'./houses.js';
@@ -12,7 +12,7 @@ import{Hud}from'./hud.js';
 import{drawLoot,shopSelRect,startSelRect,boosterRect,coinsRect}from'./lootui.js';
 import{HoverFx,drawEndBtns}from'./hover.js';
 import{drawMeleeHud,meleeHalo,meleeStage}from'./meleehud.js';
-import{drawFighter,drawTrail,PROJ_LOOKS}from'./rig.js';
+import{drawFighter,drawTrail}from'./rig.js';
 import{SelectScreen}from'./select.js';
 import{Stage,THEMES}from'./stage.js';
 import{drawBossCine}from'./bosscine.js';
@@ -38,7 +38,7 @@ export class Renderer{
   return{bloom:(.5+(game.aberr||0)*.25)*GFX.bloom,ab:ab>=.05?ab*.0065:0,vc:low>0?[(90+120*low)/255,0,20/255]:[0,0,8/255],va:low>0?Math.min(.85,k+.2):k+.2,grain:GFX.grain?.05:0,t}}
  // Startmenü (Charakterwahl): Stage 1 als Hintergrund, Kamera neutral
  drawSelect(game){const g=this.gs,s=this.scale,A=game.arcade;if(this.useGL)this.uiClear();{const n=performance.now(),d=this._selLast?Math.min(3,(n-this._selLast)/16.667):1;this._selLast=n;this.selT+=d}g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);
-  const st=this.stages[0],T=this.selT/60;if(!this.bd.draw(g,W,H,'select',{dimAdd:0})){st.draw(g,T)}   // eigener Hintergrund (Bild/Video) oder Stage 1; bewusst KEIN abdunkelnder Schleier mehr: Sterne und Himmel scheinen dort durch, wo keine HUD-Fläche liegt
+  const st=this.stages[0],T=this.selT/60;if(!this.bd.draw(g,W,H,'select',{dimAdd:0,key:'start',cam:game.camera})){st.draw(g,T)}   // eigener Hintergrund (Bild/Video) oder Stage 1; bewusst KEIN abdunkelnder Schleier mehr: Sterne und Himmel scheinen dort durch, wo keine HUD-Fläche liegt
   this.post.beams(g,W,H,T,'#7a5cff');this.post.dust(g,W,H,T,'#c9b8ff',60,.8);st.overlay(g,.3);this.sel.draw(g,A,this.selT,W,H);
   if(this.useGL)this.glFinish({bloom:.5*GFX.bloom,ab:0,vc:[0,0,.03],va:0,grain:GFX.grain?.06:0,t:this.selT});else{this.post.bloom(g,this.cv,.5);this.post.grain(g,this.cv,.06)}
   const u=this.g;u.setTransform(s,0,0,s,0,0);if(!this.sel.launching){const h=this.hud,t=this.selT,pk=LOOT.packs>0,bb=boosterRect(),cb=coinsRect();   // Booster + Coins oben rechts (Anzahl der gesammelten)
@@ -57,7 +57,7 @@ export class Renderer{
   if(this.useGL)this.uiClear();g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);
   g.save();                                              // --- Screen-Space: Shake ---
   g.translate((game.kickX||0)+(game.shake>0?(Math.random()-.5)*game.shake*1.6:0),(game.kickY||0)+(game.shake>0?(Math.random()-.5)*game.shake*1.6:0));
-  const cbg=this.bd.has('fight');if(cbg)this.bd.draw(g,W,H,'fight',{cam});   // eigener Hintergrund: im Bildschirmraum, mit leichter Parallaxe zur Kamera
+  const bk=(game.story&&game.story.cfg&&game.story.cfg.bg)||STD_BG[(game.stageIndex||0)%STD_BG.length],cbg=this.bd.has('fight',bk);if(cbg)this.bd.draw(g,W,H,'fight',{cam,key:bk});   // eigener Hintergrund: im Bildschirmraum, mit leichter Parallaxe zur Kamera
   g.save();cam.apply(g);                                 // --- Welt: alles unter derselben Kamera-Matrix ---
   if(game.story&&game.story.cfg.parkour&&!cbg)this.stage.skyAbove(g,t,cam.y-H/2/cam.z-80);   // Parkour: Himmel nach oben verlängern
   if(cbg){if(!game.melee&&!game.story)this.stage.draw(g,t,true)}else this.stage.draw(g,t,false,!!game.story);game.particles.drawFw(g);   // Feuerwerk: vor dem Himmel, hinter den Häusern
@@ -72,7 +72,8 @@ export class Renderer{
   for(const p of game.projectiles)this.projectile(g,p,p.owner);
   game.particles.draw(g,true);
   if(game.debug)this.debugBoxes(g,game);                 // Kollisionsboxen skalieren mit der Welt
-  g.restore();g.restore();                               // --- zurück in den Screen-Space ---
+  g.restore();g.restore();                               this.petals(g,game.frame);this.heaps(g,game);   // Kirschblüten-Effekt (wie im Titelmenü) auch in Kampf, Story und Melee: vor der Welt, hinter dem HUD
+  // --- zurück in den Screen-Space ---
   if(game.flash>0){const a=game.flash/EFFECT.screenFlash;g.save();g.fillStyle=game.flashColor;g.globalAlpha=.45*a;g.fillRect(0,0,W,H);g.restore()}
   if(this.useGL){this.post.dust(g,W,H,t,'#cdbbff',26,.6);this.glFinish(this.sceneParams(game))}else this.post.scene(g,this.cv,game,game.frame);
   this.post.impact(ui,game);if(!this.useGL)this.post.dust(ui,W,H,t,'#cdbbff',26,.6);
@@ -90,7 +91,24 @@ demoStam(g,f,t){if(!f.stamOn)return;const S=STAMINA,w=72,h=4,x=f.x-w/2,y=GROUND+
   const txt=exh?'ERSCHÖPFT':rest?'ATMEN':'';if(txt){const c=exh?'#ff7b91':'#7dffd0';this.hud.lab(g,txt,f.x,y+17,8,c,'center',2,c,'700')}
   g.restore()}
 // Demokampf im Hintergrund der Startseite: nur die beiden Fighter + Projektile + Partikel, kein Hintergrund/HUD/Häuser
-drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);if(!this.bd.draw(g,W,H,'title',{dimAdd:0})){g.fillStyle='#020312';g.fillRect(0,0,W,H)}const cam=game.camera;g.save();cam.apply(g);game.particles.drawFw(g);this.celeb(g,game);for(const f of[...game.fighters].filter(f=>!(f.dead>0)).sort((a,b)=>drawPri(a)-drawPri(b)||a.y-b.y))drawFighter(g,f,game.frame/60,1,GROUND);for(const f of game.fighters)if(!(f.dead>0))this.demoStam(g,f,game.frame);this.celeb(g,game,true);for(const p of game.projectiles)this.projectile(g,p,p.owner);game.particles.draw(g,true);g.restore();if(this.useGL){this.glFinish({bloom:.3*GFX.bloom,ab:0,vc:[0,0,.02],va:.1,grain:GFX.grain?.03:0,t:game.frame})}else this.post.dust(g,this.cv,game.frame/60,'#55eaff',12,.18)}
+drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);if(!this.bd.draw(g,W,H,'title',{dimAdd:0,key:'start',cam:game.camera,anchor:{wy:GROUND,dy:40}})){g.fillStyle='#020312';g.fillRect(0,0,W,H)}const cam=game.camera,DY=40;g.save();g.translate(0,DY);cam.apply(g);game.particles.drawFw(g);this.celeb(g,game);for(const f of[...game.fighters].filter(f=>!(f.dead>0)).sort((a,b)=>drawPri(a)-drawPri(b)||a.y-b.y))drawFighter(g,f,game.frame/60,1,GROUND);for(const f of game.fighters)if(!(f.dead>0))this.demoStam(g,f,game.frame);this.celeb(g,game,true);for(const p of game.projectiles)this.projectile(g,p,p.owner);game.particles.draw(g,true);g.restore();this.petals(g,game.frame);this.heaps(g,game);if(this.useGL){this.glFinish({bloom:.3*GFX.bloom,ab:0,vc:[0,0,.02],va:.1,grain:GFX.grain?.03:0,t:game.frame})}else this.post.dust(g,this.cv,game.frame/60,'#55eaff',12,.18)}
+ // Kirschblütenblätter im Vordergrund (Titelmenü): dezent, rein zeitgesteuert (kein Zustand). Größere = näher an der Kamera = schneller + deckender.
+ petals(g,fr){const t=fr/60,N=28;g.save();for(let i=0;i<N;i++){const h=n=>{const q=Math.sin((i+1)*n)*43758.5453;return q-Math.floor(q)},d=.4+h(12.9898)*.6,y=((t*(22+d*38)+h(78.233)*(H+60))%(H+60))-30,x=(((h(39.346)*W+Math.sin(t*(.5+h(11.135))+i)*28*d+t*8*d)%(W+40))+W+40)%(W+40)-20,r=2+d*3.6;
+  g.save();g.translate(x,y);g.rotate(t*(.8+h(5.7))+i);g.scale(1,.55+.45*Math.abs(Math.sin(t*1.3+i)));g.globalAlpha=.35+d*.45;g.fillStyle=i%3?'#ff9bd0':'#ffd0e8';g.beginPath();g.ellipse(0,0,r*1.25,r*.8,0,0,7);g.fill();g.restore()}g.restore()}
+ // Liegenbleibende Blütenblätter (Titelmenü): fallen in 6 Häufchen am unteren Rand und bleiben dort liegen (max. 260). Sobald ein Kämpfer eine Spezialattacke startet, wirbeln alle
+ // liegenden Blätter in alle Richtungen weg und werden nach kurzer Verzögerung ausgeblendet+entfernt (danach wird nichts mehr gezeichnet); neue Häufchen sammeln sich von vorn.
+ heaps(g,game){const P=this.pt||(this.pt={a:[],acc:0,pf:null,pm:[]}),fr=game.frame,df=P.pf==null?1:Math.max(0,Math.min(4,fr-P.pf)),dt=df/60,C=[90,250,420,560,730,880],R=Math.random;P.pf=fr;
+  const cm=game.camera,fy=cm?(GROUND-cm.y)*(cm.z||1)+H/2:0;P.ref=P.ref==null||fy<P.ref?fy:Math.min(fy,P.ref+6*dt);const dy=Math.max(0,fy-P.ref);   // Kamera geht hoch (Sprung) -> Boden rutscht nach unten -> Haufen bleiben unten zurück (Bezug = tiefste Bodenlage, driftet langsam nach)
+  const mk=()=>{const dx=(R()-.5)*56,lx=C[Math.floor(R()*6)]+dx;return{m:'fall',x:lx,y:-20,lx,ly:H-5-R()*6-(1-Math.abs(dx)/28)*7,v:95+R()*60,t:0,ph:R()*6.28,rot:R()*6.28,sy:.55,r:2.6+R()*1.8,c:R()<.67?'#ff9bd0':'#ffd0e8',a:.85}};
+  if(!P.init){P.init=1;for(let k=0;k<220;k++){const q=mk();q.m='rest';q.x=q.lx;q.y=q.ly;q.sy=.45;q.rot=q.ph;P.a.push(q)}}   // beim ersten Start liegt schon ein guter Haufen da (erste Spezialattacke wirbelt direkt Blätter auf)
+  let boom=0;game.fighters.forEach((f,i)=>{const m=f.move&&f.moves&&f.moves[f.moveName],sp=m&&m.special?m:null;if(sp&&P.pm[i]!==sp)boom=f.facing<0?-1:1;P.pm[i]=sp});
+  if(boom)for(const q of P.a)if(q.m==='rest'){q.m='fly';q.y+=dy;q.vx=boom*(160+R()*560)+(R()-.5)*140;q.vy=-(90+R()*430);q.vr=(R()-.5)*14;q.age=0;q.die=1.3+R()*1.7}
+  P.acc+=dt*7;while(P.acc>=1){P.acc--;if(P.a.length>=260)break;P.a.push(mk())}
+  if(!P.a.length)return;const out=[];
+  for(const q of P.a){if(q.m==='fall'){q.t+=dt;q.y+=q.v*dt;q.x=q.lx+Math.sin(q.t*.9+q.ph)*28*Math.max(0,1-(q.y+20)/(q.ly+20));q.rot+=dt*1.3;q.sy=.55+.45*Math.abs(Math.sin(q.t*1.3+q.ph));if(q.y>=q.ly){q.m='rest';q.x=q.lx;q.y=q.ly;q.sy=.45;q.rot=q.ph}}
+   else if(q.m==='fly'){q.age+=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=1-2.2*dt;q.vy=(q.vy+140*dt)*(1-1.6*dt);q.rot+=q.vr*dt;q.sy=.4+.6*Math.abs(Math.sin(q.age*6+q.ph));q.a=q.age>q.die?Math.max(0,.85*(1-(q.age-q.die)/.6)):.85;if(q.a<=0||q.x<-40||q.x>W+40||q.y>H+40)continue}
+   out.push(q)}
+  P.a=out;g.save();for(const q of out){g.save();g.translate(q.x,q.y+(q.m==='fly'?0:dy));g.rotate(q.rot);g.scale(1,q.sy);g.globalAlpha=q.a;g.fillStyle=q.c;g.beginPath();g.ellipse(0,0,q.r*1.25,q.r*.8,0,0,7);g.fill();g.restore()}g.restore()}
  // Eigener Hintergrund im Kampf: weicher dunkler Verlauf ab der Fußlinie (Weltraum), damit die Figuren nicht im Bild schweben
  floorShade(g){const w=WORLD,gr=g.createLinearGradient(0,GROUND-60,0,GROUND+90);gr.addColorStop(0,'rgba(4,2,10,0)');gr.addColorStop(.45,'rgba(4,2,10,.34)');gr.addColorStop(1,'rgba(4,2,10,.62)');g.fillStyle=gr;g.fillRect(w.x0,GROUND-60,w.x1-w.x0,w.y1-GROUND+60)}
  // Sieger-Finale: Kampfaura hinter/vor dem Gewinner, Welt-Raum. ALLE Figuren: Neon-Nebel (render/fog.js) in der Figurenfarbe + Boden-Glühen/Druckringe + Funkelsterne.
@@ -264,7 +282,6 @@ drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTr
   g.save();g.globalAlpha=Math.max(0,a);this.hud.fancy(g,'DURCH DIE WAND!',W/2,200,22,['#ffffff','#bfe9ff'],'center','#8f7bff',t,false,false,700,4);
   const ex=m.dir>0?W-56:56,p=.6+.4*Math.sin(t*10);g.globalAlpha=Math.max(0,a)*p;this.hud.fancy(g,m.dir>0?'»»':'««',ex,276,28,['#ffffff','#9fe8ff'],'center','#8f7bff',t,false,false,700,0);g.restore()}
  look(g,p,col){const L=p.def.look,t=p.age;g.save();g.translate(p.x,p.y);g.globalCompositeOperation='lighter';
-  if(PROJ_LOOKS[L]){PROJ_LOOKS[L](g,p,col,t);g.restore();return}   // neue Looks (solar/quake/bloodclaw) aus rig.js
   if(L==='claw'){const d=Math.sign(p.vx);g.strokeStyle='#fff';g.shadowColor=col;g.shadowBlur=14;g.lineWidth=4;
    for(const o of[-12,0,12]){g.beginPath();g.moveTo(-d*34,o*1.3);g.quadraticCurveTo(0,o-8,d*30,o*.8+6);g.stroke()}g.strokeStyle=col;g.lineWidth=2;g.stroke()}
   else if(L==='sickle'){const d=Math.sign(p.vx)||1,R=Math.max(26,p.h*.62),sp=t*.42*d,a=Math.min(1,t/3);   // Schattensichel: drehende, leuchtende Mondsichel mit Nachbildern + Schweif
@@ -274,9 +291,9 @@ drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTr
     if(core){g.strokeStyle='#ffffff';g.lineWidth=1.8;g.stroke()}g.restore()};
    blade(sp-d*.9,.18);blade(sp-d*.6,.3);blade(sp-d*.3,.5);blade(sp,1,true);
    g.globalAlpha=a*.4;const gl=g.createRadialGradient(0,0,2,0,0,R*1.4);gl.addColorStop(0,col+'66');gl.addColorStop(.5,col+'33');gl.addColorStop(1,col+'00');g.fillStyle=gl;g.beginPath();g.arc(0,0,R*1.4,0,7);g.fill()}
-  else if(L==='fire'){const d=Math.sign(p.vx),R=p.h/2,fl=1+.12*Math.sin(t*.7);   // Feuerwelle: flackernde Glutballen mit Schweif nach hinten
+  else if(L==='fire'){const d=Math.sign(p.vx),R=p.h/2,fl=1+.12*Math.sin(t*.7),FP=p.def.pal||['#fffbd0','#ffc531','#ff5a14cc','#c0180000'];   // Feuerwelle: flackernde Glutballen mit Schweif nach hinten
    for(let i=5;i>=0;i--){const cx=-d*i*R*.62,r=R*(1-i*.11)*fl,cy=Math.sin(t*.5+i*1.7)*R*.18*i/3;g.globalAlpha=Math.max(0,1-i*.15);
-    const gr=g.createRadialGradient(cx,cy,r*.1,cx,cy,r);gr.addColorStop(0,'#fffbd0');gr.addColorStop(.35,'#ffc531');gr.addColorStop(.7,'#ff5a14cc');gr.addColorStop(1,'#c0180000');
+    const gr=g.createRadialGradient(cx,cy,r*.1,cx,cy,r);gr.addColorStop(0,FP[0]);gr.addColorStop(.35,FP[1]);gr.addColorStop(.7,FP[2]);gr.addColorStop(1,FP[3]);
     g.fillStyle=gr;g.beginPath();g.arc(cx,cy,r,0,7);g.fill()}}
   g.restore()}
  projectile(g,p,o){if(p.def.look&&p.def.look!=='ring'){this.look(g,p,o.char.glow||'#fff');return}const col=o.char.glow||'#fff',d=Math.sign(p.vx);g.save();g.globalCompositeOperation='lighter';

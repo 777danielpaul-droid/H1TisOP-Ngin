@@ -1,6 +1,6 @@
 // UI-Test des Editors für die eigene Figur (simulierter Browser). Einmalig: cd tests/dom && npm i jsdom canvas fake-indexeddb ; dann: node studio.test.mjs
 import {JSDOM} from 'jsdom';
-import {createCanvas, loadImage, Image as NImage} from 'canvas';
+import {createCanvas, loadImage, Image as NImage} from '@napi-rs/canvas';   // jsdom zeichnet inzwischen mit @napi-rs/canvas (das alte „canvas“-Paket ist damit nicht mehr kompatibel)
 import 'fake-indexeddb/auto';
 const dom=new JSDOM('<!doctype html><body><canvas id="game"></canvas></body>',{pretendToBeVisual:true,url:'http://localhost/'});
 const w=dom.window;

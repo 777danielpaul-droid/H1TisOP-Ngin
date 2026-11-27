@@ -222,7 +222,7 @@ export class Fighter{
    if(this.mf===6){game.flash=Math.max(game.flash,8);game.flashColor='#bfe6ff';game.shake=Math.max(game.shake,12);game.sfx('heavy_hit_impact');game.sfx('ground_slam',{vol:.7})}
    if(this.mf===m.su){game.flash=Math.max(game.flash,5);game.flashColor='#8fd8ff';game.shake=Math.max(game.shake,9);game.sfx('whoosh_heavy',{vol:.9,rate:.6})}
    if(this.mf>m.su&&this.mf<m.su+m.ac&&(this.mf-m.su)%8===0){game.fx.ps.ring(this.x+this.facing*80,this.y-105,'#8fd8ff',90);game.sfx('whoosh_heavy',{vol:.4,rate:.8+Math.random()*.3})}}
-  if(m.fx==='breath'&&this.mf>=m.su&&this.mf<m.su+m.ac&&(this.mf-m.su)%10===0){game.fx.ps.ring(this.x+this.facing*64,this.y-158,'#ffc531',70);game.sfx('whoosh_heavy',{vol:.4,rate:.7+Math.random()*.2})}   // Drachen-Feuersturm: Rauschen + Druckring am Maul
+  if(m.fx==='breath'&&this.mf>=m.su&&this.mf<m.su+m.ac&&(this.mf-m.su)%10===0){game.fx.ps.ring(this.x+this.facing*(m.fxAt?m.fxAt[0]+5:64),this.y+(m.fxAt?m.fxAt[1]:-158),(m.fxPal&&m.fxPal[1])||'#ffc531',70);game.sfx('whoosh_heavy',{vol:.4,rate:.7+Math.random()*.2})}   // Drachen-Feuersturm: Rauschen + Druckring am Maul
   if(m.lunge){if(this.mf<=m.su+m.ac)this.vx=this.facing*m.lunge;else this.vx*=.6}
   else if(!m.air&&this.grounded)this.vx*=.7;
   else if(m.air&&!m.dive&&!game.melee){const C=AIR.ctrl,dx=this.input.dx;this.vx+=(dx*PHYS.airDrift*this.char.walk*C.atk-this.vx)*(dx?C.atkAccel:C.atkBrake)}   // Luftangriff: weiter steuerbar (Position korrigieren)
