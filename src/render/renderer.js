@@ -16,12 +16,13 @@ import{drawFighter,drawTrail}from'./rig.js';
 import{SelectScreen}from'./select.js';
 import{Stage,THEMES}from'./stage.js';
 import{Rain}from'./rain.js';
-import{weatherMode,weatherPick}from'../core/weather.js';
+import{Mist}from'./mist.js';
+import{weatherAmt,weatherMode,weatherPick}from'../core/weather.js';
 import{drawBossCine}from'./bosscine.js';
 import{drawStoryHud,storyMobBars,storyWorld}from'./storyhud.js';
 // Render-Pipeline:  [Screen-Shake] → [Kamera-Transform: Stage, Fighter, Projektile, Partikel, Debug-Boxen] → restore → [HUD unskaliert]
 export class Renderer{
- constructor(canvas){this.cv=canvas;this.g=canvas.getContext('2d');this.applyGfx();this.stages=THEMES.map(t=>new Stage(W,H,GROUND,WORLD,t));this.stage=this.stages[0];this.hud=new Hud(W,H);this.sel=new SelectScreen(this.hud);this.bd=new Backdrop();this.hov=new HoverFx();this.endBtns=null;this.endHot=-1;this.post=new PostFX();this.selT=0;this.lootUi={open:false,mode:'main',rewards:null,t:0};this.rain=new Rain();this.wxMode='leaves';this.wx=weatherPick('leaves');this.wxLatch=false;this.scale=canvas.width/W}
+ constructor(canvas){this.cv=canvas;this.g=canvas.getContext('2d');this.applyGfx();this.stages=THEMES.map(t=>new Stage(W,H,GROUND,WORLD,t));this.stage=this.stages[0];this.hud=new Hud(W,H);this.sel=new SelectScreen(this.hud);this.bd=new Backdrop();this.hov=new HoverFx();this.endBtns=null;this.endHot=-1;this.post=new PostFX();this.selT=0;this.lootUi={open:false,mode:'main',rewards:null,t:0};this.rain=new Rain();this.mist=new Mist();this.wxMode='all';this.wx=weatherPick('all');this.wxLatch=false;this.wxAmt={leaves:1,rain:1,fog:1};this.scale=canvas.width/W}
  // Qualität anwenden. Niedrig: shadowBlur (Leuchten) am Canvas aus, Nachbearbeitung aus, alles direkt auf den sichtbaren Canvas.
  // Mittel/Hoch: Szene (gs) wird in ein Offscreen-Canvas gezeichnet und per WebGL (gl.js) veredelt; HUD/UI (g) liegt als transparenter Canvas darüber.
  // Ohne WebGL (oder bei Kontextverlust) bleibt es beim 2D-Pfad (fx.js): gs und g sind dann derselbe Canvas.
@@ -94,22 +95,24 @@ demoStam(g,f,t){if(!f.stamOn)return;const S=STAMINA,w=72,h=4,x=f.x-w/2,y=GROUND+
   g.restore()}
 // Demokampf im Hintergrund der Startseite: nur die beiden Fighter + Projektile + Partikel, kein Hintergrund/HUD/Häuser
 drawDemo(game){const g=this.gs,s=this.scale;if(this.useGL)this.uiClear();g.setTransform(s,0,0,s,0,0);g.clearRect(0,0,W,H);if(!this.bd.draw(g,W,H,'title',{dimAdd:0,key:'start',cam:game.camera,anchor:{wy:GROUND,dy:40}})){g.fillStyle='#020312';g.fillRect(0,0,W,H)}const cam=game.camera,DY=40;g.save();g.translate(0,DY);cam.apply(g);game.particles.drawFw(g);this.celeb(g,game);for(const f of[...game.fighters].filter(f=>!(f.dead>0)).sort((a,b)=>drawPri(a)-drawPri(b)||a.y-b.y))drawFighter(g,f,game.frame/60,1,GROUND);for(const f of game.fighters)if(!(f.dead>0))this.demoStam(g,f,game.frame);this.celeb(g,game,true);for(const p of game.projectiles)this.projectile(g,p,p.owner);game.particles.draw(g,true);g.restore();this.weather(g,game,40);if(this.useGL){this.glFinish({bloom:.3*GFX.bloom,ab:0,vc:[0,0,.02],va:.1,grain:GFX.grain?.03:0,t:game.frame})}else this.post.dust(g,this.cv,game.frame/60,'#55eaff',12,.18)}
- // Wetter (Optionen-Menü): 'leaves' | 'rain' | 'both' | 'random'. Bei 'random' wird zu Beginn jedes Kampfes (Runde 1, Intro) neu gewürfelt, auch beim Demokampf der Startseite.
+ // Wetter (Optionen-Menü): 'leaves' | 'rain' | 'fog' | 'both' | 'rainfog' | 'all' | 'random'. Bei 'random' wird zu Beginn jedes Kampfes (Runde 1, Intro) neu gewürfelt, auch beim Demokampf der Startseite.
+ setWeatherAmt(k,v){if(k in this.wxAmt)this.wxAmt[k]=weatherAmt(v)}   // Regler: Blättermenge / Regenmenge / Nebeldichte (0..2, 1 = normal, 0 = Effekt unsichtbar)
  setWeather(m){this.wxMode=weatherMode(m);this.wx=weatherPick(this.wxMode);this.wxLatch=false}
  weather(g,game,oy){if(this.wxMode==='random'){const ro=game.phase==='intro'&&game.round===1;if(ro&&!this.wxLatch)this.wx=weatherPick('random');this.wxLatch=ro}
-  if(this.wx.leaves){this.petals(g,game.frame);this.heaps(g,game)}if(this.wx.rain)this.rain.draw(g,game,oy)}
+  const A=this.wxAmt;if(this.wx.fog&&A.fog>0)this.mist.draw(g,game,oy,A.fog);   // Nebel zuunterst, Blätter darüber, Regen ganz oben
+  if(this.wx.leaves&&A.leaves>0){this.petals(g,game.frame,A.leaves);this.heaps(g,game,A.leaves)}if(this.wx.rain&&A.rain>0)this.rain.draw(g,game,oy,A.rain)}
  // Kirschblütenblätter im Vordergrund (Titelmenü): dezent, rein zeitgesteuert (kein Zustand). Größere = näher an der Kamera = schneller + deckender.
- petals(g,fr){const t=fr/60,N=28;g.save();for(let i=0;i<N;i++){const h=n=>{const q=Math.sin((i+1)*n)*43758.5453;return q-Math.floor(q)},d=.4+h(12.9898)*.6,y=((t*(22+d*38)+h(78.233)*(H+60))%(H+60))-30,x=(((h(39.346)*W+Math.sin(t*(.5+h(11.135))+i)*28*d+t*8*d)%(W+40))+W+40)%(W+40)-20,r=2+d*3.6;
+ petals(g,fr,amt=1){const t=fr/60,N=Math.round(28*amt);g.save();for(let i=0;i<N;i++){const h=n=>{const q=Math.sin((i+1)*n)*43758.5453;return q-Math.floor(q)},d=.4+h(12.9898)*.6,y=((t*(22+d*38)+h(78.233)*(H+60))%(H+60))-30,x=(((h(39.346)*W+Math.sin(t*(.5+h(11.135))+i)*28*d+t*8*d)%(W+40))+W+40)%(W+40)-20,r=2+d*3.6;
   g.save();g.translate(x,y);g.rotate(t*(.8+h(5.7))+i);g.scale(1,.55+.45*Math.abs(Math.sin(t*1.3+i)));g.globalAlpha=.35+d*.45;g.fillStyle=i%3?'#ff9bd0':'#ffd0e8';g.beginPath();g.ellipse(0,0,r*1.25,r*.8,0,0,7);g.fill();g.restore()}g.restore()}
  // Liegenbleibende Blütenblätter (Titelmenü): fallen in 6 Häufchen am unteren Rand und bleiben dort liegen (max. 260). Sobald ein Kämpfer eine Spezialattacke startet, wirbeln alle
  // liegenden Blätter in alle Richtungen weg und werden nach kurzer Verzögerung ausgeblendet+entfernt (danach wird nichts mehr gezeichnet); neue Häufchen sammeln sich von vorn.
- heaps(g,game){const P=this.pt||(this.pt={a:[],acc:0,pf:null,pm:[]}),fr=game.frame,df=P.pf==null?1:Math.max(0,Math.min(4,fr-P.pf)),dt=df/60,C=[90,250,420,560,730,880],R=Math.random;P.pf=fr;
+ heaps(g,game,amt=1){const P=this.pt||(this.pt={a:[],acc:0,pf:null,pm:[]}),fr=game.frame,df=P.pf==null?1:Math.max(0,Math.min(4,fr-P.pf)),dt=df/60,C=[90,250,420,560,730,880],R=Math.random;P.pf=fr;
   const cm=game.camera,fy=cm?(GROUND-cm.y)*(cm.z||1)+H/2:0;P.ref=P.ref==null||fy<P.ref?fy:Math.min(fy,P.ref+6*dt);const dy=Math.max(0,fy-P.ref);   // Kamera geht hoch (Sprung) -> Boden rutscht nach unten -> Haufen bleiben unten zurück (Bezug = tiefste Bodenlage, driftet langsam nach)
   const mk=()=>{const dx=(R()-.5)*56,lx=C[Math.floor(R()*6)]+dx;return{m:'fall',x:lx,y:-20,lx,ly:H-5-R()*6-(1-Math.abs(dx)/28)*7,v:95+R()*60,t:0,ph:R()*6.28,rot:R()*6.28,sy:.55,r:2.6+R()*1.8,c:R()<.67?'#ff9bd0':'#ffd0e8',a:.85}};
   if(!P.init){P.init=1;for(let k=0;k<220;k++){const q=mk();q.m='rest';q.x=q.lx;q.y=q.ly;q.sy=.45;q.rot=q.ph;P.a.push(q)}}   // beim ersten Start liegt schon ein guter Haufen da (erste Spezialattacke wirbelt direkt Blätter auf)
   let boom=0;game.fighters.forEach((f,i)=>{const m=f.move&&f.moves&&f.moves[f.moveName],sp=m&&m.special?m:null;if(sp&&P.pm[i]!==sp)boom=f.facing<0?-1:1;P.pm[i]=sp});
   if(boom)for(const q of P.a)if(q.m==='rest'){q.m='fly';q.y+=dy;q.vx=boom*(160+R()*560)+(R()-.5)*140;q.vy=-(90+R()*430);q.vr=(R()-.5)*14;q.age=0;q.die=1.3+R()*1.7}
-  P.acc+=dt*7;while(P.acc>=1){P.acc--;if(P.a.length>=260)break;P.a.push(mk())}
+  P.acc+=dt*7*amt;while(P.acc>=1){P.acc--;if(P.a.length>=Math.round(260*amt))break;P.a.push(mk())}
   if(!P.a.length)return;const out=[];
   for(const q of P.a){if(q.m==='fall'){q.t+=dt;q.y+=q.v*dt;q.x=q.lx+Math.sin(q.t*.9+q.ph)*28*Math.max(0,1-(q.y+20)/(q.ly+20));q.rot+=dt*1.3;q.sy=.55+.45*Math.abs(Math.sin(q.t*1.3+q.ph));if(q.y>=q.ly){q.m='rest';q.x=q.lx;q.y=q.ly;q.sy=.45;q.rot=q.ph}}
    else if(q.m==='fly'){q.age+=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=1-2.2*dt;q.vy=(q.vy+140*dt)*(1-1.6*dt);q.rot+=q.vr*dt;q.sy=.4+.6*Math.abs(Math.sin(q.age*6+q.ph));q.a=q.age>q.die?Math.max(0,.85*(1-(q.age-q.die)/.6)):.85;if(q.a<=0||q.x<-40||q.x>W+40||q.y>H+40)continue}

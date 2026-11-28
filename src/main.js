@@ -8,7 +8,7 @@ import{CHARACTERS,ROSTER}from'./core/characters.js';
 import{ovrApplyAll,ovrSuspend}from'./core/overrides.js';
 import{MOVE_LIST,charMoves}from'./core/moves.js';
 import{SPEED,GFX,setGfx}from'./core/config.js';
-import{weatherMode}from'./core/weather.js';
+import{weatherAmt,weatherMode}from'./core/weather.js';
 import{openPack,buyPack,LOOT,SHOP,CHAR_SHOP,CHAR_REQ,charReqMet,CARDS,shopCount,buyChar,ownsChar,ownsSkin,ownedStages,sellAdjust,sellCards,sellSelectDupes,sellPreview}from'./core/loot.js';
 import{NetClient,netServerUrl,connectPatient}from'./core/netclient.js';
 import{NetMatch}from'./core/netmatch.js';
@@ -79,7 +79,9 @@ const fillMoves=()=>{if(!ml)return;const c=p1.char;ml.innerHTML=`<tr><td colspan
 function showTab(i){tab=(i+names.length)%names.length;names.forEach((n,k)=>{const s=$('tab-'+n);if(s)s.classList.toggle('hidden',k!==tab);if(tabs[k])tabs[k].classList.toggle('on',k===tab)})}
 tabs.forEach((b,i)=>b.onclick=()=>showTab(i));showTab(0);
 let padFocus=null;   // vom Controller markiertes Element im Pausenmenü
-function setMenu(open){if(padFocus){padFocus.classList.remove('padfocus');padFocus=null}if(open){fillMoves();stamShow();tuneUi()}menuOpen=open;menu.classList.toggle('hidden',!open);clearInputs();if(!open)canvas.focus()}
+function setMenu(open){if(padFocus){padFocus.classList.remove('padfocus');padFocus=null}if(open){fillMoves();stamShow();tuneUi()}menuOpen=open;menu.classList.toggle('hidden',!open);
+ menu.style.zIndex=open&&startOpen?'45':'';const rr=$('btn-restart'),rw=rr&&rr.parentNode;if(rw)rw.style.display=open&&startOpen?'none':'';   // Startseite: Menü liegt über dem Startmenü (z-index 40), „Stage neu starten“ ergibt dort keinen Sinn
+ clearInputs();if(!open)canvas.focus()}
 const fs=()=>{if(document.fullscreenElement)document.exitFullscreen();else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen()};
 canvas.addEventListener('dblclick',fs);
 const on=(id,fn)=>{const e=$(id);if(e)e.onclick=()=>fn(e)};
@@ -110,13 +112,13 @@ const startMode=(m)=>{if(m==='online'){netOpen('start');return}arcade.setMode(m)
 // Cursor gekoppelt: 2 s ohne Mausbewegung -> Menü klappt ein, Bewegung -> klappt wieder aus. Manuell eingeklappt (V/Knopf) bleibt es zu, bis man es selbst wieder öffnet.
 let startMinT=0,startIdleT=0,startPinned=false;
 const startIdleArm=()=>{clearTimeout(startIdleT);if(start&&startOpen&&!startPinned)startIdleT=setTimeout(()=>{if(startOpen&&!startPinned)startMin(true)},2000)};
-const startMin=on=>{if(!start)return;clearTimeout(startMinT);clearTimeout(startIdleT);if(!on)startPinned=false;start.classList.toggle('min',on);const tg=$('startToggle');if(tg)tg.setAttribute('aria-expanded',on?'false':'true');if(!on)startIdleArm()};
+const startMin=on=>{if(!start)return;clearTimeout(startMinT);clearTimeout(startIdleT);if(!on)startPinned=false;start.classList.toggle('min',on);if(!on)startIdleArm()};
 const startManual=()=>{const m=!startIsMin();startMin(m);startPinned=m};
 let startQuiet=0;
 const toStart=()=>{if(!start)return false;clearInputs();startOpen=true;start.classList.remove('hidden');startAutoOpen();canvas.focus();return true};   // zurück zur Startseite (Demokampf), z. B. vom „STARTSEITE“-Knopf der Charakterwahl
 const startAutoOpen=()=>{curShow();startMin(true);startQuiet=performance.now()+700};   // Titelmenü bleibt eingeklappt (freie Sicht auf den Demokampf), bis die Maus bewegt wird (oder eine Taste / V gedrückt wird)
 const startIsMin=()=>!!start&&start.classList.contains('min');
-const startTg=$('startToggle');if(startTg)startTg.onclick=()=>{startManual();canvas.focus()};
+
 // Mauszeiger selbst: 2 s ohne Bewegung unsichtbar, bei Bewegung wieder sichtbar (nur im Titelmenü)
 // Gilt jetzt in ALLEN Menüs (Titel, Charakter-/Stage-Wahl, Shop/Booster, Game Over / Sieg, Pause, Panels): Zeiger sichtbar bei Bewegung, nach 2 s Ruhe weg. Im Kampf bleibt er aus.
 let startCurT=0,curWas=false,mouseL=null,endHot=-1;
@@ -160,7 +162,8 @@ if(mvol){mvol.value=String(sound.mvol);mvol.oninput=()=>{sound.setMusicVolume(+m
 const showMusic=()=>{if(mmute){mmute.textContent=sound.mmuted?'Aus':'An';mmute.classList.toggle('on',!sound.mmuted)}};showMusic();
 if(mmute)mmute.onclick=()=>{sound.setMusicMuted(!sound.mmuted);save('tf_music_mute',sound.mmuted?'1':'0');showMusic()};
 const gsel=$('gfx');if(gsel){gsel.value=String(gfxMode);gsel.onchange=()=>{gfxMode=gsel.value;save('tf_gfx',gfxMode);if(gfxMode==='auto')setGfx(2);autoT=0;applyGfx()}}
-const wsel=$('weather');{const wm=weatherMode(load('tf_weather','leaves'));renderer.setWeather(wm);if(wsel){wsel.value=wm;wsel.onchange=()=>{save('tf_weather',weatherMode(wsel.value));renderer.setWeather(wsel.value)}}}   // Wetter: Blätter / Regen / Beides / Zufällig, gemerkt in localStorage tf_weather
+const wsel=$('weather');{const wm=weatherMode(load('tf_weather','all'));renderer.setWeather(wm);if(wsel){wsel.value=wm;wsel.onchange=()=>{save('tf_weather',weatherMode(wsel.value));renderer.setWeather(wsel.value)}}}   // Wetter: Blätter / Regen / Beides / Zufällig, gemerkt in localStorage tf_weather
+for(const k of['leaves','rain','fog']){const el=$('wx'+k),lb=$(k+'val');if(!el)continue;const v=Math.round(weatherAmt(load('tf_wx_'+k,'1'))*100);el.value=String(v);if(lb)lb.textContent=v+'%';renderer.setWeatherAmt(k,v/100);el.oninput=()=>{const p=+el.value;if(lb)lb.textContent=p+'%';renderer.setWeatherAmt(k,p/100);save('tf_wx_'+k,String(p/100))}}   // Regler Blättermenge / Regenmenge / Nebeldichte (0–200 %, gemerkt in tf_wx_*)
 const sp=$('speed');if(sp)sp.oninput=()=>{speed=+sp.value;$('speedval').textContent=speed.toFixed(1)+'×'};
 if(sp){sp.value=speed;$('speedval').textContent=speed.toFixed(1)+'×'}
 // ---- Startmenü (Charakterwahl): Tastatur + Maus ----
@@ -333,7 +336,9 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'){fs();return}
   if(e.code==='F2'){game.debug=!game.debug;e.preventDefault()}
   return}
- if(startOpen){               // Auf der Startseite nur Modus wählen / starten
+ if(startOpen){               // Auf der Startseite nur Modus wählen / starten (und M öffnet das Optionen-Menü)
+  if(e.code==='KeyM'){setMenu(!menuOpen);e.preventDefault();return}
+  if(menuOpen){if(e.code==='Escape'){setMenu(false);e.preventDefault()}else if(e.code==='ArrowRight')showTab(tab+1);else if(e.code==='ArrowLeft')showTab(tab-1);return}   // Menü offen: die Tasten gehören dem Menü (Tab/Enter/Pfeile bedienen Regler und Felder), nicht dem Startmenü
   if(e.code==='KeyV')startManual();
   else if(startIsMin()&&(e.code==='ArrowRight'||e.code==='KeyD'||e.code==='Tab'||e.code==='ArrowLeft'||e.code==='KeyA'||e.code==='Enter'||e.code==='Space'||e.code==='KeyJ'))startMin(false);   // eingeklappt: erste Taste klappt nur auf
   else if(e.code==='ArrowRight'||e.code==='KeyD'||e.code==='Tab')startPick(1);
