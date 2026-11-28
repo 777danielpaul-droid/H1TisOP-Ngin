@@ -518,3 +518,6 @@ Jeder Boss hat sein eigenes **Level-Paket** (in `src/core/story.js`, `CHAPTERS`)
 
 ## Konto & Cloud-Spielstand (Supabase)
 Login + Cloud-Sicherung des Spielstands, siehe `docs/SUPABASE.md`. Code: `src/core/cloud.js`, `src/render/cloudui.js`, `supabase/`, `tools/supabase-setup.mjs` (`./supabase-setup.sh`), Test `tests/cloud.test.js`. Neue Felder in `LOOT`/Unlocks/Skins werden automatisch synchronisiert (Zahlen = Maximum, Listen = Vereinigung beim Zusammenführen). Ohne `supabase.config.json` ist die Funktion unsichtbar/aus.
+
+## Punkte & Highscores (Arcade)
+`src/core/score.js` (Formel `SCORE`, lokale Liste), Statistik `fighter.sc`, Run-Logik `Arcade.scoreStage()`/`onRun`, Anzeige in `render/hud.js` (Stage-/Ende-Bildschirm) und Reiter „Bestenliste“ in `render/cloudui.js`, Cloud: `supabase/migrations/…_highscores.sql` (`submit_highscore`). Siehe `docs/SUPABASE.md`.

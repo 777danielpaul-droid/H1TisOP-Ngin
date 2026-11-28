@@ -16,7 +16,7 @@ import{NetInput,NET,encInput}from'./core/netplay.js';
 import{STAMINA,tuneClamp}from'./core/config.js';
 import{NetUi,netMessage}from'./render/netui.js';
 import{CloudUi}from'./render/cloudui.js';
-import{cloudOn,cloudUser,cloudLast,cloudSignIn,cloudSignUp,cloudSignOut,cloudSync,cloudBoot,cloudMessage,cloudCheck,cloudGoogleOk,cloudGoogleStart,cloudSubmitScore,cloudFlushScore,cloudBoard,cloudSetName,cloudName}from'./core/cloud.js';
+import{cloudOn,cloudUser,cloudLast,cloudSignIn,cloudSignUp,cloudSignOut,cloudSync,cloudBoot,cloudMessage,cloudCheck,cloudGoogleOk,cloudGoogleStart,cloudSubmitScore,cloudPushName,cloudFlushScore,cloudBoard,cloudSetName,cloudName}from'./core/cloud.js';
 import{loadScores}from'./core/score.js';
 import{skinCount,skinName}from'./render/skins.js';
 import{THEMES}from'./render/stage.js';
@@ -289,20 +289,20 @@ const netCat={chars:()=>ROSTER.map(id=>({id,name:CHARACTERS[id].name,desc:CHARAC
 const cloudWho=id=>(CHARACTERS[id]&&CHARACTERS[id].name)||id;   // vor cloudUi definiert: mount() ruft ctx() sofort auf
 const cloudUi=new CloudUi({open:()=>cloudOpen(),ctx:()=>({on:cloudOn(),user:cloudUser(),last:cloudLast,google:cloudGoogleOk(),name:cloudName(),local:loadScores().slice(0,5).map(e=>({...e,who:cloudWho(e.fighter)}))}),act:(a,v)=>cloudAct(a,v)});cloudUi.mount();
 // Arcade-Durchlauf beendet (core/arcade.js onRun): Bestwert in die Cloud, falls angemeldet (lokal ist er schon gespeichert)
-arcade.onRun=e=>{cloudSubmitScore(e).then(r=>{if(r&&r.state==='ok')padToast('☁ Highscore gesichert'+(r.rank?' · Platz '+r.rank:''),true);else if(r&&(r.state==='offline'||r.state==='error'))padToast('☁ Highscore wird später gesichert',false)}).catch(()=>{})};
+arcade.onRun=e=>{cloudSubmitScore(e).then(r=>{if(r&&r.state==='ok')padToast('☁ Highscore gesichert'+(r.rank?' · Platz '+r.rank:''),true);else if(r&&r.state==='rejected')padToast('☁ Highscore nicht gewertet (Werte nicht plausibel)',false);else if(r&&(r.state==='offline'||r.state==='error'))padToast('☁ Highscore wird später gesichert',false)}).catch(()=>{})};
 function cloudOpen(view){if(netMatch||intro.active)return;clearInputs();cloudUi.open(view)}
 async function cloudAct(a,v){
  if(a==='close'){cloudUi.close();canvas.focus();return}
  if(a==='board'){try{const rows=await cloudBoard(10);return{rows:rows.map(r=>({...r,who:cloudWho(r.fighter)}))}}catch(e){return{rows:null,msg:cloudMessage(e.code),bad:true}}}
- if(a==='name'){try{cloudSetName(v.name)}catch(e){return{msg:cloudMessage(e.code),bad:true}}const b=loadScores()[0];if(b)await cloudSubmitScore(b);return{msg:'Gespeichert: '+cloudName()}}
+ if(a==='name'){try{cloudSetName(v.name)}catch(e){return{msg:cloudMessage(e.code),bad:true}}await cloudPushName();return{msg:'Gespeichert: '+cloudName()}}
  if(a==='google'){try{await cloudGoogleStart()}catch(e){return{msg:cloudMessage(e.code),bad:true}}return{msg:'Weiterleitung zu Google …'}}
  if(a==='signout'){await cloudSignOut();return{msg:'Abgemeldet. Dein Spielstand bleibt auf diesem Gerät.'}}
  if(a==='sync'){const r=await cloudSync();if(r.reload){location.reload();return}return{msg:r.state==='ok'?'':cloudMessage(r.state==='offline'?'network':r.code||'error'),bad:r.state!=='ok'}}
  if(a==='signin'||a==='signup'){const bad=cloudCheck(v.email,v.pw);if(bad)return{msg:cloudMessage(bad),bad:true};
   try{if(a==='signup'){const r=await cloudSignUp(v.email,v.pw);if(r.confirm)return{msg:'Fast geschafft: Wir haben dir eine E-Mail geschickt. Link anklicken, dann hier anmelden.'}}else await cloudSignIn(v.email,v.pw)}
   catch(e){return{msg:cloudMessage(e.code),bad:true}}
-  const r=await cloudBoot();if(r.reload){location.reload();return}cloudFlushScore(loadScores()[0]).catch(()=>{});return{msg:''}}}
-cloudBoot().then(r=>{if(r.reload)location.reload();else{cloudFlushScore(loadScores()[0]).catch(()=>{});cloudUi.refreshChip();if(r.oauthError){cloudOpen();cloudUi.say(cloudMessage(r.oauthError),true)}}}).catch(()=>{});
+  const r=await cloudBoot();if(r.reload){location.reload();return}cloudFlushScore(loadScores()).catch(()=>{});return{msg:''}}}
+cloudBoot().then(r=>{if(r.reload)location.reload();else{cloudFlushScore(loadScores()).catch(()=>{});cloudUi.refreshChip();if(r.oauthError){cloudOpen();cloudUi.say(cloudMessage(r.oauthError),true)}}}).catch(()=>{});
 const netUi=new NetUi({ctx:()=>({client:netClient,match:netMatch,busy:netBusy}),act:(a,v)=>netAct(a,v),cat:netCat});netUi.mount();
 function netOpen(from){netFrom=from;if(from==='start'&&start){startOpen=false;start.classList.add('hidden')}
  if(arcade.state==='select')arcade.setMode('versus');clearInputs();netUi.open(netClient?'':'')}

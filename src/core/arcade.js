@@ -49,7 +49,7 @@ export class Arcade{
  applyDifficulty(){const d=Math.min(MAX_DIFF,this.difficulty+(this.isBoss()?1:0));this.ai.setLevel(d);if(this.ai1)this.ai1.setLevel(d)}   // Endgegner: KI eine Stufe härter
  setDifficulty(d){this.difficulty=Math.max(0,Math.min(MAX_DIFF,d|0));if(this.state!=='select')this.applyDifficulty()}
  // Punkte einer beendeten Stage (nur Arcade): Sieg -> weiter (clear/victory), Niederlage -> gameover. Ende des Durchlaufs = Highscore (lokal + onRun)
- scoreStage(st){if(this.mode!=='arcade')return;const b=stageScore(this.p1.sc,{won:st!=='gameover',diff:this.difficulty,boss:this.isBoss()});this.run=addStage(this.run,b);const fin=st!=='clear';this.lastScore={...b,run:this.run.total,final:fin,rank:0,best:0,stage:this.stage};
+ scoreStage(st){if(this.mode!=='arcade')return;const b=stageScore(this.p1.sc,{won:st!=='gameover',diff:this.difficulty,boss:this.isBoss(),rounds:this.game.round});this.run=addStage(this.run,b);const fin=st!=='clear';this.lastScore={...b,run:this.run.total,final:fin,rank:0,best:0,stage:this.stage};
   if(fin){const e=runEntry(this.run,{char:this.player,diff:this.difficulty,win:st==='victory'});this.lastScore.best=bestScore();this.lastScore.rank=saveScore(e);this.lastScore.entry=e;this.run=newRun();if(this.onRun)try{this.onRun(e)}catch(x){}}}
  retry(){this.run=newRun();this.lastScore=null;this.game.rematch();this.state='fight';this.t=0}
  toSelect(){this.leaveStory();this.online=false;this.state='select';this.game.stageIndex=0;this.t=0;this.vsReset()}
