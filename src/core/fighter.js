@@ -1,4 +1,5 @@
 import{AIR,BARRIER,BOUNCE,COMBO_FINISH,GROUND,MELEE,PHYS,SPAM,STAMINA,WALL_L,WALL_R}from'./config.js';
+import{freshStats}from'./score.js';
 const K1={regen:1,delay:1,empty:1,rest:1};   // Ausdauer-Regler (Menü) – Standardfaktoren, siehe Game.stamTune
 import{Hitbox}from'./hitbox.js';
 import{buildMoves}from'./moves.js';
@@ -15,7 +16,7 @@ function finisherOf(base){let m=FIN_MOVES.get(base);if(m)return m;const F=COMBO_
  m={...base,label:'SUPER '+(base.label||'SPECIAL'),super:true,cfin:true,cost:0,rc:(base.rc||18)+12,glow:1,base,proj:[].concat(base.proj).map(up)};delete m.v;FIN_MOVES.set(base,m);return m}
 export class Fighter{
  constructor({char,x,facing,input}){this.id=UID++;this.char=char;this.skin=0;this.input=input;this.moves=buildMoves(char);
-  this.maxHp=char.hp;this.startX=x;this.startFacing=facing;this.wins=0;this.meter=0;this.trail=[];this.comboShow={hits:0,dmg:0,t:0};this.reset()}
+  this.maxHp=char.hp;this.startX=x;this.startFacing=facing;this.wins=0;this.meter=0;this.sc=freshStats();this.trail=[];this.comboShow={hits:0,dmg:0,t:0};this.reset()}
  // Melee-Felder: pct = Schaden in %, stocks = Leben, dead = Frames bis Respawn, inv = Unverwundbarkeit, hover = Schweben auf der Respawn-Plattform, onStage/under = Boden unter den Füßen?
  reset(){Object.assign(this,{x:this.startX,y:GROUND,vx:0,vy:0,facing:this.startFacing,hp:this.maxHp,state:'idle',sf:0,mf:0,move:null,moveName:'',
   hitDone:false,contact:false,hitCd:0,stun:0,coyote:0,airJumps:this.maxAJ,airDashes:1,launched:false,chainLen:0,comboHits:0,comboDmg:0,juggle:0,pop:false,hard:false,landLag:0,dashDir:0,

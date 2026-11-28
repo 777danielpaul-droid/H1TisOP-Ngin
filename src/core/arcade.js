@@ -5,6 +5,7 @@ const tuneFromCfg=a=>Object.fromEntries(TUNE_KEYS.map((k,i)=>[k,tuneClamp(k,Arra
 import{BOSS,CHARACTERS,CLEAR_UNLOCKS,LADDER,ROSTER,unlockChar}from'./characters.js';
 import{MELEE,ROUND}from'./config.js';
 import{ownedStages,ownsSkin,ownsStage}from'./loot.js';
+import{addStage,bestScore,newRun,runEntry,saveScore,stageScore}from'./score.js';
 import{CHAPTERS,Story}from'./story.js';
 import{addClear,loadUnlocks,saveUnlock}from'./unlocks.js';
 
@@ -14,7 +15,7 @@ export const MAX_DIFF=AI_LEVELS.length-1;   // höchste wählbare Schwierigkeit 
 // Zustände: select | fight | clear | gameover | victory. Rein logisch (kein DOM) -> testbar.
 export class Arcade{
  constructor(game,p1,p2,ai,ai1=null){this.game=game;this.p1=p1;this.p2=p2;this.ai=ai;this.ai1=ai1;this.state='select';this.cursor=0;this.difficulty=0;
-  this.opponents=[];this.stage=0;this.t=0;this.player=null;game.arcade=this;
+  this.opponents=[];this.stage=0;this.t=0;this.player=null;game.arcade=this;this.run=newRun();this.lastScore=null;this.onRun=null;   // Punkte: run = laufender Durchlauf, lastScore = Aufschlüsselung der letzten Stage, onRun(entry) = Durchlauf beendet (Cloud-Highscore)
   this.skins={};this.newUnlock=null;this.chapter=1;this.chOpen=new Set([1]);this.refreshChapters();this.mode='arcade';this.cpu=true;this.stocks=MELEE.stocks;   // mode: arcade | versus | aivsai | melee; cpu = Spieler 2 ist die KI (nur Melee); stocks = Leben im Melee
   this.vs={c1:0,c2:1,s1:0,s2:0,locked:[false,false],step:0,stage:0};this.vsStage=0;this.stageCount=4;this.online=false}
  get total(){return this.opponents.length}
@@ -41,13 +42,16 @@ export class Arcade{
  get hasNextChapter(){return this.mode==='story'&&this.chapter<CHAPTERS.length}
  leaveStory(){const g=this.game;g.stamForce=null;g.tuneForce=null;if(!g.story)return;   // lokale Ausdauer-Einstellung gilt wieder (Online setzt sie in startOnline)
   g.story=null;g.camera.story=null;g.fighters=[this.p1,this.p2];this.p2.x=620}
- start(playerId){if(this.mode==='story')return this.startStory(playerId);this.leaveStory();this.newUnlock=null;this.player=playerId;this.opponents=Arcade.ladderFor(playerId);this.stage=0;this.p1.setChar(CHARACTERS[playerId],this.skinOf(playerId));this.beginStage()}
+ start(playerId){if(this.mode==='story')return this.startStory(playerId);this.leaveStory();this.newUnlock=null;this.run=newRun();this.lastScore=null;this.player=playerId;this.opponents=Arcade.ladderFor(playerId);this.stage=0;this.p1.setChar(CHARACTERS[playerId],this.skinOf(playerId));this.beginStage()}
  beginStage(){const g=this.game,oid=this.opponents[this.stage];this.p2.setChar(CHARACTERS[oid],this.skinOf(oid));this.applyDifficulty();
   {const own=ownedStages(this.stageCount);g.stageIndex=own[this.stage%own.length]}   // freigeschaltete Arenen der Reihe nach (bei mehr Gegnern als Arenen wiederholen sie sich)
   g.meleeOn=false;g.rematch();this.state='fight';this.t=0}
  applyDifficulty(){const d=Math.min(MAX_DIFF,this.difficulty+(this.isBoss()?1:0));this.ai.setLevel(d);if(this.ai1)this.ai1.setLevel(d)}   // Endgegner: KI eine Stufe härter
  setDifficulty(d){this.difficulty=Math.max(0,Math.min(MAX_DIFF,d|0));if(this.state!=='select')this.applyDifficulty()}
- retry(){this.game.rematch();this.state='fight';this.t=0}
+ // Punkte einer beendeten Stage (nur Arcade): Sieg -> weiter (clear/victory), Niederlage -> gameover. Ende des Durchlaufs = Highscore (lokal + onRun)
+ scoreStage(st){if(this.mode!=='arcade')return;const b=stageScore(this.p1.sc,{won:st!=='gameover',diff:this.difficulty,boss:this.isBoss()});this.run=addStage(this.run,b);const fin=st!=='clear';this.lastScore={...b,run:this.run.total,final:fin,rank:0,best:0,stage:this.stage};
+  if(fin){const e=runEntry(this.run,{char:this.player,diff:this.difficulty,win:st==='victory'});this.lastScore.best=bestScore();this.lastScore.rank=saveScore(e);this.lastScore.entry=e;this.run=newRun();if(this.onRun)try{this.onRun(e)}catch(x){}}}
+ retry(){this.run=newRun();this.lastScore=null;this.game.rematch();this.state='fight';this.t=0}
  toSelect(){this.leaveStory();this.online=false;this.state='select';this.game.stageIndex=0;this.t=0;this.vsReset()}
  // ---- 2-Spieler-Modus (PvP): beide wählen einen Kämpfer, danach die Stage ----
  static slotIds(){return[...ROSTER,...(CHARACTERS.custom?['custom']:[])]}
@@ -84,7 +88,7 @@ export class Arcade{
   if(this.mode==='story'&&g.story){const s=g.story;   // Story: Ende = Spieler besiegt (gameover) oder Level geschafft (victory)
    if(this.state==='fight'){if(g.phase==='storyover'&&g.pf>=90){this.state='gameover';this.t=0}else if(s.state==='done'&&s.doneT>260){this.state='victory';this.t=0;this.unlockChapter(this.chapter+1);saveUnlock('storydone'+this.chapter);if(this.chapter>=CHAPTERS.length){if(unlockChar('leon')&&!this.newUnlock)this.newUnlock='leon';this.countClear()}}}else this.t++;return}
   if(this.state==='fight'&&g.phase==='match'&&g.pf>=70){
-   if(this.pvp)this.state='vsover';else if(this.p1.wins>=ROUND.wins)this.state=this.stage>=this.total-1?'victory':'clear';else this.state='gameover';this.t=0;if(this.state==='victory')this.countClear()}
+   if(this.pvp)this.state='vsover';else if(this.p1.wins>=ROUND.wins)this.state=this.stage>=this.total-1?'victory':'clear';else this.state='gameover';this.t=0;if(!this.pvp)this.scoreStage(this.state);if(this.state==='victory')this.countClear()}
   else if(this.state==='clear'){if(++this.t>=240)this.next()}   // automatisch weiter (Enter überspringt)
   else this.t++}
 }

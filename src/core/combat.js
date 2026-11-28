@@ -33,12 +33,12 @@ export function hit(game,a,b,mv,rect,isProj){
  // ---- Rüstung: steckt den Treffer ein (60 % Schaden), kein Hitstun, Move läuft weiter ----
  if(b.state==='attack'&&b.move&&b.move.armor&&b.mf>=b.move.armor[0]&&b.mf<=b.move.armor[1]){
   const ad=Math.max(1,Math.round(mv.dmg*a.dmgMul()*def*.6*COMBO_SCALE[Math.min(b.comboHits,COMBO_SCALE.length-1)]));
-  b.hp-=ad;b.armorFlash=8;a.meter=Math.min(METER.max,a.meter+ad*.28*mtr);b.meter=Math.min(METER.max,b.meter+ad*.2);
+  b.hp-=ad;if(a.sc){a.sc.hits++;a.sc.dmg+=ad}if(b.sc){b.sc.taken++;b.sc.roundTaken++}b.armorFlash=8;a.meter=Math.min(METER.max,a.meter+ad*.28*mtr);b.meter=Math.min(METER.max,b.meter+ad*.2);
   game.hitstop=Math.max(game.hitstop,Math.min(mv.hstop,6));game.shake=Math.max(game.shake,3);game.fx.block(sx,sy,'#ffd23f');game.fx.hit(sx,sy,1,'#ffd23f',a.facing);game.sfx('heavy_hit_impact',{vol:.6});
   if(b.hp<=0){b.hp=0;game.knockout(b,a)}return}
  // ---- Block ----
  if(b.isBlocking(mv)){
-  const chip=Math.round(mv.dmg*a.dmgMul()*def*.1*(b.stamOn&&b.exh?STAMINA.exhaust.chip:1));b.hp=Math.max(1,b.hp-chip);
+  const chip=Math.round(mv.dmg*a.dmgMul()*def*.1*(b.stamOn&&b.exh?STAMINA.exhaust.chip:1));b.hp=Math.max(1,b.hp-chip);if(b.sc)b.sc.blocks++;
   if(b.stamOn)b.spendSt(STAMINA.block.base+mv.dmg*a.dmgMul()*STAMINA.block.perDmg);   // Blocken kostet Ausdauer (leer + erschöpft: mehr Block-Schaden)
   b.blockCrouch=b.grounded&&b.input.dy>0;b.move=null;b.state='block';b.sf=0;b.stun=mv.bs;b.vx=a.facing*mv.pbb;
   if(pinned)a.vx=-a.facing*mv.pbb;
@@ -52,6 +52,7 @@ export function hit(game,a,b,mv,rect,isProj){
  const dmg=Math.max(1,Math.round(mv.dmg*a.dmgMul()*scale*def*rv));
  if(rv>1)game.pop(b.x,b.y-170,'ERWISCHT!','#ffd166',1.15,{text:true,dx:0});
  b.hp-=dmg;b.comboHits++;b.comboDmg+=dmg;b.comboFlash=10;
+ if(a.sc){a.sc.hits++;a.sc.dmg+=dmg;if(b.comboHits>a.sc.maxCombo)a.sc.maxCombo=b.comboHits}if(b.sc){b.sc.taken++;b.sc.roundTaken++}   // Punkte-Statistik (core/score.js)
  const air=!b.grounded;if(air)b.airHits++;b.comboShow={hits:b.comboHits,dmg:b.comboDmg,t:100,air:b.airHits};
  a.meter=Math.min(METER.max,a.meter+dmg*.28*mtr);b.meter=Math.min(METER.max,b.meter+dmg*.14);
  b.move=null;b.noGrav=false;

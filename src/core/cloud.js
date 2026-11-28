@@ -3,7 +3,7 @@
 // Der Key ist der ÖFFENTLICHE (anon/publishable) Schlüssel – die Sicherheit kommt von Row Level Security in der Datenbank (supabase/migrations). Nie einen service_role-Key hier eintragen.
 // Abgleich: Hash des zuletzt abgeglichenen Stands (CL_HASH) zeigt, ob lokal etwas geändert wurde; CL_SYNC = updated_at der Cloud-Zeile beim letzten Abgleich.
 //   lokal unverändert -> Cloud-Stand übernehmen · nur lokal geändert -> hochladen · beides geändert (oder erster Abgleich auf diesem Gerät) -> zusammenführen (Zahlen: größerer Wert, Listen: Vereinigung).
-const CL_PKCE='hitisop.cloud.pkce',CL_SESSION='hitisop.cloud.session',CL_SYNC='hitisop.cloud.sync',CL_HASH='hitisop.cloud.hash';
+const CL_NAME='hitisop.cloud.name',CL_SENT='hitisop.cloud.sent',CL_PKCE='hitisop.cloud.pkce',CL_SESSION='hitisop.cloud.session',CL_SYNC='hitisop.cloud.sync',CL_HASH='hitisop.cloud.hash';
 export const CL_KEYS={loot:'hitisop.loot',unlocks:'hitisop.unlocks',clears:'hitisop.clears',skins:'hitisop.skins'};
 const clRd=k=>{try{return localStorage.getItem(k)}catch(e){return null}},clWr=(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}},clDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
 const clCfg=()=>{try{const c=globalThis.__SUPABASE__;return c&&typeof c.key==='string'&&c.key&&/^(https:\/\/[a-z0-9-]+\.supabase\.(co|in)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/i.test(String(c.url||''))?c:null}catch(e){return null}};
@@ -60,7 +60,7 @@ export async function cloudSignUp(email,pw){const j=await clFetch('/auth/v1/sign
 export async function cloudSignIn(email,pw){clStore(await clFetch('/auth/v1/token?grant_type=password',{method:'POST',body:{email,password:pw}}));return cloudUser()}
 export async function cloudSignOut(){try{if(clSess())await cloudSync({live:true})}catch(e){}
  const s=clSess();if(s){try{await clFetch('/auth/v1/logout?scope=local',{method:'POST',token:s.access_token})}catch(e){}}
- clDel(CL_SESSION);clDel(CL_SYNC);clDel(CL_HASH);cloudLast={state:'out',at:0}}   // lokaler Stand bleibt auf diesem Gerät
+ clDel(CL_SESSION);clDel(CL_SYNC);clDel(CL_HASH);clDel(CL_SENT);cloudLast={state:'out',at:0}}   // lokaler Stand bleibt auf diesem Gerät
 
 // ---- Abgleich ----
 export let cloudLast={state:cloudOn()?'out':'off',at:0};
@@ -112,10 +112,27 @@ export function cloudWatch(){if(clWatching)return;clWatching=true;
  try{const flush=()=>{try{const s=clSess(),c=clCfg();if(!s||!c||s.expires_at-5<=Date.now()/1000)return;const d=cloudCollect();if(cloudCanon(d)!==clRd(CL_HASH))clPush(s.access_token,s.user.id,d,true).catch(()=>{})}catch(e){}};   // Seite wird versteckt/geschlossen: ungesicherten Stand noch schnell hochladen
   addEventListener('pagehide',flush);addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()})}catch(e){}}
 
+// ---- Bestenliste (Tabelle highscores + Funktion submit_highscore, siehe supabase/migrations) ----
+// Lesen darf jeder (auch ohne Konto); Eintragen nur mit Konto. Die Spieler-ID kommt serverseitig aus dem Login. Angezeigt wird nur ein frei wählbarer Spielername (kein E-Mail-/Google-Name).
+export const cloudCleanName=n=>String(n||'').replace(/[^A-Za-z0-9 äöüÄÖÜß_.-]/g,'').trim().slice(0,16);
+export const cloudName=()=>{const n=cloudCleanName(clRd(CL_NAME));if(n.length>=2)return n;const u=clSess();return'SPIELER-'+(u?u.user.id.replace(/-/g,'').slice(0,4).toUpperCase():'0000')};
+export function cloudSetName(n){const c=cloudCleanName(n);if(c.length<2)throw clErr('bad_name');clWr(CL_NAME,c);return c}
+const clInt=(v,hi)=>Math.max(0,Math.min(hi,Math.trunc(+v)||0));
+// e = Eintrag aus core/score.js. Der Server behält nur den besten Wert je Spieler. Rückgabe {state:'ok'|'out'|'offline'|'error', rank}
+export async function cloudSubmitScore(e){if(!clCfg()||!clSess()||!e)return{state:'out'};
+ try{const tok=await clToken();if(!tok)return{state:'out'};
+  const r=await clFetch('/rest/v1/rpc/submit_highscore',{method:'POST',token:tok,body:{p_name:cloudName(),p_score:clInt(e.score,500000),p_fighter:String(e.fighter||'').replace(/[^A-Za-z0-9_]/g,'').slice(0,24)||'unknown',p_stages:clInt(e.stages,40),p_diff:clInt(e.diff,9),p_win:!!e.win,p_hits:clInt(e.hits,99999),p_taken:clInt(e.taken,99999),p_max_combo:clInt(e.maxCombo,999)}});
+  clWr(CL_SENT,String(clInt(e.score,500000)));return{state:'ok',rank:typeof r==='number'?r:0}}
+ catch(x){return{state:x.code==='network'?'offline':'error',code:x.code}}}
+// Beim Start / nach dem Anmelden: besten lokalen Wert nachreichen, falls er noch nicht in der Cloud ist (Offline gespielt, vor dem Anmelden gespielt)
+export async function cloudFlushScore(best){if(!best||!clSess())return null;if(best.score<=(parseInt(clRd(CL_SENT)||'0',10)||0))return null;return cloudSubmitScore(best)}
+export async function cloudBoard(limit=10){const n=clInt(limit,50)||10,j=await clFetch('/rest/v1/highscores?select=name,score,fighter,stages,diff,win&order=score.desc&limit='+n);
+ return(Array.isArray(j)?j:[]).slice(0,n).map(r=>({name:cloudCleanName(r&&r.name)||'?',score:clInt(r&&r.score,500000),fighter:String(r&&r.fighter||'').replace(/[^A-Za-z0-9_]/g,'').slice(0,24),stages:clInt(r&&r.stages,40),diff:clInt(r&&r.diff,9),win:!!(r&&r.win)}))}
+
 // ---- Fehlertexte ----
 const CL_MSG={invalid_credentials:'E-Mail oder Passwort stimmt nicht.',user_already_exists:'Zu dieser E-Mail gibt es schon ein Konto – bitte anmelden.',email_exists:'Zu dieser E-Mail gibt es schon ein Konto – bitte anmelden.',
  weak_password:'Das Passwort ist zu schwach (mindestens 8 Zeichen).',email_not_confirmed:'Bitte zuerst den Link in der Bestätigungs-Mail anklicken.',over_request_rate_limit:'Zu viele Versuche – bitte kurz warten.',over_email_send_rate_limit:'Zu viele E-Mails – bitte später nochmal.',
  signup_disabled:'Neue Konten sind gerade nicht möglich.',validation_failed:'Bitte eine gültige E-Mail-Adresse und ein Passwort eingeben.',network:'Keine Verbindung zum Cloud-Server.',nocfg:'Der Cloud-Speicher ist in dieser Version nicht eingerichtet (supabase-setup ausführen).',
- bad_email:'Bitte eine gültige E-Mail-Adresse eingeben.',oauth_denied:'Die Anmeldung mit Google wurde abgebrochen.',oauth_failed:'Die Anmeldung mit Google hat nicht geklappt – bitte nochmal versuchen.',nogoogle:'Google-Anmeldung geht nur online oder über localhost (nicht als lokale Datei).',bad_pw:'Das Passwort braucht mindestens 8 Zeichen.'};
+ bad_email:'Bitte eine gültige E-Mail-Adresse eingeben.',bad_name:'Der Spielername braucht 2–16 Zeichen (Buchstaben, Zahlen, Leerzeichen, _ . -).',oauth_denied:'Die Anmeldung mit Google wurde abgebrochen.',oauth_failed:'Die Anmeldung mit Google hat nicht geklappt – bitte nochmal versuchen.',nogoogle:'Google-Anmeldung geht nur online oder über localhost (nicht als lokale Datei).',bad_pw:'Das Passwort braucht mindestens 8 Zeichen.'};
 export const cloudMessage=code=>CL_MSG[code]||'Das hat nicht geklappt ('+(code||'Fehler')+').';
 export const cloudCheck=(email,pw)=>!/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(email)?'bad_email':pw.length<8||pw.length>72?'bad_pw':'';

@@ -6,6 +6,7 @@ import{Effects}from'./effects.js';
 import{meleeBlast,meleeRespawn,meleeWinnerOnTime}from'./melee.js';
 
 import{ParticleSystem}from'./particles.js';
+import{freshStats}from'./score.js';
 import{Projectile}from'./projectile.js';
 
 
@@ -27,12 +28,12 @@ export class Game{
  sfx(n,o){if(this.audio)this.audio.play(n,o)}
  sfxList(l){if(this.audio)for(const[n,o]of l)this.audio.play(n,o)}
  startRound(){this.cineW=0;this.cineT=0;this.arena.reset();this.pops=[];this.kickX=this.kickY=0;this.aberr=0;this.impact=null;this.celeb=null;this.slow=0;this.timeScale=1;this.fin=null;this.finA=0;this.sfx('ui_round_start',{vol:.8});this.projectiles=[];this.phase='intro';this.pf=0;this.timeFrames=ROUND.time*60;this.hitstop=0;this.superFlash=0;this.superOwner=null;this.shake=0;this.flash=0;this.winner=null;this.timedOut=false;
-  for(const f of this.fighters){f.reset();f.input.clear()}
+  for(const f of this.fighters){f.reset();f.input.clear();if(f.sc)f.sc.roundTaken=0}
   if(this.story){this.story.begin();this.timeFrames=1e9}
   this.melee=this.meleeOn?{stocks:this.meleeStocks}:null;this.camera.melee=!!this.melee;   // Melee: Stocks statt Runden, keine Wände, offene Plattform
   if(this.melee){this.arena.setOpen(-5000,5000);for(const f of this.fighters)f.stocks=this.melee.stocks;this.timeFrames=MELEE.time*60}
   this.camera.snap(this.fighters)}
- rematch(){this.round=1;for(const f of this.fighters){f.wins=0;f.meter=0}this.startRound()}
+ rematch(){this.round=1;for(const f of this.fighters){f.wins=0;f.meter=0;f.sc=freshStats()}this.startRound()}
  spawnProjectile(f,mv,d=mv.proj){this.sfx('whoosh_heavy',{vol:.6,rate:.85});this.projectiles.push(new Projectile(f,mv,d))}
  // Schadenszahl / Text-Pop (Welt-Koordinaten); kind: 'dmg' | 'text'
  pop(x,y,s,col,size=1,o={}){if(this.pops.length>14)this.pops.shift();this.pops.push({x,y,s:String(s),col:col||'#fff',size,age:0,life:o.life||46,dx:o.dx!==undefined?o.dx:(Math.random()-.5)*34,rot:(Math.random()-.5)*.18,text:!!o.text,tech:!!o.tech})}
@@ -113,7 +114,8 @@ export class Game{
   const WL=this.arena.l,WR=this.arena.r;for(const f of[a,b]){if(f.x<WL){const o=WL-f.x;f.x=WL;(f===a?b:a).x+=o}if(f.x>WR){const o=f.x-WR;f.x=WR;(f===a?b:a).x-=o}}}
  timeUp(){const[a,b]=this.fighters;this.winner=this.melee?meleeWinnerOnTime(this):a.hp>b.hp?a:b.hp>a.hp?b:null;this.timedOut=true;this.endRound()}
  endRound(){if(this.story){this.phase='storyover';this.pf=0;return}
-  if(this.winner){this.winner.wins=this.melee?ROUND.wins:this.winner.wins+1;   // Melee: ein Spiel, kein Rundensystem
+  if(this.winner){const ws=this.winner.sc;if(ws&&!this.melee){ws.hp+=Math.max(0,this.winner.hp)/this.winner.maxHp;ws.time+=Math.max(0,this.timeFrames)/60;if(ws.roundTaken===0)ws.perfect++}   // Punkte: Restleben, Restzeit, Runde ohne Treffer
+  this.winner.wins=this.melee?ROUND.wins:this.winner.wins+1;   // Melee: ein Spiel, kein Rundensystem
   this.shake=Math.max(this.shake,EFFECT.winShake);this.fx.win(this.winner.x,this.winner.y-80,this.winner.char.glow||'#fff');this.celeb={f:this.winner,t:0};this.camera.kick(.06);this.flash=EFFECT.screenFlash;this.flashColor='#ffffff';if(this.winner.grounded&&this.winner.state!=='ko'){this.winner.setState('win')}}
   this.phase='result';this.pf=0}
 }

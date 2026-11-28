@@ -8,6 +8,17 @@ export const TP_BUTTONS=[['L','J','KeyJ'],['M','K','KeyK'],['H','L','KeyL'],['S'
 export const TP_DIRS={left:'ArrowLeft',right:'ArrowRight',up:'ArrowUp',down:'ArrowDown'};
 export const TP_MENU=[['☰','KeyM','Menü'],['⏎','Enter','OK'],['✕','Escape','Zurück']];
 export const isTouchDevice=()=>{try{return typeof window!=='undefined'&&(('ontouchstart' in window)||(navigator.maxTouchPoints>0))&&(!window.matchMedia||window.matchMedia('(pointer:coarse)').matches)}catch(e){return false}};
+// ---- Vollbild (Handy: Browserleiste weg). Muss aus einer echten Nutzer-Geste kommen (pointerup/click/Taste). ----
+//  Android/iPad: Fullscreen-API (+ Querformat sperren). iPhone-Safari kennt die Fullscreen-API nicht -> dort hilft nur „Zum Home-Bildschirm“ (Meta-Tags in index.html).
+export const fsActive=()=>{try{return !!(document.fullscreenElement||document.webkitFullscreenElement)}catch(e){return false}};
+export const canFullscreen=()=>{try{const e=document.documentElement;return !!(e.requestFullscreen||e.webkitRequestFullscreen)}catch(e){return false}};
+export const isStandalone=()=>{try{return !!(navigator.standalone||(window.matchMedia&&['standalone','fullscreen'].some(m=>window.matchMedia('(display-mode: '+m+')').matches)))}catch(e){return false}};
+const _quiet=p=>{if(p&&typeof p.catch==='function')p.catch(()=>{});return p};
+export const enterFullscreen=()=>{try{const e=document.documentElement,r=e.requestFullscreen||e.webkitRequestFullscreen;if(!r)return false;
+ const p=_quiet(r.call(e,{navigationUI:'hide'}));const lock=()=>{try{const o=screen.orientation;if(o&&o.lock)_quiet(o.lock('landscape'))}catch(x){}};
+ if(p&&typeof p.then==='function')p.then(lock,()=>{});else lock();return true}catch(x){return false}};
+export const exitFullscreen=()=>{try{const d=document,f=d.exitFullscreen||d.webkitExitFullscreen;if(f)_quiet(f.call(d));if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock()}catch(x){}};
+export const toggleFullscreen=()=>fsActive()?exitFullscreen():enterFullscreen();
 // Stick-Auslenkung (-1..1, relativ zum Radius) -> Richtung. Totzone, damit leichtes Zittern nichts auslöst.
 export const stickDir=(vx,vy,dead=.32)=>({dx:vx>dead?1:vx<-dead?-1:0,dy:vy>dead?1:vy<-dead?-1:0});
 export class TouchPad{
@@ -33,6 +44,8 @@ export class TouchPad{
 .tp-top{position:absolute;right:calc(10px + env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));display:flex;gap:8px;pointer-events:none}
 .tp-m{pointer-events:auto;min-width:44px;height:36px;padding:0 10px;border-radius:8px;color:#fff;background:rgba(18,20,58,.55);border:1px solid rgba(127,232,255,.7);font:700 14px system-ui}
 .tp-turn{display:none;position:fixed;inset:0;z-index:70;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(2,3,14,.92);color:#fff;font:700 20px system-ui}
+.tp-fsb{position:fixed;left:calc(8px + env(safe-area-inset-left,0px));top:calc(8px + env(safe-area-inset-top,0px));z-index:50;display:flex;align-items:center;justify-content:center;width:42px;height:38px;padding:0;border-radius:8px;color:#fff;background:rgba(18,20,58,.55);border:1px solid rgba(127,232,255,.7);touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}.tp-fsb svg{display:block;pointer-events:none}.tp-fsb.hide{display:none}
+.tp-toast{position:fixed;left:50%;top:calc(56px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:75;max-width:min(88vw,520px);padding:10px 16px;background:rgba(2,3,14,.94);border:1px solid rgba(127,232,255,.7);color:#fff;font:600 14px/1.35 system-ui,sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s}.tp-toast.show{opacity:1}
 @media (orientation:portrait){.tp-turn{display:flex}}`;d.head.appendChild(st);
   const r=this.root=d.createElement('div');r.id='touchpad';
   r.innerHTML=`<div class="tp-stick"><div class="tp-knob"></div></div><div class="tp-btns">${TP_BUTTONS.map(([b,l])=>`<div class="tp-b" data-b="${b}">${l}</div>`).join('')}</div><div class="tp-top">${TP_MENU.map(([l,c,t])=>`<button type="button" class="tp-m" data-c="${c}" title="${t}">${l}</button>`).join('')}<button type="button" class="tp-m tp-hide" title="Steuerung ein/aus">🎮</button></div>`;
@@ -52,6 +65,17 @@ export class TouchPad{
   // Menü-Knöpfe + Ein/Aus
   for(const el of r.querySelectorAll('.tp-m[data-c]'))el.addEventListener('pointerdown',e=>{e.preventDefault();this.tap(el.dataset.c)});
   r.querySelector('.tp-hide').addEventListener('pointerdown',e=>{e.preventDefault();this.hidden=!this.hidden;r.classList.toggle('off',this.hidden);this.releaseAll()});
+  // Vollbild: eigener Knopf oben links, direkt am body (z-index 50 > Titelbild 40/Menü 45): im Touch-Overlay (z 30) wäre er auf dem Titelbildschirm unter „☁ ANMELDEN“ begraben.
+  // Er liegt in den schwarzen Seitenstreifen neben dem 16:9-Bild (verdeckt kein HUD) und verschwindet im Vollbild. Beim ALLERERSTEN Antippen geht es zusätzlich automatisch ins Vollbild
+  // (click/pointerup = gültige Nutzer-Geste, pointerdown wäre auf Touch keine); wer danach bewusst beendet, wird nicht erneut gezwungen. iPhone-Safari: keine API -> Hinweis „Zum Home-Bildschirm“.
+  const toast=m=>{let t=d.querySelector('.tp-toast');if(!t){t=d.createElement('div');t.className='tp-toast';d.body.appendChild(t)}t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),6500)};
+  const fsb=d.createElement('button');fsb.type='button';fsb.className='tp-fsb';fsb.title='Vollbild';fsb.setAttribute('aria-label','Vollbild');
+  fsb.innerHTML='<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>';d.body.appendChild(fsb);
+  const fsSync=()=>fsb.classList.toggle('hide',fsActive()||isStandalone());fsSync();   // im Vollbild / als installierte App ist er überflüssig
+  fsb.addEventListener('click',e=>{e.preventDefault();if(canFullscreen())enterFullscreen();
+   else{toast(/iPhone|iPod/.test(navigator.userAgent||'')?'iPhone-Safari erlaubt kein Vollbild für Webseiten. Tipp: Teilen-Symbol ▸ „Zum Home-Bildschirm“ – dann startet das Spiel ohne Browserleiste.':'Dieser Browser unterstützt kein Vollbild. Tipp: Seite zum Startbildschirm hinzufügen.');setTimeout(()=>fsb.classList.add('hide'),6500)}});
+  for(const ev of['fullscreenchange','webkitfullscreenchange'])d.addEventListener(ev,fsSync);
+  if(!isStandalone()&&canFullscreen()){const first=()=>{removeEventListener('pointerup',first,true);if(!fsActive())enterFullscreen()};addEventListener('pointerup',first,true)}
   // Sicherheitsnetz: nichts bleibt hängen, wenn die Seite unterbrochen wird; kein Zoom/Scrollen durch Gesten
   for(const ev of['blur','pagehide'])addEventListener(ev,()=>this.releaseAll());
   d.addEventListener('visibilitychange',()=>{if(d.hidden)this.releaseAll()});

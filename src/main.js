@@ -16,7 +16,8 @@ import{NetInput,NET,encInput}from'./core/netplay.js';
 import{STAMINA,tuneClamp}from'./core/config.js';
 import{NetUi,netMessage}from'./render/netui.js';
 import{CloudUi}from'./render/cloudui.js';
-import{cloudOn,cloudUser,cloudLast,cloudSignIn,cloudSignUp,cloudSignOut,cloudSync,cloudBoot,cloudMessage,cloudCheck,cloudGoogleOk,cloudGoogleStart}from'./core/cloud.js';
+import{cloudOn,cloudUser,cloudLast,cloudSignIn,cloudSignUp,cloudSignOut,cloudSync,cloudBoot,cloudMessage,cloudCheck,cloudGoogleOk,cloudGoogleStart,cloudSubmitScore,cloudFlushScore,cloudBoard,cloudSetName,cloudName}from'./core/cloud.js';
+import{loadScores}from'./core/score.js';
 import{skinCount,skinName}from'./render/skins.js';
 import{THEMES}from'./render/stage.js';
 import{hitDealerOpt}from'./render/storyhud.js';
@@ -35,7 +36,7 @@ import{MusicStore,MusicPanel}from'./render/musicpanel.js';
 import{DevConsole}from'./render/devconsole.js';
 import{registerDevCommands}from'./core/devcmds.js';
 import{PackOpen}from'./render/packopen.js';
-import{TouchPad}from'./render/touchpad.js';
+import{TouchPad,toggleFullscreen}from'./render/touchpad.js';
 // Einstiegspunkt: Vollbild-Canvas, Eingabe, KI, Game-Loop (fester Schritt) und Pause-Menü (M).
 loadFonts();   // eingebettete Schriften registrieren (Canvas + Menü)
 const $=id=>document.getElementById(id);
@@ -70,9 +71,15 @@ const musicFor=()=>arcade.state==='select'?'menu':'fight';   // Auswahlmenüs (C
 let gfxMode=load('tf_gfx','auto');if(gfxMode!=='auto'&&!(+gfxMode>=0&&+gfxMode<=2))gfxMode='auto';
 const applyGfx=()=>{setGfx(gfxMode==='auto'?GFX.level:+gfxMode);renderer.applyGfx();resize()};
 // ---- Canvas immer scharf: interne Auflösung folgt der Fenstergröße (max. 3200 px breit) ----
-function resize(){const dpr=Math.min(GFX.dpr,window.devicePixelRatio||1);const w=Math.max(960,Math.min(GFX.maxW,Math.round((canvas.clientWidth||1920)*dpr)));
+// Sichtbare Fläche als CSS-Variablen: auf dem Handy ist 100vh die Höhe OHNE Browserleiste -> Bild wäre bei sichtbarer Leiste zu groß und oben/unten abgeschnitten.
+// innerWidth/innerHeight ist immer genau das, was man sieht (mit oder ohne Leiste, im Vollbild, nach dem Drehen).
+const syncView=()=>{try{const s=document.documentElement.style;s.setProperty('--app-w',window.innerWidth+'px');s.setProperty('--app-h',window.innerHeight+'px')}catch(e){}};
+function resize(){syncView();const dpr=Math.min(GFX.dpr,window.devicePixelRatio||1);const w=Math.max(960,Math.min(GFX.maxW,Math.round((canvas.clientWidth||1920)*dpr)));
  renderer.resize(w,Math.round(w*9/16))}
 window.addEventListener('resize',resize);if(gfxMode!=='auto')setGfx(+gfxMode);renderer.applyGfx();resize();
+// Drehen / Vollbild an- und ausschalten: Browser melden die neue Größe oft erst etwas später -> zweimal nachziehen (sofort + nach der Animation)
+for(const ev of['orientationchange','fullscreenchange','webkitfullscreenchange'])window.addEventListener(ev,()=>{resize();setTimeout(resize,150);setTimeout(resize,500)});   // fullscreenchange feuert am document und bubbelt bis window
+if(window.visualViewport)window.visualViewport.addEventListener('resize',resize);
 // ---- Menü ----
 const menu=$('menu'),tabs=[...document.querySelectorAll('.tabs button')],names=tabs.map(b=>b.dataset.tab);let tab=0;
 const ml=$('movelist');const _hx=t=>String(t==null?'':t).replace(/[&<>"'`]/g,c=>'&#'+c.charCodeAt(0)+';');   // HTML-Escape: Namen/Moves aus Custom-/Community-Daten sind nicht vertrauenswürdig
@@ -84,7 +91,7 @@ let padFocus=null;   // vom Controller markiertes Element im Pausenmenü
 function setMenu(open){if(padFocus){padFocus.classList.remove('padfocus');padFocus=null}if(open){fillMoves();stamShow();tuneUi()}menuOpen=open;menu.classList.toggle('hidden',!open);
  menu.style.zIndex=open&&startOpen?'45':'';const rr=$('btn-restart'),rw=rr&&rr.parentNode;if(rw)rw.style.display=open&&startOpen?'none':'';   // Startseite: Menü liegt über dem Startmenü (z-index 40), „Stage neu starten“ ergibt dort keinen Sinn
  clearInputs();if(!open)canvas.focus()}
-const fs=()=>{if(document.fullscreenElement)document.exitFullscreen();else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen()};
+const fs=toggleFullscreen;   // F-Taste / Doppelklick: robust (webkit-Präfix, Querformat sperren) – Implementierung in render/touchpad.js
 canvas.addEventListener('dblclick',fs);
 const on=(id,fn)=>{const e=$(id);if(e)e.onclick=()=>fn(e)};
 on('btn-resume',()=>setMenu(false));
@@ -279,18 +286,23 @@ const netCat={chars:()=>ROSTER.map(id=>({id,name:CHARACTERS[id].name,desc:CHARAC
  skins:id=>{const sp=CHARACTERS[id]&&CHARACTERS[id].sprites,a=[];for(let i=0;i<skinCount(sp);i++)if(ownsSkin(id,i))a.push({i,name:skinName(sp,i)});return a},
  stages:()=>THEMES.map((T,i)=>({i,name:T.name,open:arcade.stageOpen(i)}))};
 // ---- Konto & Cloud-Spielstand (Supabase): core/cloud.js, Fenster render/cloudui.js. Beim Start/Anmelden wird der Stand abgeglichen; wurde der lokale Stand ersetzt, lädt die Seite einmal neu. ----
-const cloudUi=new CloudUi({open:()=>cloudOpen(),ctx:()=>({on:cloudOn(),user:cloudUser(),last:cloudLast,google:cloudGoogleOk()}),act:(a,v)=>cloudAct(a,v)});cloudUi.mount();
-function cloudOpen(){if(netMatch||intro.active)return;clearInputs();cloudUi.open()}
+const cloudUi=new CloudUi({open:()=>cloudOpen(),ctx:()=>({on:cloudOn(),user:cloudUser(),last:cloudLast,google:cloudGoogleOk(),name:cloudName(),local:loadScores().slice(0,5).map(e=>({...e,who:cloudWho(e.fighter)}))}),act:(a,v)=>cloudAct(a,v)});cloudUi.mount();
+const cloudWho=id=>(CHARACTERS[id]&&CHARACTERS[id].name)||id;
+// Arcade-Durchlauf beendet (core/arcade.js onRun): Bestwert in die Cloud, falls angemeldet (lokal ist er schon gespeichert)
+arcade.onRun=e=>{cloudSubmitScore(e).then(r=>{if(r&&r.state==='ok')padToast('☁ Highscore gesichert'+(r.rank?' · Platz '+r.rank:''),true);else if(r&&(r.state==='offline'||r.state==='error'))padToast('☁ Highscore wird später gesichert',false)}).catch(()=>{})};
+function cloudOpen(view){if(netMatch||intro.active)return;clearInputs();cloudUi.open(view)}
 async function cloudAct(a,v){
  if(a==='close'){cloudUi.close();canvas.focus();return}
+ if(a==='board'){try{const rows=await cloudBoard(10);return{rows:rows.map(r=>({...r,who:cloudWho(r.fighter)}))}}catch(e){return{rows:null,msg:cloudMessage(e.code),bad:true}}}
+ if(a==='name'){try{cloudSetName(v.name)}catch(e){return{msg:cloudMessage(e.code),bad:true}}const b=loadScores()[0];if(b)await cloudSubmitScore(b);return{msg:'Gespeichert: '+cloudName()}}
  if(a==='google'){try{await cloudGoogleStart()}catch(e){return{msg:cloudMessage(e.code),bad:true}}return{msg:'Weiterleitung zu Google …'}}
  if(a==='signout'){await cloudSignOut();return{msg:'Abgemeldet. Dein Spielstand bleibt auf diesem Gerät.'}}
  if(a==='sync'){const r=await cloudSync();if(r.reload){location.reload();return}return{msg:r.state==='ok'?'':cloudMessage(r.state==='offline'?'network':r.code||'error'),bad:r.state!=='ok'}}
  if(a==='signin'||a==='signup'){const bad=cloudCheck(v.email,v.pw);if(bad)return{msg:cloudMessage(bad),bad:true};
   try{if(a==='signup'){const r=await cloudSignUp(v.email,v.pw);if(r.confirm)return{msg:'Fast geschafft: Wir haben dir eine E-Mail geschickt. Link anklicken, dann hier anmelden.'}}else await cloudSignIn(v.email,v.pw)}
   catch(e){return{msg:cloudMessage(e.code),bad:true}}
-  const r=await cloudBoot();if(r.reload){location.reload();return}return{msg:''}}}
-cloudBoot().then(r=>{if(r.reload)location.reload();else{cloudUi.refreshChip();if(r.oauthError){cloudOpen();cloudUi.say(cloudMessage(r.oauthError),true)}}}).catch(()=>{});
+  const r=await cloudBoot();if(r.reload){location.reload();return}cloudFlushScore(loadScores()[0]).catch(()=>{});return{msg:''}}}
+cloudBoot().then(r=>{if(r.reload)location.reload();else{cloudFlushScore(loadScores()[0]).catch(()=>{});cloudUi.refreshChip();if(r.oauthError){cloudOpen();cloudUi.say(cloudMessage(r.oauthError),true)}}}).catch(()=>{});
 const netUi=new NetUi({ctx:()=>({client:netClient,match:netMatch,busy:netBusy}),act:(a,v)=>netAct(a,v),cat:netCat});netUi.mount();
 function netOpen(from){netFrom=from;if(from==='start'&&start){startOpen=false;start.classList.add('hidden')}
  if(arcade.state==='select')arcade.setMode('versus');clearInputs();netUi.open(netClient?'':'')}

@@ -1791,6 +1791,11 @@ export class Hud {
       g.scale(0.7 + 0.3 * e, 0.7 + 0.3 * e);
       this.glitz(g, title, 0, 0, st === "victory" ? 20 : 24, bad ? ["#ffffff", "#b79cff"] : ["#ffffff", "#9fe8ff"], t, "center", 4, 5);
       this.lab(g, sub, 0, 24, 11, bad ? "#d9ccff" : "#d6e4ff", "center", 3, bad ? "#8f7bff" : "#6fe3ff", "600");
+      const SC = A.mode === "arcade" ? A.lastScore : null;   // Punkte (core/score.js): Stage-Punkte + Gesamt, am Ende Highscore
+      if (SC) {
+        this.lab(g, "+" + SC.total + " PUNKTE   ·   GESAMT " + (SC.final ? SC.entry.score : SC.run), 0, 40, 11, "#ffd23f", "center", 4, "#ff9a3c", "700");
+        this.lab(g, SC.final ? (SC.rank === 1 && SC.entry.score > SC.best ? "★  NEUER HIGHSCORE  ★" : "BESTWERT  " + SC.best) : SC.hits + " TREFFER  ·  " + SC.taken + " EINGESTECKT" + (SC.parts.flawless ? "  ·  FLAWLESS" : ""), 0, 54, 10, SC.final && SC.rank === 1 && SC.entry.score > SC.best ? "#fff3a8" : "#cfd8ff", "center", 3, "#ffd23f", "600");
+      }
       g.restore();
       if (Math.sin(t * 0.15) > -0.2)
         this.lab(g, pr, W / 2, 218, 11, "#9fe8ff", "center", 4, "#8f7bff", "600");

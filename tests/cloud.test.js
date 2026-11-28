@@ -1,7 +1,7 @@
 import assert from'node:assert/strict';
 // Cloud-Spielstand: Supabase wird durch einen Speicher-Server nachgebaut (GoTrue + PostgREST + Row Level Security), je "Gerät" ein eigener localStorage.
 const mkStore=()=>{const m=new Map();return{getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>{m.set(k,String(v))},removeItem:k=>{m.delete(k)},m}};
-const users=new Map(),rows=new Map(),tokens=new Map();let clock=1000,net=true,confirm=false;
+const board=new Map(),scoreCalls=[];const users=new Map(),rows=new Map(),tokens=new Map();let clock=1000,net=true,confirm=false;
 const J=(st,o)=>({ok:st<300,status:st,text:async()=>o===undefined?'':JSON.stringify(o)});
 globalThis.__SUPABASE__={url:'https://test.supabase.co',key:'anon-key'};
 globalThis.fetch=async(url,o={})=>{if(!net)throw new Error('offline');const u=new URL(url),b=o.body?JSON.parse(o.body):{},h=o.headers||{};assert.equal(h.apikey,'anon-key');
@@ -15,9 +15,12 @@ globalThis.fetch=async(url,o={})=>{if(!net)throw new Error('offline');const u=ne
  if(u.pathname==='/rest/v1/savegames'){const uid=token();if(!uid)return J(401,{code:'401'});
   if(!o.method||o.method==='GET'){assert.equal(u.searchParams.get('user_id'),'eq.'+uid);return J(200,rows.has(uid)?[rows.get(uid)]:[])}
   assert.equal(b.user_id,uid,'RLS: nur eigene Zeile');const r={data:b.data,updated_at:'2026-11-28T10:00:'+String(++clock%60).padStart(2,'0')+'Z'};rows.set(uid,r);return J(201,[r])}
+ if(u.pathname==='/rest/v1/rpc/submit_highscore'){const uid=token();if(!uid)return J(401,{code:'28000'});scoreCalls.push(b);const cur=board.get(uid);if(!cur||cur.score<b.p_score)board.set(uid,{name:b.p_name,score:b.p_score,fighter:b.p_fighter,stages:b.p_stages,diff:b.p_diff,win:b.p_win});else cur.name=b.p_name;
+  return J(200,[...board.values()].filter(x=>x.score>board.get(uid).score).length+1)}
+ if(u.pathname==='/rest/v1/highscores'){return J(200,[...board.values()].sort((a,b)=>b.score-a.score).slice(0,+u.searchParams.get('limit')))}
  return J(404,{})};
 const device=()=>{const s=mkStore();globalThis.localStorage=s;return s};
-const{cloudGoogleOk,cloudGoogleStart,cloudOAuthReturn,cloudBoot,cloudOn,cloudClean,cloudMerge,cloudCanon,cloudCollect,cloudApply,cloudSignUp,cloudSignIn,cloudSignOut,cloudSync,cloudUser,cloudMessage,cloudCheck,CL_KEYS}=await import('../src/core/cloud.js');
+const{cloudSubmitScore,cloudFlushScore,cloudBoard,cloudSetName,cloudName,cloudCleanName,cloudGoogleOk,cloudGoogleStart,cloudOAuthReturn,cloudBoot,cloudOn,cloudClean,cloudMerge,cloudCanon,cloudCollect,cloudApply,cloudSignUp,cloudSignIn,cloudSignOut,cloudSync,cloudUser,cloudMessage,cloudCheck,CL_KEYS}=await import('../src/core/cloud.js');
 const loot=o=>JSON.stringify({packs:0,coins:0,cards:{},skins:{},stages:[],items:{},...o});
 // 1) Säubern: keine gefährlichen Schlüssel, nur begrenzte Werte
 const bad=JSON.parse('{"__proto__":{"x":1},"constructor":{"y":1},"coins":-5,"a b":1,"ok":{"n":3.9,"s":"'+'x'.repeat(200)+'"},"f":{"g":null}}');
@@ -79,4 +82,17 @@ await cloudGoogleStart();location.search='?error=access_denied&error_description
 await cloudGoogleStart();globalThis.__chal=new URL(location.last).searchParams.get('code_challenge');location.search='?code=falsch';assert.deepEqual(await cloudOAuthReturn(),{error:'oauth_failed'});
 await cloudGoogleStart();globalThis.__chal=new URL(location.last).searchParams.get('code_challenge');location.search='?code=gcode';const bt=await cloudBoot();assert.equal(cloudUser().email,'g@gmail.com');assert.notEqual(bt.oauthError,'oauth_failed');
 console.log('  ✓ Google-Anmeldung: PKCE-Weiterleitung, Code-Tausch, Abbruch/Fehler sauber, Spielstand wird gesichert');
+// 13) Bestenliste: Eintragen (nur mit Konto), Nachreichen, Spielername, Lesen ohne Konto
+{await cloudSignOut();board.set('x1',{name:'ALT',score:9000,fighter:'wolf',stages:3,diff:1,win:true});board.set('x2',{name:'<b>EVIL</b>',score:100,fighter:'ti ger!',stages:1,diff:0,win:false});
+ const e={score:4200,fighter:'tiger',stages:2,diff:1,win:false,hits:30,taken:4,maxCombo:5};
+ assert.deepEqual(await cloudSubmitScore(e),{state:'out'},'ohne Konto: nichts wird gesendet');assert.equal(scoreCalls.length,0);
+ const rows0=await cloudBoard(10);assert.equal(rows0.length,2,'Lesen geht ohne Konto');assert.equal(rows0[0].score,9000);assert.equal(rows0[1].name,'bEVILb','Namen werden gesäubert');assert.equal(rows0[1].fighter,'tiger');
+ await cloudSignIn('a@b.de','geheim123');assert.match(cloudName(),/^SPIELER-[0-9A-F]{4}$/,'Standardname ohne E-Mail/Klarnamen');
+ let r=await cloudSubmitScore(e);assert.equal(r.state,'ok');assert.equal(r.rank,2);assert.equal(scoreCalls[0].p_score,4200);assert.equal(scoreCalls[0].p_max_combo,5);assert.equal(scoreCalls[0].p_name,cloudName());
+ assert.equal(await cloudFlushScore(e),null,'schon gesendet: kein zweites Mal');assert.equal(scoreCalls.length,1);
+ r=await cloudFlushScore({...e,score:6000});assert.equal(r.state,'ok');assert.equal(r.rank,2);assert.equal(scoreCalls.length,2,'besserer Wert wird nachgereicht');
+ assert.equal(cloudSetName('  Tiger<>Fan! '),'TigerFan');assert.equal(cloudName(),'TigerFan');assert.throws(()=>cloudSetName('<>'),e=>e.code==='bad_name');assert.equal(cloudCleanName('x'.repeat(40)).length,16);
+ net=false;r=await cloudSubmitScore({...e,score:7000});assert.equal(r.state,'offline');net=true;assert.equal((await cloudFlushScore({...e,score:7000})).state,'ok','nach dem Offline-Fehler beim nächsten Start nachgereicht');
+ await cloudSignOut();assert.equal((await cloudFlushScore(e)),null)}
+console.log('  ✓ Bestenliste: lesen ohne Konto, eintragen nur mit Konto, Nachreichen, Spielername, Offline');
 console.log('Cloud-Tests bestanden');process.exit(0);
