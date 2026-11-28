@@ -1,8 +1,8 @@
-import{DEALER,wrapText}from'../core/blackmarket.js';
+import{DEALER,ROLL,wrapText}from'../core/blackmarket.js';
 import{CHARACTERS,CLEAR_UNLOCKS}from'../core/characters.js';
 import{GROUND,H,W}from'../core/config.js';
 import{ITEMS}from'../core/items.js';
-import{LOOT,itemCount,ownsChar}from'../core/loot.js';
+import{DIE,LOOT,dieWins,itemCount,ownsChar}from'../core/loot.js';
 import{CHAPTERS,LV}from'../core/story.js';
 
 import{drawPortrait,drawSpriteFrame}from'./sprites.js';
@@ -56,6 +56,21 @@ export function drawDealer(g,game,t){const d=game.story&&game.story.dealer;if(!d
 export const DLG={x:24,y:76,w:W-48,h:214};   // oben, damit der Händler (Sprech-Gesten) und der Spieler darunter sichtbar bleiben
 export const dealerOptRect=i=>({x:W-362,y:DLG.y+14+i*36,w:322,h:31});
 export function hitDealerOpt(lx,ly,n){for(let i=0;i<n;i++){const r=dealerOptRect(i);if(lx>=r.x&&lx<=r.x+r.w&&ly>=r.y&&ly<=r.y+r.h)return i}return -1}
+// Würfel-Animation beim Plaudern (Tageswurf): ein W20 taumelt und springt, wird langsamer und bleibt liegen (Zeiten: ROLL in core/blackmarket.js); danach TREFFER! (pink, Leuchten) oder NIETE.
+// Zustand: Dealer.roll {t, show (gezeigte Zahl), val (Endzahl), res 'won'|'miss'}. Treffer = obere Zahlen (dieWins in core/loot.js).
+function drawDie(g,hud,d,cx,cy){const r=d.roll,E=ROLL.settle,k=Math.min(1,r.t/E),ease=1-Math.pow(1-k,3),landed=r.t>=E,won=r.res==='won',col=landed?(won?'#ff7ae6':'#8aa0c8'):'#d6b8ff',R=40,
+  bounce=landed?0:Math.abs(Math.sin(r.t*.3))*46*(1-ease),rot=landed?0:r.t*.42*(1-ease)+Math.sin(r.t*.9)*.15*(1-ease),pop=landed?1+Math.max(0,1-(r.t-E)/10)*.22:1;
+ g.save();g.translate(cx,cy-bounce);g.scale(pop,pop);
+ g.save();g.globalAlpha=.35*(1-bounce/46*.6);g.fillStyle='#000';g.beginPath();g.ellipse(0,R+12+bounce,R*.9,7,0,0,7);g.fill();g.restore();   // Schatten am Boden
+ g.rotate(rot);g.shadowColor=col;g.shadowBlur=landed&&won?30:14;
+ const P=[];for(let i=0;i<6;i++){const a=-Math.PI/2+i*Math.PI/3;P.push([Math.cos(a)*R,Math.sin(a)*R])}
+ g.fillStyle='#150c2a';g.strokeStyle=col;g.lineWidth=3;g.lineJoin='round';g.beginPath();P.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.fill();g.stroke();g.shadowBlur=0;
+ g.globalAlpha=.55;g.lineWidth=1.4;g.beginPath();[0,2,4].forEach((i,j)=>{const p=P[i];j?g.lineTo(p[0]*.55,p[1]*.55):g.moveTo(p[0]*.55,p[1]*.55)});g.closePath();g.stroke();   // Facetten: inneres Dreieck + Kanten zu den Ecken
+ g.beginPath();[0,2,4].forEach(i=>{g.moveTo(P[i][0]*.55,P[i][1]*.55);g.lineTo(P[i][0],P[i][1]);g.moveTo(P[i][0]*.55,P[i][1]*.55);g.lineTo(P[(i+1)%6][0],P[(i+1)%6][1]);g.moveTo(P[i][0]*.55,P[i][1]*.55);g.lineTo(P[(i+5)%6][0],P[(i+5)%6][1])});g.stroke();g.globalAlpha=1;
+ g.rotate(-rot);hud.txt(g,String(r.show),0,10,landed?32:28,'#ffffff','center',col);   // Zahl bleibt gerade lesbar
+ g.restore();
+ hud.txt(g,`W${DIE}  ·  AB ${DIE-dieWins()+1} = SPEZIALPACK`,cx,DLG.y+DLG.h-44,12,'#9aa4e8','center');
+ if(landed){g.save();const s=1+Math.max(0,1-(r.t-E)/8)*.5;g.translate(cx,DLG.y+DLG.h-68);g.scale(s,s);hud.txt(g,won?'TREFFER!':'NIETE',0,0,22,won?'#ffffff':'#c8d4f0','center',col);g.restore()}}
 export function drawDealerUi(g,hud,game,t){const d=game.story&&game.story.dealer;if(!d||!d.active)return;const ch=CHARACTERS[DEALER.id],col=ch.glow;
  g.save();g.globalAlpha=.32;g.fillStyle='#04020a';g.fillRect(0,0,W,H);g.globalAlpha=1;
  hud.kPlate(g,DLG.x,DLG.y,DLG.w,DLG.h,{col,on:true,sk:10,t});
@@ -65,10 +80,10 @@ export function drawDealerUi(g,hud,game,t){const d=game.story&&game.story.dealer
  g.restore();
  hud.txt(g,DEALER.name,DLG.x+89,DLG.y+184,20,'#ffffff','center',col);hud.txt(g,DEALER.title,DLG.x+89,DLG.y+202,10,'#d6b8ff','center');
  const tx=DLG.x+190,ls=wrapText(d.say.slice(0,Math.floor(d.shown)),44);
- ls.forEach((ln,i)=>hud.txt(g,ln,tx,DLG.y+40+i*25,16,'#f2ecff','left'));
- if(!d.typing&&d.node==='menu'&&Math.floor(t*2)%2===0)hud.txt(g,'▼',tx+330,DLG.y+DLG.h-62,14,col,'center');
- hud.txt(g,`COINS ${LOOT.coins}  ·  BOOSTER ${LOOT.packs}`,tx,DLG.y+DLG.h-32,13,'#ffd23f','left');
- hud.txt(g,'↑↓ wählen · ENTER / E bestätigen · ESC zurück',tx,DLG.y+DLG.h-14,11,'#9aa4e8','left');
+ if(!d.roll)ls.forEach((ln,i)=>hud.txt(g,ln,tx,DLG.y+40+i*25,16,'#f2ecff','left'));else drawDie(g,hud,d,tx+150,DLG.y+80);
+ if(!d.roll&&!d.typing&&d.node==='menu'&&Math.floor(t*2)%2===0)hud.txt(g,'▼',tx+330,DLG.y+DLG.h-62,14,col,'center');
+ hud.txt(g,`COINS ${LOOT.coins}  ·  BOOSTER ${LOOT.packs}  ·  TICKETS ${LOOT.tickets}`,tx,DLG.y+DLG.h-32,13,'#ffd23f','left');
+ hud.txt(g,d.roll?'ENTER – überspringen':'↑↓ wählen · ENTER / E bestätigen · ESC zurück',tx,DLG.y+DLG.h-14,11,'#9aa4e8','left');
  d.opts.forEach((o,i)=>{const r=dealerOptRect(i),on=i===d.sel;hud.kPlate(g,r.x,r.y,r.w,r.h,{col:o.ok?col:'#6a6a80',on,sk:6,t,al:o.ok?1:.6});
   hud.txt(g,o.label,r.x+16,r.y+20,14,o.ok?(on?'#ffffff':'#d6c8ff'):'#8a8aa0','left',on&&o.ok?col:null);
   if(o.sub)hud.txt(g,o.sub,r.x+r.w-14,r.y+20,11,o.ok?'#ffd23f':'#a06a70','right')});

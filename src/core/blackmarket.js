@@ -1,6 +1,6 @@
 import{CHARACTERS}from'./characters.js';
 import{GROUND}from'./config.js';
-import{LOOT,SHOP,addItem,buyChar,buyPack,charPrice,itemCount,ownsChar}from'./loot.js';
+import{DIE,LOOT,SHOP,addItem,buyChar,buyPack,charPrice,dailyAvailable,dieValue,itemCount,ownsChar,rollDailyChat}from'./loot.js';
 // Schwarzmarkthändler KORVUS (anthropomorpher Rabe): interaktiver NPC im Story-Modus. Derselbe Rabe ist als Kämpfer (CHARACTERS.rabe) im Shop kaufbar.
 // Rein logisch (kein DOM) -> headless testbar (tests/blackmarket.test.js). Darstellung: render/storyhud.js (drawDealer, drawDealerUi), Tasten/Klicks: main.js.
 // Angebote: Booster-Packs = SHOP (core/loot.js, gleiche Preise wie der Ingame-Shop), Gegenstände = ITEM_SHOP (sofort benutzt), Kämpfer = CHAR_SHOP (Preis zentral: CHAR_PRICE in core/loot.js).
@@ -20,6 +20,7 @@ export const MOODS={
  think:['t_3'],                             // Kinn: überlegt (geschlossener Schnabel)
  cross:['t_7'],                             // Arme verschränkt: lehnt ab / wartet
  hip:['t_0']};                              // Hand an der Hüfte: lässig
+export const ROLL={settle:84,end:132};   // Würfel-Animation (Frames): bis settle taumelt der Würfel, dann bleibt er liegen, bei end kommt das Ergebnis
 export const MOOD_OPEN=['talk','sell','point','wow'];   // Stimmungen mit offenem Schnabel (sprechen)
 const pickR=a=>a[Math.floor(Math.random()*a.length)];
 // ---- Texte (Persönlichkeit: abgebrühter, trockener Geschäftsmann, zählt alles in Münzen, Rabenwitze) ----
@@ -31,6 +32,9 @@ export const LINES={
  booster:'Booster-Packs. Drei Überraschungen pro Päckchen – Karten, Farben, Münzen. Ich schwöre, ich habe sie nicht geöffnet. Nicht oft.',
  items:'Für den kleinen Notfall: Drinks, Elixier, ein Kristall für den großen Auftritt. Ich packe sie dir in den Beutel – benutzen kannst du sie jederzeit im Kampf, Tasten 1, 2, 3.',
  chat:['Die Käfer kommen nachts aus den Gullys. Ich habe gesehen, wie sie Laternen fressen. Laternen! Wer frisst Laternen?','Der Alpha? Zwei Köpfe größer als du, aber Chitin splittert wie billiges Glas. Triff ihn, wenn er springt.','Wer blockt, verliert weniger. Wer ausweicht, verliert nichts. Wer zahlt, verliert Münzen. Ich bevorzuge Letzteres.','Im Hafen glüht etwas rot unter der Haut der Welt. Ich verkaufe nichts, was ich dort unten gefunden habe. Noch nicht.','Jeder Kämpfer hat einen Preis. Meiner liegt erstaunlich niedrig. Frag mich ruhig.'],
+ gift:['Krah! Heute ist dein Glückstag, Freundchen: ein Spezialpack, frisch aus der Schmuggelkiste. Öffne es im Booster-Menü, sobald die Käfer dich in Ruhe lassen.',
+       'Psst. Das hier war eigentlich für einen anderen Kunden gedacht. Er kommt nicht mehr. Frag nicht. Ein Spezialpack für dich – Booster-Menü, Taste B.'],
+ nothing:['Heute habe ich nichts Besonderes für dich. Komm morgen wieder, meine Kiste füllt sich von selbst.','Die Spezialkiste ist für heute leer, Freundchen. Morgen wieder.'],
  bought:['Krah! Ein Vergnügen, mit dir Geschäfte zu machen.','Abgemacht. Keine Rückgabe, keine Fragen, keine Zeugen.','Gute Wahl. Das hat schon mal jemand überlebt.'],
  poor:['Münzen fehlen, Freundchen. Besiege ein paar Käfer, öffne ein paar Booster – dann reden wir.','Mein Herz ist weich, mein Gefieder auch. Meine Preise nicht. Komm mit mehr Münzen wieder.'],
  full:'Du strotzt vor Kraft. Komm wieder, wenn es wehtut – ich laufe nicht weg.',
@@ -50,11 +54,11 @@ export class Dealer{
  get g(){return this.s.g}
  // Standort wechseln (Story: nach jeder Welle bzw. am Checkpoint steht er wieder vor dem Spieler, sonst war er nur am Level-Anfang erreichbar)
  place(x){this.x=x;this.near=false}
- reset(){this.active=false;this.alpha=1;this.near=false;this.node='menu';this.sel=0;this.say='';this.mood='idle';this.shown=0;this.t=0;this.facing=-1;this.opts=[];this.bought=0;this.greet=false}
+ reset(){this.roll=null;this.active=false;this.alpha=1;this.near=false;this.node='menu';this.sel=0;this.say='';this.mood='idle';this.shown=0;this.t=0;this.facing=-1;this.opts=[];this.bought=0;this.greet=false}
  // Kann angesprochen werden? Nur zwischen den Wellen, Spieler lebt und steht am Boden
  get canTalk(){const s=this.s,p=s.g.p1;return s.state==='walk'&&s.g.phase==='fight'&&p.hp>0}
  get typing(){return this.shown<this.say.length}
- update(){this.t++;const p=this.g.p1,can=this.canTalk;
+ update(){this.t++;this.rollStep();const p=this.g.p1,can=this.canTalk;
   this.alpha=this.fixed||this.s.state==='walk'?Math.min(1,this.alpha+.06):Math.max(0,this.alpha-.1);   // Welle beginnt: er duckt sich weg (außer er steht fest oben auf dem Parkour)
   this.facing=p.x<this.x?-1:1;
   this.near=can&&this.alpha>.9&&Math.abs(p.x-this.x)<DEALER.reach&&p.y>this.y-70&&p.y<this.y+30;
@@ -68,7 +72,7 @@ export class Dealer{
  // Gespräch
  open(){if(this.active||!this.near)return false;const p=this.g.p1;this.active=true;this.bought=0;p.facing=this.x>=p.x?1:-1;p.vx=0;
   this.g.sfx('ui_round_start',{vol:.4,rate:1.5});this.menu(metBefore?pickR(LINES.again):pickR(LINES.first),'talk');metBefore=true;this.greet=true;return true}
- close(silent){if(!this.active)return;this.active=false;this.node='menu';if(!silent){this.g.pop(this.x,this.y-300,pickR(LINES.bye),'#d6b8ff',.9,{text:true,life:90});this.g.sfx('ui_round_start',{vol:.3,rate:1.2})}}
+ close(silent){if(!this.active)return;if(this.roll)this.finishRoll(true);this.active=false;this.node='menu';if(!silent){this.g.pop(this.x,this.y-300,pickR(LINES.bye),'#d6b8ff',.9,{text:true,life:90});this.g.sfx('ui_round_start',{vol:.3,rate:1.2})}}
  speak(text,mood='talk'){this.say=text;this.shown=0;this.mood=mood}
  menu(text,mood){this.node='menu';this.sel=0;if(text)this.speak(text,mood||'talk');this.rebuild()}
  // Auswahlzeilen je Knoten: {label,sub,ok,fn}; ok=false -> ausgegraut (nicht genug Coins / schon besessen)
@@ -77,7 +81,7 @@ export class Dealer{
    o.push({label:'BOOSTER-PACKS',sub:'ab '+SHOP[0].price+' Coins',ok:true,fn:()=>this.go('booster')});
    o.push({label:'GEGENSTÄNDE',sub:'Heilung · Hyper-Meter',ok:true,fn:()=>this.go('items')});
    const owned=ownsChar(DEALER.id);o.push({label:owned?'KÄMPFER: BESITZT':'ANHEUERN',sub:owned?'in der Charakterwahl':charPrice(DEALER.id)+' Coins',ok:true,fn:()=>this.go('hire')});
-   o.push({label:'PLAUDERN',sub:'Gerüchte',ok:true,fn:()=>this.menu(pickR(LINES.chat),'talk')});
+   o.push({label:'PLAUDERN',sub:dailyAvailable()?'Gerüchte · Tagesglück':'Gerüchte',ok:true,fn:()=>this.chat()});
    o.push({label:'GEHEN',sub:'',ok:true,fn:()=>this.close()})}
   else if(this.node==='booster'){SHOP.forEach((s,i)=>o.push({label:s.n===1?'1 BOOSTER':s.n+' BOOSTER',sub:s.price+' Coins',ok:coins>=s.price,fn:()=>this.buyBooster(i)}));o.push({label:'ZURÜCK',sub:'',ok:true,fn:()=>this.menu(pickR(LINES.more),'hip')})}
   else if(this.node==='items'){ITEM_SHOP.forEach((it,i)=>o.push({label:it.name,sub:it.price+' Coins · Beutel '+itemCount(it.id),ok:coins>=it.price,fn:()=>this.buyItem(i)}));o.push({label:'ZURÜCK',sub:'',ok:true,fn:()=>this.menu(pickR(LINES.more),'hip')})}
@@ -88,9 +92,22 @@ export class Dealer{
   else if(node==='items')this.speak(LINES.items,'point');
   else if(node==='hire')this.speak(ownsChar(DEALER.id)?LINES.owned:hireLine(),ownsChar(DEALER.id)?'cross':'think');
   this.rebuild()}
- choose(i){const o=this.opts[i];if(!o)return false;this.sel=i;
+ choose(i){const o=this.opts[i];if(!o||this.roll)return false;this.sel=i;
   if(!o.ok){this.g.sfx('block_guard',{vol:.5});this.speak(pickR(LINES.poor),'cross');return false}
   o.fn();return true}
+ // Plaudern: ein Gerücht. Beim ersten Gespräch des Tages würfelt Korvus (core/loot.js rollDailyChat): Treffer = Spezialpack (liegt bei den Boostern, öffnen mit B im Menü), sonst ein Hinweis auf morgen.
+ // Ablauf: Ergebnis steht sofort fest und ist gespeichert (Schließen/Abbrechen ändert nichts), die Würfel-Animation (render/storyhud.js drawDie) zeigt es nur an; danach Dialogtext.
+ chat(){const r=rollDailyChat();
+  if(r==='already'){this.menu(pickR(LINES.chat),'talk');return}
+  this.roll={t:0,res:r,val:dieValue(r==='won'),show:1+Math.floor(Math.random()*DIE),next:2,k:0};this.say='';this.shown=0;this.mood='think';this.g.sfx('whoosh_light',{vol:.5,rate:.9})}
+ rollStep(){const r=this.roll;if(!r)return;r.t++;
+  if(r.t<ROLL.settle){if(r.t>=r.next){r.next+=2+Math.floor(r.t/12);r.show=(r.show+Math.floor(Math.random()*(DIE-1)))%DIE+1;this.g.sfx('combo_step_0'+(1+r.k++%4),{vol:.16,rate:.9+r.t/100})}}   // Zahl wechselt, wird dabei immer langsamer (springt nie auf dieselbe Zahl)
+  else if(r.show!==r.val){r.show=r.val;this.g.sfx('ground_slam',{vol:.3,rate:1.2})}   // Würfel bleibt liegen
+  if(r.t>=ROLL.end)this.finishRoll()}
+ finishRoll(quiet){const r=this.roll;if(!r)return;this.roll=null;const won=r.res==='won';
+  if(won){this.g.sfx('fw_rocket',{vol:.6,rate:1.4});this.g.sfx('fw_finale',{vol:.35});this.g.pop(this.g.p1.x,this.g.p1.y-190,'+1 SPEZIAL-BOOSTER','#ff7ae6',1.2,{text:true,life:120});this.g.fx.ps.ring(this.g.p1.x,this.g.p1.y-80,'#ff7ae6',130)}
+  else this.g.sfx('block_guard',{vol:.35,rate:.9});
+  if(!quiet)this.menu(won?pickR(LINES.gift):pickR(LINES.nothing)+' '+pickR(LINES.chat),won?'wow':'talk')}
  // Käufe: Münzen/Booster/Heilung laufen über die vorhandenen Systeme (LOOT, saveLoot, buyPack, buyChar) -> sofort gespeichert
  buyBooster(i){const s=SHOP[i];if(!buyPack(i)){this.g.sfx('block_guard',{vol:.5});this.speak(pickR(LINES.poor),'cross');this.rebuild();return false}
   this.bought++;this.g.sfx('fw_rocket',{vol:.6,rate:1.5});this.g.pop(this.x,this.y-300,'+'+s.n+' BOOSTER','#ffd23f',1.1,{text:true});this.speak(pickR(LINES.bought),'wow');this.rebuild();return true}
@@ -104,9 +121,10 @@ export class Dealer{
   this.speak(LINES.hired,'wow');this.rebuild();return true}
  // Eingabe (Tastaturcodes, auch vom Controller als synthetische Tasten). Rückgabe true = Taste verbraucht
  key(code){if(!this.active)return false;
+  if(this.roll){if((code==='Enter'||code==='Space'||code==='KeyJ'||code==='KeyE')&&this.roll.t>12)this.roll.t=Math.max(this.roll.t,ROLL.end-1);return true}   // beim Würfeln: ENTER überspringt, sonst nichts
   if(code==='ArrowUp'||code==='KeyW'){if(this.opts.length)this.sel=(this.sel+this.opts.length-1)%this.opts.length;return true}
   if(code==='ArrowDown'||code==='KeyS'){if(this.opts.length)this.sel=(this.sel+1)%this.opts.length;return true}
   if(code==='Enter'||code==='Space'||code==='KeyJ'||code==='KeyE'){if(this.typing&&this.greet){this.shown=this.say.length;this.greet=false;return true}this.greet=false;this.choose(this.sel);return true}   // erstes ENTER überspringt nur die Begrüßung, danach wählt ENTER sofort
   if(code==='Escape'||code==='KeyK'||code==='Backspace'){if(this.node!=='menu')this.menu(pickR(LINES.more),'hip');else this.close();return true}
   return false}
- click(i){if(!this.active)return false;return this.choose(i)}}
+ click(i){if(!this.active||this.roll)return false;return this.choose(i)}}

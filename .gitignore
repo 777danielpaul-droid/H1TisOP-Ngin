@@ -16,3 +16,10 @@ dist/
 # Webserver-Dateien nur außerhalb der Spiel-Assets ignorieren
 # (Bilder und andere benötigte Assets bleiben versionierbar)
 
+
+# Supabase CLI (lokale Zustandsdateien, Zugangsdaten)
+supabase/.temp/
+supabase/.branches/
+supabase/.env*
+.env
+.env.*

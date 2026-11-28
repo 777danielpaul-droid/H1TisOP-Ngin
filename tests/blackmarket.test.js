@@ -65,7 +65,8 @@ d.choose(2);assert.equal(LOOT.items.crystal,1);assert.equal(p1.meter,300,'Krista
 d.key('Escape');
 // Kämpfer anheuern (nur als Rabe-Besitzer: schon vorhanden)
 d.choose(2);assert.equal(d.node,'hire');assert(!d.opts[0].ok,'schon besessen: nicht erneut kaufbar');const c1=LOOT.coins;d.choose(0);assert.equal(LOOT.coins,c1);
-d.key('Escape');d.choose(3);assert(d.say.length>10,'Plaudern');d.key('Escape');assert(!d.active,'Escape im Menü beendet das Gespräch');
+d.key('Escape');d.choose(3);if(d.roll)step(200);   // Plaudern: beim ersten Mal des Tages würfelt Korvus zuerst (Animation), danach kommt der Text
+assert(d.say.length>10,'Plaudern');d.key('Escape');assert(!d.active,'Escape im Menü beendet das Gespräch');
 console.log('  ✓ Story: ansprechen, Dialog, Booster/Gegenstände kaufen, Spieler eingefroren, nichts doppelt');
 // Anheuern über den Händler bei frischem Spielstand (Preis aus CHAR_PRICE)
 {const fresh=await import('../src/core/loot.js?frisch');const fc=await import('../src/core/characters.js?frisch2');void fc;}

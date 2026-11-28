@@ -3,7 +3,7 @@ import{LOOT,prizeTier}from'../core/loot.js';
 
 import{ParticleSystem}from'../core/particles.js';
 
-import{card,cardImg,packSprite,packStyle,prizeFace}from'./lootui.js';
+import{SPECIAL_STYLE,card,cardImg,packSprite,packStyle,prizeFace}from'./lootui.js';
 
 // Booster aufreißen (ersetzt die alte Kartenreihe beim Öffnen). Ablauf, alles in 60-Hz-Frames:
 //  idle  Päckchen fliegt ein und schwebt            -> ENTER / Klick = aufreißen
@@ -24,7 +24,7 @@ export const poA=(c,a)=>c.length===7?c+a:c;   // '#rrggbb' + Alpha-Hex
 export const PO_TITLES=['','NICE!','STARK!','WOW!','JACKPOT!!'];
 export const PO_GOLD='#72e9f4';
 export class PackOpen{
- constructor(rewards,sfx,style){this.items=rewards.map(r=>({r,tier:prizeTier(r),face:prizeFace(r)}));this.sfx=sfx||null;this.style=style||packStyle();this.fw=new ParticleSystem();
+ constructor(rewards,sfx,style){this.items=rewards.map(r=>({r,tier:prizeTier(r),face:prizeFace(r)}));this.sfx=sfx||null;this.special=!!rewards.special;this.style=style||(this.special?SPECIAL_STYLE:packStyle());this.fw=new ParticleSystem();
   this.ph='idle';this.pt=0;this.a=0;this.acc=0;this.k=0;this.ta=-1;this.flash=0;this.shake=0;this.ray=0;this.q=[];this.col=PO_GOLD;this._n=null;this.title=null;
   this.maxTier=Math.max(0,...this.items.map(i=>i.tier));
   // Feuerwerksraketen: Ring + Glitter in der Preis-Farbe; Riesenblumen (mega) bekommen ihren Effekt selbst
@@ -149,7 +149,7 @@ export class PackOpen{
    card(g,hud,-p.w/2,-p.h/2,p.w,p.h,col,fc.t1,fc.t2,fc.t3,-Math.cos(p.face*Math.PI),fc.id?cardImg(fc.id):null)}
   g.restore()}
  texts(g,hud,T){const P=this.ph,t=this.pt,k=this.k,blink=.55+.45*Math.sin(T*8);
-  if(P==='idle'){hud.txt(g,'DEIN BOOSTER',480,62,32,'#ffffff','center',PO_GOLD);g.save();g.globalAlpha=blink;hud.txt(g,'ENTER / KLICK – AUFREISSEN',480,476,17,'#ffffff','center',PO_GOLD);g.restore()}
+  if(P==='idle'){hud.txt(g,this.special?'KORVUS-SPEZIALPACK':'DEIN BOOSTER',480,62,32,'#ffffff','center',PO_GOLD);g.save();g.globalAlpha=blink;hud.txt(g,'ENTER / KLICK – AUFREISSEN',480,476,17,'#ffffff','center',PO_GOLD);g.restore()}
   if(P==='show'||P==='out'){const r=this.items[k],imp=this.impAt(k);
    if(this.title&&this.title.text&&t>=imp&&P==='show'){const age=this.a-this.title.a,s=1+Math.max(0,1-age/12)*.9,big=r.tier>=4?48:r.tier>=3?42:36;g.save();g.translate(480,74);g.scale(s,s);g.rotate(Math.sin(age*.5)*.04*Math.max(0,1-age/30));hud.fancy(g,this.title.text,0,0,big,[r.face.col,'#ffffff'],'center',r.face.col,T,false,false,900,4);g.restore()}
    if(P==='show'&&t>=imp+8&&r.r.isNew){g.save();g.globalAlpha=.6+.4*Math.sin(T*7);hud.txt(g,'★ NEU ★',480,452,20,'#7dff9a','center','#7dff9a');g.restore()}

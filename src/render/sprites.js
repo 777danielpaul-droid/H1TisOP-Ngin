@@ -318,9 +318,9 @@ export function drawPortrait(g,char,cx,cy,size,flip,skin=0){
  g.drawImage(skinImg(S,char.sprites,skin),sx,fr.y,cw,ch,-size/2,-size/2,size,size*ch/cw);g.restore();return true}
 
 // Kompletter erster Idle-Frame, in die Box (x,y,w,h) eingepasst (nichts abgeschnitten), unten mittig ausgerichtet
-export const PORTRAIT_GROUP=['tiger','kitsune','anubis','rabe','cyberdemon','st3g0','leon'];   // Figuren, die in Menüs im selben Maßstab (echte Größenverhältnisse) gezeigt werden
+export const PORTRAIT_GROUP=['tiger','kitsune','anubis','rabe','cyberdemon','st3g0','leon','bear'];   // Figuren, die in Menüs im selben Maßstab (echte Größenverhältnisse) gezeigt werden
 export function drawFullFrame(g,char,x,y,w,h,skin=0){
- if(char&&PORTRAIT_GROUP.includes(char.sprites)){const s=groupScale(PORTRAIT_GROUP.map(id=>({sprites:id})),w,h);if(s&&drawFrameScaled(g,char,x+w/2,y+h,s,skin))return true}
+ if(char&&PORTRAIT_GROUP.includes(char.sprites)){const s=groupScale(PORTRAIT_GROUP.map(id=>({sprites:id,spriteScale:1})),w,h);if(s&&drawFrameScaled(g,char,x+w/2,y+h,s,skin))return true}
  const C=char.sprites&&SPRITE_CHARS[char.sprites],S=C&&sheet(char.sprites);if(!S||!ready(S))return false;
  const pa=C.profileAnim&&C.anims[C.profileAnim],fr=S.meta.frames[pa?pa.frames[pa.frames.length-1]:C.anims.idle.frames[0]];if(!fr)return false;   // Profil: Siegerpose, falls profileAnim gesetzt
  const k=Math.min(w/fr.w,h/fr.h),dw=fr.w*k,dh=fr.h*k;
@@ -330,7 +330,7 @@ export function drawFullFrame(g,char,x,y,w,h,skin=0){
 // Gemeinsamer Maßstab für mehrere Figuren nebeneinander (Shop): die echten Spielgrößen (SPRITE_CHARS.height) bleiben im Verhältnis, die ganze Gruppe passt in je maxW×maxH.
 // Ohne das füllen schmale Figuren (Anubis, Corvus) die Box in der Höhe, breite Posen (Leon, ST3-G0, A1LIEN) werden von der Breite gebremst und wirken viel kleiner.
 function profFrame(char){const C=char&&char.sprites&&SPRITE_CHARS[char.sprites],S=C&&sheet(char.sprites);if(!S||!S.meta)return null;
- const pa=C.profileAnim&&C.anims[C.profileAnim],fr=S.meta.frames[pa?pa.frames[pa.frames.length-1]:C.anims.idle.frames[0]];return fr?{S,fr,k:C.height/S.meta.standH*(C.rs||1)}:null}
+ const pa=C.profileAnim&&C.anims[C.profileAnim],fr=S.meta.frames[pa?pa.frames[pa.frames.length-1]:C.anims.idle.frames[0]];return fr?{S,fr,k:C.height/S.meta.standH*(C.rs||1)*(char.spriteScale||1)}:null}
 export function groupScale(chars,maxW,maxH){let s=Infinity;for(const ch of chars){const p=profFrame(ch);if(p)s=Math.min(s,maxW/(p.fr.w*p.k),maxH/(p.fr.h*p.k))}return isFinite(s)?s:null}
 // Wie drawFullFrame, aber mit festem Maßstab s (aus groupScale), unten mittig bei (cx,by) verankert
 export function drawFrameScaled(g,char,cx,by,s,skin=0){const p=profFrame(char);if(!p||!ready(p.S))return false;

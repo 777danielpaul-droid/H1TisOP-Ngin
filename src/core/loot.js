@@ -47,8 +47,8 @@ export const CARD_ORDER=[
 export const SKIN_POOL=[];for(const id of['tiger','st3g0','kitsune','leon'])for(const k of[1,2,3])SKIN_POOL.push([id,k]);   // Zu Beginn hat jede Figur nur Farbe 0; alle weiteren Farben kommen nur aus Boostern
 export const STAGE_NAMES=['NEON CITY','CRIMSON TEMPLE','TOXIC DOCKS','LABYRINTH'];   // Reihenfolge wie THEMES in render/stage.js; Stage 0 ist frei, alle weiteren kommen nur aus Boostern
 export const STAGE_POOL=[1,2,3];
-export const LOOT={packs:0,coins:0,cards:{},skins:{},stages:[],items:{}};   // items = benutzbare Sonderitems im Beutel (Anzahl je id, siehe core/items.js)
-try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&typeof d==='object'){Object.assign(LOOT,{packs:d.packs|0,coins:d.coins|0,cards:d.cards||{},skins:d.skins||{},stages:Array.isArray(d.stages)?d.stages:[]});
+export const LOOT={packs:0,coins:0,cards:{},skins:{},stages:[],items:{},specials:0,tickets:0,chatDay:''};   // items = benutzbare Sonderitems im Beutel (Anzahl je id, siehe core/items.js)
+try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&typeof d==='object'){Object.assign(LOOT,{packs:d.packs|0,coins:d.coins|0,cards:d.cards||{},skins:d.skins||{},stages:Array.isArray(d.stages)?d.stages:[],specials:Math.min(d.specials|0,d.packs|0),tickets:d.tickets|0,chatDay:typeof d.chatDay==='string'?d.chatDay:''});
  if(d.items&&typeof d.items==='object')LOOT.items=d.items;else for(const id of Object.keys(LOOT.cards))if(isItem(id))LOOT.items[id]=LOOT.cards[id]|0}}catch(e){}   // alter Spielstand ohne Beutel: schon gesammelte Item-Karten werden zu benutzbaren Items
 export const saveLoot=()=>{try{localStorage.setItem(KEY,JSON.stringify(LOOT))}catch(e){}};
 export const ownsSkin=(id,k)=>k<1||(LOOT.skins[id]||[]).includes(k);   // nur Skin 0 ist frei
@@ -59,6 +59,25 @@ export const itemCount=id=>LOOT.items[id]|0;
 export const addItem=(id,n=1)=>{if(!isItem(id))return false;LOOT.items[id]=itemCount(id)+n;saveLoot();return true};
 export const takeItem=id=>{if(itemCount(id)<1)return false;LOOT.items[id]--;saveLoot();return true};   // genau ein Stück verbrauchen; leer -> false, nichts passiert
 export const addPack=(n=1)=>{LOOT.packs+=n;saveLoot()};
+// ---- KORVUS-Spezialpack (Story: Plaudern mit dem Schwarzmarkthändler) ----
+// Einmal pro Kalendertag (lokale Zeit) würfelt Korvus beim ersten Plaudern: mit Wahrscheinlichkeit DAILY.chance schenkt er ein Spezialpack. Der Tag ist danach verbraucht, auch ohne Treffer.
+// Das Spezialpack liegt wie jeder Booster in LOOT.packs (Zähler, Anzeigen und „Booster öffnen“ bleiben gleich); LOOT.specials zählt, wie viele davon Spezialpacks sind (Teilmenge von packs) – diese werden zuerst geöffnet.
+// Inhalt: DAILY.slots Preise, jeder entweder eine große Menge Coins (coinMin..coinMax) oder ein Los-Ticket für Verlosungen (Wahrscheinlichkeit ticketChance). Tickets liegen in LOOT.tickets (gespeichert).
+// >>> WERTE HIER ÄNDERN <<< (zum Vergleich: ein normaler Booster bringt ca. 35-40 Coins und kostet 100)
+export const DAILY={chance:.5,slots:3,ticketChance:.3,coinMin:60,coinMax:140};
+export const DEV={noLimit:false,force:null};   // nur Entwicklerkonsole (Befehl daily), gilt bis zum Neuladen: noLimit = Tageslimit aus · force = 'win' | 'miss' erzwingt das Ergebnis
+export const dayKey=(d=new Date())=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+export const dailyAvailable=(now=new Date())=>DEV.noLimit||LOOT.chatDay!==dayKey(now);
+// Tageswurf: 'already' = heute schon gewürfelt (nichts passiert) · 'won' = Spezialpack erhalten · 'miss' = heute kein Glück. Sofort gespeichert.
+export function rollDailyChat(rnd=Math.random,now=new Date()){if(!dailyAvailable(now))return'already';LOOT.chatDay=dayKey(now);
+ const won=DEV.force==='win'?true:DEV.force==='miss'?false:rnd()<DAILY.chance;if(won){LOOT.packs++;LOOT.specials++}saveLoot();return won?'won':'miss'}
+// Würfel-Animation beim Plaudern (render/storyhud.js drawDie): ein W20. Die obersten Zahlen gewinnen (Anzahl = Chance x 20, mindestens 1); die gezeigte Zahl passt immer zum schon gewürfelten Ergebnis.
+export const DIE=20;
+export const dieWins=()=>Math.max(1,Math.min(DIE-1,Math.round(DAILY.chance*DIE)));
+export const dieValue=(won,rnd=Math.random)=>{const w=dieWins(),lo=DIE-w+1;return won?lo+Math.floor(rnd()*w):1+Math.floor(rnd()*(lo-1))};
+export const spendTickets=(n=1)=>{if(!(n>=1)||LOOT.tickets<n)return false;LOOT.tickets-=n;saveLoot();return true};   // für spätere Verlosungen: Tickets abgeben (false = nicht genug, nichts passiert)
+function openSpecial(rnd){const out=[];for(let i=0;i<DAILY.slots;i++)out.push(rnd()<DAILY.ticketChance?{type:'ticket',n:1}:{type:'coins',n:DAILY.coinMin+Math.floor(rnd()*(DAILY.coinMax-DAILY.coinMin+1)),big:true});
+ for(const r of out){if(r.type==='coins')LOOT.coins+=r.n;else LOOT.tickets+=r.n}out.special=true;return out}
 // Shop: Booster für Coins. Preise hier anpassen (Coins gibt es nur aus Boostern: ca. 35-40 pro Pack, daher kostet 1 Booster 100).
 export const SHOP=[{n:1,price:100},{n:3,price:270},{n:5,price:425}];
 // Kämpfer im Shop (Karte hinter den Boostern): EIN dauerhafter Kauf je Figur, danach in der Charakterwahl spielbar (Freischaltung in unlocks.js, Münzen in LOOT.coins).
@@ -97,7 +116,7 @@ export function sellCards(sel,rnd=Math.random){const take=[];for(const id of Obj
  if(!n)return null;LOOT.coins+=base+bonus;saveLoot();return{n,base,bonus,maxBonus,total:base+bonus}}
 // Wertigkeit eines Preises 0..4 (steuert Aufdeck-Spannung und Feuerwerk in render/packopen.js):
 // 0 wenig Coins · 1 viele Coins / gewöhnliche Karte · 2 seltene Karte · 3 neue Farbe oder Stage · 4 epische Karte (JACKPOT)
-export const prizeTier=r=>!r?0:r.type==='coins'?(r.n>=35?1:0):r.type==='card'?[1,2,4][r.r]||1:3;
+export const prizeTier=r=>!r?0:r.type==='coins'?(r.n>=100?2:r.n>=35?1:0):r.type==='card'?[1,2,4][r.r]||1:3;
 export const cardsOwned=()=>CARDS.filter(c=>LOOT.cards[c.id]>0).length;
 export const pick=(a,rnd)=>a[Math.floor(rnd()*a.length)];
 // Pro Booster höchstens EINE gute Belohnung (Tier >= 2: seltene/epische Karte, neue Farbe, neue Stage). Der Rest sind Coins und ab und zu ein gewöhnliches Sammelbild.
@@ -123,7 +142,9 @@ export function rollGood(rnd){const x=rnd(),card=r=>{let pool=CARDS.filter(c=>c.
 // Booster öffnen: 3 Belohnungen (meist Coins, ab und zu eine gewöhnliche Karte, selten EIN guter Treffer). null, wenn kein Booster da ist.
 // GUARANTEED_CARD: jeder Booster enthält mindestens EINE Sammelkarte (Testmodus; fürs fertige Spiel auf false stellen).
 export const GUARANTEED_CARD=true;
-export function openPack(rnd=Math.random){if(LOOT.packs<1)return null;LOOT.packs--;const good=rnd()<GOOD_CHANCE,slot=Math.floor(rnd()*3);   // der gute Treffer (falls vorhanden) landet auf einem zufälligen Platz
+export function openPack(rnd=Math.random){if(LOOT.packs<1)return null;LOOT.specials=Math.min(LOOT.specials|0,LOOT.packs);LOOT.packs--;
+ if(LOOT.specials>0){LOOT.specials--;const sp=openSpecial(rnd);saveLoot();return sp}   // Spezialpacks zuerst (Ergebnis hat .special=true)
+ const good=rnd()<GOOD_CHANCE,slot=Math.floor(rnd()*3);   // der gute Treffer (falls vorhanden) landet auf einem zufälligen Platz
  const out=[];for(let i=0;i<3;i++)out.push(good&&i===slot?rollGood(rnd):rollFiller(rnd));
  if(GUARANTEED_CARD&&!out.some(r=>r.type==='card')){   // keine Karte dabei -> einen Coin-Platz zur Karte machen (höchstens EINE gute Belohnung bleibt erhalten)
   const k=out.findIndex(r=>!isGood(r)),at=k<0?slot:k,hasGood=out.some((r,i)=>i!==at&&isGood(r));

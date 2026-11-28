@@ -15,6 +15,8 @@ import{NetMatch}from'./core/netmatch.js';
 import{NetInput,NET,encInput}from'./core/netplay.js';
 import{STAMINA,tuneClamp}from'./core/config.js';
 import{NetUi,netMessage}from'./render/netui.js';
+import{CloudUi}from'./render/cloudui.js';
+import{cloudOn,cloudUser,cloudLast,cloudSignIn,cloudSignUp,cloudSignOut,cloudSync,cloudBoot,cloudMessage,cloudCheck}from'./core/cloud.js';
 import{skinCount,skinName}from'./render/skins.js';
 import{THEMES}from'./render/stage.js';
 import{hitDealerOpt}from'./render/storyhud.js';
@@ -102,6 +104,7 @@ on('btn-select',()=>{arcade.toSelect();setMenu(false)});
 on('btn-studio',()=>{arcade.toSelect();setMenu(false);arcade.cursor=CI();openStudio()});
 on('btn-bg',()=>bgUi.open());
 on('btn-playlist',()=>musicUi.open());
+on('btn-cloud',()=>cloudOpen());
 // ---- Startseite: Spielmodus vor dem ersten Kampf wählen (Arcade / Story / 2 Spieler / Melee) ----
 const startEl=$('start');const start=startEl&&startEl.nodeType===1?startEl:null;let startOpen=!!start,startI=0;
 const START_MODES=['arcade','story','versus','melee','online'];
@@ -122,7 +125,7 @@ const startIsMin=()=>!!start&&start.classList.contains('min');
 // Mauszeiger selbst: 2 s ohne Bewegung unsichtbar, bei Bewegung wieder sichtbar (nur im Titelmenü)
 // Gilt jetzt in ALLEN Menüs (Titel, Charakter-/Stage-Wahl, Shop/Booster, Game Over / Sieg, Pause, Panels): Zeiger sichtbar bei Bewegung, nach 2 s Ruhe weg. Im Kampf bleibt er aus.
 let startCurT=0,curWas=false,mouseL=null,endHot=-1;
-const panelsOpen=()=>studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen||devUi.isOpen;
+const panelsOpen=()=>studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen||cloudUi.isOpen||devUi.isOpen;
 const menuish=()=>!intro.active&&(startOpen||menuOpen||panelsOpen()||renderer.lootUi.open||(arcade.state!=='fight'&&!renderer.sel.launching));
 const curShow=()=>{const b=document.body,m=menuish();b.classList.remove('nocur');if(m)b.classList.add('curon');clearTimeout(startCurT);if(m)startCurT=setTimeout(()=>{if(menuish())b.classList.add('nocur')},2000)};
 window.addEventListener('mousemove',e=>{if(Math.abs(e.movementX||0)+Math.abs(e.movementY||0)<3)return;curShow();if(start&&startOpen&&!intro.active){if(startIsMin()){if(!startPinned&&performance.now()>startQuiet)startMin(false)}else startIdleArm()}});   // Mausbewegung während des Intros / direkt danach (Klick zum Überspringen) klappt das Menü nicht auf
@@ -275,6 +278,18 @@ const NET_OK=id=>{const c=CHARACTERS[id];return !!c&&!c.noSpecialBlock&&id!=='wo
 const netCat={chars:()=>ROSTER.map(id=>({id,name:CHARACTERS[id].name,desc:CHARACTERS[id].desc})),
  skins:id=>{const sp=CHARACTERS[id]&&CHARACTERS[id].sprites,a=[];for(let i=0;i<skinCount(sp);i++)if(ownsSkin(id,i))a.push({i,name:skinName(sp,i)});return a},
  stages:()=>THEMES.map((T,i)=>({i,name:T.name,open:arcade.stageOpen(i)}))};
+// ---- Konto & Cloud-Spielstand (Supabase): core/cloud.js, Fenster render/cloudui.js. Beim Start/Anmelden wird der Stand abgeglichen; wurde der lokale Stand ersetzt, lädt die Seite einmal neu. ----
+const cloudUi=new CloudUi({open:()=>cloudOpen(),ctx:()=>({on:cloudOn(),user:cloudUser(),last:cloudLast}),act:(a,v)=>cloudAct(a,v)});cloudUi.mount();
+function cloudOpen(){if(netMatch||intro.active)return;clearInputs();cloudUi.open()}
+async function cloudAct(a,v){
+ if(a==='close'){cloudUi.close();canvas.focus();return}
+ if(a==='signout'){await cloudSignOut();return{msg:'Abgemeldet. Dein Spielstand bleibt auf diesem Gerät.'}}
+ if(a==='sync'){const r=await cloudSync();if(r.reload){location.reload();return}return{msg:r.state==='ok'?'':cloudMessage(r.state==='offline'?'network':r.code||'error'),bad:r.state!=='ok'}}
+ if(a==='signin'||a==='signup'){const bad=cloudCheck(v.email,v.pw);if(bad)return{msg:cloudMessage(bad),bad:true};
+  try{if(a==='signup'){const r=await cloudSignUp(v.email,v.pw);if(r.confirm)return{msg:'Fast geschafft: Wir haben dir eine E-Mail geschickt. Link anklicken, dann hier anmelden.'}}else await cloudSignIn(v.email,v.pw)}
+  catch(e){return{msg:cloudMessage(e.code),bad:true}}
+  const r=await cloudBoot();if(r.reload){location.reload();return}return{msg:''}}}
+cloudBoot().then(r=>{if(r.reload)location.reload();else cloudUi.refreshChip()}).catch(()=>{});
 const netUi=new NetUi({ctx:()=>({client:netClient,match:netMatch,busy:netBusy}),act:(a,v)=>netAct(a,v),cat:netCat});netUi.mount();
 function netOpen(from){netFrom=from;if(from==='start'&&start){startOpen=false;start.classList.add('hidden')}
  if(arcade.state==='select')arcade.setMode('versus');clearInputs();netUi.open(netClient?'':'')}
@@ -326,9 +341,10 @@ function netBarUpdate(){const m=netMatch;if(!m||m.phase==='pick'||m.phase==='clo
 addEventListener('keydown',e=>{
  if(intro.key(e)){e.preventDefault();return}
  if(shopClip.key(e)){e.preventDefault();return}   // Shop-Clip läuft: Enter/Esc/Leertaste überspringt, andere Tasten werden verschluckt   // Intro läuft: Enter/Esc überspringt, andere Tasten werden verschluckt
- if(studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen||devUi.isOpen)return;   // Editor für die eigene Figur / Hintergrund-Panel / Online-Lobby haben Vorrang (Tippen in Feldern)
+ if(studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen||cloudUi.isOpen||devUi.isOpen)return;   // Editor für die eigene Figur / Hintergrund-Panel / Online-Lobby haben Vorrang (Tippen in Feldern)
  if(e.code==='KeyH'&&!menuOpen&&(startOpen||(arcade.state==='select'&&!renderer.sel.launching&&!renderer.lootUi.open))){bgUi.open();e.preventDefault();return}   // H = eigenen Hintergrund einfügen (Titelmenü + Auswahl)
  if(e.code==='KeyN'&&!menuOpen&&(startOpen||(arcade.state==='select'&&!renderer.sel.launching&&!renderer.lootUi.open))){musicUi.open();e.preventDefault();return}   // N = eigene Musik (Titelmenü + Auswahl)
+ if(e.code==='KeyL'&&!menuOpen&&!netMatch&&startOpen&&cloudOn()){cloudOpen();e.preventDefault();return}   // L = Konto & Cloud-Spielstand (Titelmenü)
  if(e.code==='KeyO'&&!menuOpen&&!netMatch&&(startOpen||(arcade.state==='select'&&!renderer.sel.launching&&!renderer.lootUi.open))){netOpen(startOpen?'start':'select');e.preventDefault();return}   // O = Online-Lobby (Titelmenü + Auswahl)
  if(netMatch&&netMatch.phase!=='pick'){   // Online-Kampf: kein Pausemenü (der Gegner kann nicht warten); Esc fragt nach / verlässt, Enter = Revanche; alles andere sind Kampftasten
   if(e.code==='Escape'){if(arcade.state==='vsover')netMatch.leave();else netLeaveAsk=!netLeaveAsk;e.preventDefault();return}

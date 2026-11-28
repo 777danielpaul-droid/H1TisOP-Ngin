@@ -37,7 +37,8 @@ export function card(g,hud,x,y,w,h,col,t1,t2,t3,flip=1,img=null){
 
 
 // Inhalt der Preis-Karte: Farbe, drei Textzeilen, id = Sammelkarten-Bild (falls vorhanden)
-export function prizeFace(r){if(r.type==='coins')return{col:'#ffd23f',t1:'COINS',t2:'+'+r.n,t3:'für den Shop',id:null};
+export function prizeFace(r){if(r.type==='coins')return{col:'#ffd23f',t1:'COINS',t2:'+'+r.n,t3:r.big?'KORVUS-Spezialpreis':'für den Shop',id:null};
+ if(r.type==='ticket')return{col:'#ff7ae6',t1:'LOS-TICKET',t2:'+'+r.n,t3:'für Verlosungen',id:null};
  if(r.type==='card')return{col:RARITY[r.r].c,t1:r.name,t2:RARITY[r.r].n,t3:r.isNew?'NEU!':'schon gesammelt',id:r.id};
  if(r.type==='stage')return{col:'#8f7bff',t1:'NEUE STAGE',t2:r.name,t3:'NEU · 2 Spieler / Melee',id:null};
  return{col:r.col,t1:r.char.toUpperCase()+' SKIN',t2:r.name,t3:'NEU · Taste C im Menü',id:null}}
@@ -94,6 +95,7 @@ export function boosterArtVector(g,hud,cx,cy,w,h,col,n,tilt=0){const count=Math.
   g.restore()}}
 
 export const SHOP_PACK_H=118,SHOP_STYLE=[{d:2,c:8},{d:17,c:2},{d:18,c:6}];   // Motiv/Farbe der Packs im Shop (1 / 3 / 5 Booster)
+export const SPECIAL_STYLE={d:1,c:3};   // Pack-Motiv des KORVUS-Spezialpacks (Blitz in Orange-Gold, unterscheidet sich von den Shop-Packs)
 export function drawShop(g,hud,u){const sel=u.sel|0;
  SHOP.forEach((o,i)=>{const r=shopCardRect(i),on=i===sel,ok=canBuy(i),col=ok?'#65e5ed':'#536d78',cx=r.x+r.w/2;
   g.save();g.translate(cx,r.y+r.h/2);const sc=on?1.05+.012*Math.sin(u.t*.12):.97;g.scale(sc,sc);g.translate(-cx,-(r.y+r.h/2));g.globalAlpha=on?1:.88;
@@ -137,11 +139,12 @@ export function drawLoot(g,hud,u){if(!u||!u.open)return;u.t=(u.t||0)+1;
  g.save();hud.kChamfer(g,14,12,W-28,H-24,22);const deck=g.createLinearGradient(0,12,0,H-12);deck.addColorStop(0,'#1b2d35');deck.addColorStop(.12,'#07131a');deck.addColorStop(.82,'#02080d');deck.addColorStop(1,'#182830');g.fillStyle=deck;g.fill();g.strokeStyle='rgba(172,221,226,.54)';g.lineWidth=1;g.stroke();hud.kChamfer(g,21,19,W-42,H-38,17);g.strokeStyle='rgba(91,229,237,.18)';g.stroke();g.fillStyle='#6de6ed';g.fillRect(32,26,90,2);g.fillRect(W-122,H-28,90,2);g.restore();
  if(u.mode==='reveal'&&u.po){u.po.draw(g,hud,u);g.restore();drawZoom(g,hud,u);return}   // Booster aufreißen (render/packopen.js)
  hud.txt(g,u.mode==='shop'?'XENOS SUPPLY EXCHANGE':u.mode==='sell'?'DATA CARD  EXCHANGE':'REWARD VAULT  /  DATA ARCHIVE',W/2,52,29,'#eaffff','center','#62ddea');hud.lab(g,'ALIEN CONTROL NETWORK  //  SECURE INVENTORY',W/2,72,9,'#6faebb','center',2,null,'700');
- hud.txt(g,`SEALED PACKS  ${LOOT.packs}     /     CREDITS  ${LOOT.coins}     /     DATA CARDS  ${cardsOwned()}/${CARDS.length}`,W/2,96,13,'#9cebf2','center');
+ hud.txt(g,`SEALED PACKS  ${LOOT.packs}${LOOT.specials>0?' (davon '+LOOT.specials+' SPEZIAL)':''}   /   CREDITS  ${LOOT.coins}   /   TICKETS  ${LOOT.tickets}   /   DATA CARDS  ${cardsOwned()}/${CARDS.length}`,W/2,96,13,'#9cebf2','center');
  if(u.mode==='shop')drawShop(g,hud,u);
  else if(u.mode==='reveal'&&u.rewards){const R=u.rewards,cw=210,ch=290,gap=34,x0=W/2-(cw*3+gap*2)/2;
   R.forEach((r,i)=>{const fl=Math.cos(cl((u.t-i*18)/20,0,1)*Math.PI),x=x0+i*(cw+gap),y=130;
    if(r.type==='coins')card(g,hud,x,y,cw,ch,'#ffd23f','COINS','+'+r.n,'für den Shop',fl);
+   else if(r.type==='ticket')card(g,hud,x,y,cw,ch,'#ff7ae6','LOS-TICKET','+'+r.n,'für Verlosungen',fl);
    else if(r.type==='card')card(g,hud,x,y,cw,ch,RARITY[r.r].c,r.name,RARITY[r.r].n,(r.isNew?'NEU!':'schon gesammelt')+(r.item?' · +1 ITEM':''),fl,cardImg(r.id));
    else if(r.type==='stage')card(g,hud,x,y,cw,ch,'#8f7bff','NEUE STAGE',r.name,'NEU – im 2-Spieler/Melee-Menü',fl);
    else card(g,hud,x,y,cw,ch,r.col,r.char.toUpperCase()+' SKIN',r.name,'NEU – Farbe im Menü mit C',fl)});

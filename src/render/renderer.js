@@ -9,7 +9,7 @@ import{GLPost}from'./gl.js';
 import{buildHouse}from'./houses.js';
 import{NeonFog}from'./fog.js';
 import{Hud}from'./hud.js';
-import{drawLoot,shopSelRect,startSelRect,boosterRect,coinsRect}from'./lootui.js';
+import{drawLoot,shopSelRect,startSelRect,boosterRect,coinsRect,boosterArt}from'./lootui.js';
 import{HoverFx,drawEndBtns}from'./hover.js';
 import{drawMeleeHud,meleeHalo,meleeStage}from'./meleehud.js';
 import{drawFighter,drawTrail}from'./rig.js';
@@ -47,9 +47,11 @@ export class Renderer{
   const u=this.g;u.setTransform(s,0,0,s,0,0);if(!this.sel.launching){const h=this.hud,t=this.selT,pk=LOOT.packs>0,bb=boosterRect(),cb=coinsRect();   // Booster + Coins oben rechts (Anzahl der gesammelten)
    // Obere Leiste rechts = exaktes Spiegelbild der Modus-Leiste links (modePill in select.js): Schräge gespiegelt (flip), Farbwechsel cyan/violett spiegelbildlich, gleiche Schriftgröße
    //   links:  ARCADE(cyan) · STORY(violett) · 2 SPIELER(cyan) · MELEE(violett)   rechts: STARTSEITE(violett) · SHOP/KI-KAMPF(cyan) · BOOSTER(violett) · COINS(cyan)
-   h.kBtn(u,bb.x,bb.y,bb.w,bb.h,'BOOSTER '+LOOT.packs,{col:'#b98bff',on:pk,dim:!pk,t,size:12,flip:true,blur:true});
+   h.kBtn(u,bb.x,bb.y,bb.w,bb.h,'',{col:'#b98bff',on:pk,dim:!pk,t,size:12,flip:true,blur:true});
+   boosterArt(u,h,bb.x+22,bb.y+13,14,18,'#b98bff',1,0,null,pk?1:.55);
+   h.txt(u,'× '+LOOT.packs,bb.x+49,bb.y+18,12,pk?'#f8fdff':'#c9d4e0','center','#b98bff');
    h.kBtn(u,cb.x,cb.y,cb.w,cb.h,'COINS '+LOOT.coins,{col:'#7fe8ff',t,size:12,flip:true,blur:true});
-   {const r=startSelRect();h.kBtn(u,r.x,r.y,r.w,r.h,'STARTSEITE',{col:'#b98bff',t,size:12,flip:true,blur:true})}   // 4. Knopf rechts: zurück zur Startseite (Demokampf)
+   {const r=startSelRect();h.kBtn(u,r.x,r.y,r.w,r.h,'START',{col:'#b98bff',t,size:12,flip:true,blur:true})}   // 4. Knopf rechts: zurück zur Startseite (Demokampf)
    if(!A.pvp){const sb=shopSelRect();h.kBtn(u,sb.x,sb.y,sb.w,sb.h,'SHOP',{col:'#7fe8ff',t,size:12,flip:true,blur:true});   // Shop-Knopf neben dem Booster-Zähler
     this.sel.tagPlate(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'right','#6fdeeb',6,0);h.txt(u,'B – BOOSTER ÖFFNEN  ·  P – SHOP',cb.x+cb.w,cb.y+cb.h+16,10,'#a9b4f0','right')}
    else if(A.mode==='versus'||A.mode==='aivsai'){const sb=shopSelRect(),ai=A.mode==='aivsai';h.kBtn(u,sb.x,sb.y,sb.w,sb.h,ai?'2 SPIELER':'KI-KAMPF',{col:'#7fe8ff',on:ai,t,size:12,flip:true,blur:true});

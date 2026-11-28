@@ -1,0 +1,12 @@
+# Wird von supabase-setup nur fuer NEU angelegte Projekte per "supabase config push" eingespielt.
+project_id = "hitisop"
+
+[auth]
+enabled = true
+enable_signup = true
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+# Ohne Bestaetigungs-Mail: man ist nach "Konto erstellen" sofort angemeldet (die eingebauten Gratis-Mails von Supabase sind stark begrenzt).
+enable_confirmations = false

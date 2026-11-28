@@ -1,5 +1,5 @@
 import{ITEMS,ITEM_METER_MAX,itemOf}from'./items.js';
-import{LOOT,addItem,addPack,itemCount,saveLoot,unlockAll}from'./loot.js';
+import{DEV,LOOT,addItem,addPack,itemCount,saveLoot,unlockAll}from'./loot.js';
 import{CHAPTERS}from'./story.js';
 
 // Befehle der Entwicklerkonsole (render/devconsole.js) zum schnellen Testen, v. a. im Story-Modus. Rein logisch (kein DOM) -> testbar.
@@ -24,5 +24,12 @@ export function registerDevCommands(con,{game,arcade}){
   if(what==='pack'){addPack(n);return`+${n} Booster (jetzt ${LOOT.packs}).`}
   if(what==='coins'){LOOT.coins=Math.min(999999,(+LOOT.coins||0)+n);saveLoot();return`+${n} Münzen (jetzt ${LOOT.coins}).`}
   addItem(what,n);return`+${n} ${itemOf(what).name} (jetzt ${itemCount(what)}).`},'<pack|coins|item> [n]');
+ con.add('daily','Korvus-Tageswurf testen: Limit zurücksetzen/aus/an, Ergebnis erzwingen',a=>{const w=String(a[0]||'reset').toLowerCase();   // Schalter gelten bis zum Neuladen der Seite
+  if(w==='reset'){LOOT.chatDay='';saveLoot();return'Tageswurf zurückgesetzt: beim nächsten Plaudern wird einmal gewürfelt.'}
+  if(w==='aus'){DEV.noLimit=true;return'Tageslimit AUS: du kannst beliebig oft würfeln (bis zum Neuladen).'}
+  if(w==='an'){DEV.noLimit=false;return'Tageslimit wieder AN.'}
+  if(w==='win'||w==='miss'){DEV.force=w;return'Ergebnis erzwungen: '+(w==='win'?'immer Treffer':'immer Niete')+' (daily zufall hebt das auf).'}
+  if(w==='zufall'){DEV.force=null;return'Ergebnis wieder zufällig.'}
+  throw new Error('Benutzung: daily [reset|aus|an|win|miss|zufall]')},'[reset|aus|an|win|miss|zufall]');
  con.add('unlock','Schaltet alle Farben, Arenen und Kapitel frei',()=>{unlockAll();for(let c=2;c<=CHAPTERS.length;c++)arcade.unlockChapter(c);return'Alle Farben, Arenen und Kapitel freigeschaltet.'});
 }

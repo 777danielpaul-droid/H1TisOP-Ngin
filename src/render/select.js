@@ -120,7 +120,7 @@ export class SelectScreen{
  fake(id,t){const ch=CHARACTERS[id],f=this.fakes[id]||(this.fakes[id]={x:0,y:0,facing:1,char:ch,anim:'idle',animU:0,sf:0,mf:0,move:null,state:'idle',trail:[],vx:0,vy:0,menu:true});f.sf=t;f.char=ch;return f}
  // Text in Zeilen umbrechen (Breite in Logik-Pixeln)
  // Lesefläche: abgedunkelte, halbtransparente Platte (rgba(10, 10, 18, 0.72)) mit dezentem Neon-Rahmen. Liegt hinter Balken, Texten und Hinweisen, damit sie auch vor dem hellen Grid lesbar bleiben.
- plate(g,x,y,w,h,col='#6fdeeb',r=7){this.glassPanel(g,{x,y,w,h},col,.92,r)}
+ plate(g,x,y,w,h,col='#6fdeeb',r=7,accent=true){this.glassPanel(g,{x,y,w,h},col,.92,r,false,true,accent)}
  // Platte hinter einer einzelnen Textzeile (Breite aus dem Text gemessen); x bezieht sich auf die Ausrichtung des Textes (left | right | center)
  tagPlate(g,txt,x,y,size,align='left',col,pad=8,sp=2){const w=this.hud.mw(g,txt,size)+txt.length*sp+pad*2,x0=align==='right'?x-w+pad:align==='center'?x-w/2:x-pad;this.plate(g,x0,y-size-3,w,size+9,col,5)}
  wrap(g,s,size,maxW){const out=[];let line='';for(const w of String(s).split(' ')){const tr=line?line+' '+w:w;if(line&&this.hud.mw(g,tr,size)>maxW){out.push(line);line=w}else line=tr}if(line)out.push(line);return out}
@@ -128,8 +128,7 @@ export class SelectScreen{
   // Main character bay: dark glass console, machined corners and restrained cyan telemetry. Spiegelbild der Subject-Data-Konsole rechts (profile()).
   const bay=g.createLinearGradient(0,BAY.y,0,BAY.y+BAY.h);bay.addColorStop(0,'rgba(7,19,28,.54)');bay.addColorStop(1,'rgba(10,10,18,.40)');
   this.consoleFrame(g,BAY,BAY_FLIP,bay);g.save();
-  {const sc=CHARACTERS[[...ROSTER,'custom'][arcade.cursor]];hud.kVRule(g,BAY.x+BAY.w-8,138,492,(sc&&sc.glow)||'#3fe0ff',.72)}   // Gegenstück zur senkrechten Linie am inneren Rand der Subject-Data-Konsole (profile())
-  hud.lab(g,'HOLOGRAPHIC COMBATANT BAY',BAY.x+18,122,9,'#78d8e7','left',2,null,'700');hud.kRule(g,BAY.x+18,BAY.x+18+260,129,'#4faebe','r',.55);
+  hud.lab(g,'HOLOGRAPHIC COMBATANT BAY',BAY.x+18,122,9,'#78d8e7','left',2,null,'700');
   hud.lab(g,'BIO-SIGNATURE',BAY.x+18,475,8,'#668e9c','left',1,null,'700');hud.lab(g,'SYNC  /  READY',BAY.x+BAY.w-18,475,8,'#7be5ee','right',1,null,'700');g.restore();
   // Deck rails: machined dark-chrome hardware ties the character bay and profile console together (links/rechts gespiegelt).
   g.save();g.strokeStyle='rgba(144,198,207,.22)';g.lineWidth=1;g.beginPath();g.moveTo(BAY.x,96);g.lineTo(W-BAY.x,96);g.moveTo(BAY.x,504);g.lineTo(W-BAY.x,504);g.stroke();
@@ -203,13 +202,13 @@ export class SelectScreen{
    g.save();for(let k=0;k<N;k++){const on=k===cur;g.globalAlpha=on?1:.4;g.fillStyle=on?'#ffffff':'#8f95d8';g.beginPath();g.arc(CAR.cx+(k-(N-1)/2)*16,CAR.base+82+0,on?4:3,0,7);g.fill()}g.restore()}}
  // Rahmen einer Konsole: Fläche, Außenkante, innere Haarlinie, Akzentstriche oben + unten. flip=true ergibt das exakte Spiegelbild (Schrägen, Akzente, Farben vertauscht).
  // Die Combatant Bay (BAY, flip=false) und die Subject-Data-Konsole (PNL, flip=true) benutzen dieselbe Funktion -> immer symmetrisch.
-  glassPanel(g,box,col='#7fe8ff',al=1,corner=18,flip=false,useBlur=true){const hud=this.hud,{x,y,w,h}=box;g.save();g.globalAlpha*=al;
+  glassPanel(g,box,col='#7fe8ff',al=1,corner=18,flip=false,useBlur=true,accent=true){const hud=this.hud,{x,y,w,h}=box;g.save();g.globalAlpha*=al;
   if(useBlur)hud.backdropBlur(g,x,y,w,h,corner,flip,10);hud.kChamfer(g,x,y,w,h,corner,flip);const glass=g.createLinearGradient(0,y,0,y+h);
   glass.addColorStop(0,'rgba(235,248,255,.16)');glass.addColorStop(.22,'rgba(105,172,240,.08)');glass.addColorStop(.62,'rgba(7,12,25,.16)');glass.addColorStop(1,'rgba(4,8,18,.24)');g.fillStyle=glass;g.fill();
   g.save();hud.kChamfer(g,x+2,y+2,w-4,h-4,Math.max(6,corner-2),flip);g.clip();g.fillStyle=`${col}10`;g.fillRect(x+2,y+2,w-4,h-4);g.restore();
   g.save();hud.kChamfer(g,x,y,w,h,corner,flip);g.clip();const sheen=g.createLinearGradient(x,0,x+w,0);sheen.addColorStop(0,'rgba(255,255,255,.22)');sheen.addColorStop(.18,'rgba(255,255,255,0)');sheen.addColorStop(.78,'rgba(255,255,255,0)');sheen.addColorStop(1,'rgba(255,255,255,.10)');g.fillStyle=sheen;g.fillRect(x,y,w,h);g.restore();
   g.strokeStyle='rgba(255,255,255,.42)';g.lineWidth=1;g.stroke();hud.kChamfer(g,x+5,y+5,w-10,h-10,Math.max(8,corner-4),flip);g.strokeStyle=`${col}55`;g.stroke();
-  g.fillStyle='rgba(255,255,255,.32)';g.fillRect(x+corner+8,y+2,Math.max(24,w*.18),1.5);g.restore()}
+  g.fillStyle='rgba(255,255,255,.32)';if(accent)g.fillRect(x+corner+8,y+2,Math.max(24,w*.18),1.5);g.restore()}
  consoleFrame(g,r,flip,fill){const hud=this.hud,{x,y,w,h}=r,ax=(off,len)=>flip?x+w-off-len:x+off;   // ax: Akzentstrich von der äußeren Ecke aus gemessen
   this.glassPanel(g,r,'#7fe8ff',1,18,flip,false);g.save();
   g.fillStyle='rgba(83,222,239,.65)';g.fillRect(ax(18,82),y+2,82,2);g.fillStyle='rgba(132,112,255,.55)';g.fillRect(ax(w-100,82),y+2,82,2);   // oben: cyan außen/violett innen (Bay) bzw. gespiegelt (Konsole)
@@ -230,15 +229,14 @@ export class SelectScreen{
   const panelGrad=g.createLinearGradient(0,PNL.y,0,PNL.y+PNL.h);
   panelGrad.addColorStop(0,'rgba(235,248,255,.16)');panelGrad.addColorStop(.45,'rgba(94,154,210,.08)');panelGrad.addColorStop(1,'rgba(4,8,18,.30)');
   this.consoleFrame(g,PNL,PNL_FLIP,panelGrad);g.save();
-  hud.lab(g,'SUBJECT DATA  /  LIVE ANALYSIS',PNL.x+PNL.w-18,122,9,'#83dce9','right',2,null,'700');hud.kRule(g,PNL.x+PNL.w-18-260,PNL.x+PNL.w-18,129,'#4faebe','l',.55);
-  hud.kVRule(g,PNL.x+8,138,492,col,.72);g.restore();
+  hud.lab(g,'SUBJECT DATA  /  LIVE ANALYSIS',PNL.x+PNL.w-18,122,9,'#83dce9','right',2,null,'700');g.restore();
   if(!ch){   // leerer Slot
    hud.fam(F_DISP,()=>hud.fancy(g,'EIGENE FIGUR',PX+16,162,40,['#ffffff',col],'left',col,t,false,false,400,2));
    this.wrap(g,'Lade deine Sprite-Sheets hoch, stelle Name, Moves und Werte ein und kämpfe mit deinem eigenen Charakter.',14,PW-30).forEach((l,k)=>hud.txt(g,l,PX+16,198+k*20,14,TXT,'left'));
    hud.txt(g,'Es reicht ein einziges Sheet (Idle); alles andere kannst du nach und nach ergänzen.',PX+16,262,12,DIM,'left');g.restore();return}
   // Porträt
   const py=116,ps=150,ph=170,pcx=PX+16+ps/2,pcy=py+ph/2;
-  const pg=g.createRadialGradient(pcx,pcy+30,6,pcx,pcy+30,ps*.8);pg.addColorStop(0,col+'55');pg.addColorStop(1,'#0000');g.fillStyle=pg;g.fillRect(PX+8,py-6,ps+16,ph+12);hud.kBrackets(g,PX+8,py-4,ps+16,ph+8,12,col,.85);
+  const pg=g.createRadialGradient(pcx,pcy+30,6,pcx,pcy+30,ps*.8);pg.addColorStop(0,col+'55');pg.addColorStop(1,'#0000');g.fillStyle=pg;g.fillRect(PX+8,py-6,ps+16,ph+12);
   g.save();
   if(!drawFullFrame(g,ch,PX+16,py,ps,ph,arcade.skinOf(id))){g.fillStyle=col;g.font=`900 90px ${F_TECH}`;g.textAlign='center';g.fillText(ch.name[0],pcx,pcy+30)}
   g.restore();
@@ -253,7 +251,7 @@ export class SelectScreen{
   // Werte als Balken
   const bars=[['LEBEN',ch.hp,(ch.hp-700)/(1500-700)],['TEMPO',Math.round(ch.walk*100)+'%',ch.walk/1.4],['SCHADEN',Math.round(ch.dmg*100)+'%',ch.dmg/1.3],['ABWEHR',Math.round(100/(ch.def||1))+'%',(1/(ch.def||1))/1.3]];
   const by=py+ph+16,bx=PX+16,lw=84,bw=PW-16-lw-70;
-  this.plate(g,bx-10,by-15,lw+bw+80,92,col);   // Stats-Balken
+  this.plate(g,bx-10,by-15,lw+bw+80,92,col,7,false);   // Stats-Balken
   bars.forEach(([lab,val,v],k)=>{const y=by+k*22;v=Math.max(.04,Math.min(1,v));
    hud.lab(g,lab,bx,y+4,11,DIM,'left',2,null,'700');
    hud.kBar(g,bx+lw,y-5,bw,8,v,col,t,5);
@@ -307,11 +305,9 @@ modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':
   if(M)this.meleeOpts(g,A,t,W);
   const slots=Arcade.slotIds();
   this.vsRondell(g,A,t,1,slots);this.vsRondell(g,A,t,2,slots);
-  g.save();g.globalAlpha=.5;hud.kRule(g,BAY.x+14,BAY.x+BAY.w-14,302,'#4a4c9a','r',.9);g.restore();
   // Profil rechts wie im Arcade-Menü, je Spieler ein Block; die senkrechten Spielerlinien sitzen links an der Konsole und – gespiegelt – rechts an der Bay
   g.save();this.consoleFrame(g,PNL,PNL_FLIP,'rgba(4,12,19,.82)');
-  hud.kVRule(g,PNL.x+8,138,292,P1C,.85);hud.kVRule(g,PNL.x+8,312,492,P2C,.85);hud.kVRule(g,BAY.x+BAY.w-8,138,292,P1C,.85);hud.kVRule(g,BAY.x+BAY.w-8,312,492,P2C,.85);
-  hud.kRule(g,PX+8,PX+PW-8,302,'#4e8290','r',.8);g.restore();
+  g.restore();
   this.vsProfile(g,A,t,1,slots[v.c1],104,P1C,M);this.vsProfile(g,A,t,2,slots[v.c2],304,P2C,M);
   // Fuß: Wartehinweis + Steuerung
   const one=v.locked[0]!==v.locked[1],l1=AI?'KI 1:  A / D wählen · C Farbe · G bestätigen':'P1:  A / D wählen · C Farbe · G bestätigen',l2=AI?'KI 2:  ◀ / ▶ wählen · L Farbe · ENTER bestätigen':M&&A.cpu?'CPU (P2):  ◀ / ▶ wählt den Gegner · ENTER bestätigen':'P2:  ◀ / ▶ wählen · L Farbe · ENTER bestätigen',fw=Math.max(hud.mw(g,l1,11),hud.mw(g,l2,11))+24;
@@ -342,11 +338,10 @@ modePill(g,A,t){const m=MODE_PILL,hud=this.hud,shown=A.mode==='aivsai'?'versus':
    hud.fam(F_DISP,()=>hud.fancy(g,ch.name,cx,base+lerp(26,18,ad),lerp(22,13,ad),sel?['#ffffff',pc]:['#cfc6ee','#a79bd6'],'center',sel?pc:null,t,false,false,400,1));
    if(sel)this.skinDots(g,ch,A.vsSkinOf(pl),cx,base+42,true);
    g.restore()}
-  // Tag + Pfeile (Pfeile weg, sobald bestätigt)
-  const lab=A.mode==='aivsai'?'KI '+pl:(A.mode==='melee'&&A.cpu&&pl===2)?'CPU':'P'+pl;
-  hud.fancy(g,'▼ '+lab+(lk?' ✔':''),VCAR.cx,y0+30,18,['#fff',pc],'center',pc,t);
-  if(!lk){const pu=.5+.5*Math.sin(t*.14);g.save();g.fillStyle=pc;g.shadowColor=pc;g.shadowBlur=8;g.globalAlpha=.6+.4*pu;
-   for(const sgn of[-1,1]){const x=VCAR.cx+sgn*(78+pu*3),y=base0+22;g.beginPath();g.moveTo(x+sgn*8,y);g.lineTo(x-sgn*5,y-9);g.lineTo(x-sgn*5,y+9);g.closePath();g.fill()}g.restore()}}
+  // Kleiner Spieler-Marker oberhalb des Rondells; sitzt bewusst außerhalb der Kämpfer-Silhouette.
+  const lab=A.mode==='aivsai'?'KI '+pl:(A.mode==='melee'&&A.cpu&&pl===2)?'CPU':'P'+pl,pu=.5+.5*Math.sin(t*.14);
+  g.save();g.globalAlpha=.7+.3*pu;g.shadowColor=pc;g.shadowBlur=8;g.strokeStyle=pc;g.lineWidth=1.5;g.beginPath();g.arc(VCAR.cx-13,y0+11,4.5,0,7);g.stroke();g.fillStyle=pc;g.beginPath();g.arc(VCAR.cx-13,y0+11,1.8,0,7);g.fill();g.restore();
+  hud.txt(g,lab+(lk?'  ✓':''),VCAR.cx-4,y0+15,11,lk?'#ffffff':pc,'left',1,pc)}
 
  // Ein Spieler-Block im 2P-/Melee-Menü: Porträt, Name, Beschreibung, Balken, Stärken/Schwächen (wie das Arcade-Profil, nur kompakter)
  vsProfile(g,A,t,pl,id,y0,pc,M){const hud=this.hud,ch=CHARACTERS[id],col=ch.glow||'#fff',lk=A.vs.locked[pl-1];
