@@ -286,8 +286,8 @@ const netCat={chars:()=>ROSTER.map(id=>({id,name:CHARACTERS[id].name,desc:CHARAC
  skins:id=>{const sp=CHARACTERS[id]&&CHARACTERS[id].sprites,a=[];for(let i=0;i<skinCount(sp);i++)if(ownsSkin(id,i))a.push({i,name:skinName(sp,i)});return a},
  stages:()=>THEMES.map((T,i)=>({i,name:T.name,open:arcade.stageOpen(i)}))};
 // ---- Konto & Cloud-Spielstand (Supabase): core/cloud.js, Fenster render/cloudui.js. Beim Start/Anmelden wird der Stand abgeglichen; wurde der lokale Stand ersetzt, lädt die Seite einmal neu. ----
+const cloudWho=id=>(CHARACTERS[id]&&CHARACTERS[id].name)||id;   // vor cloudUi definiert: mount() ruft ctx() sofort auf
 const cloudUi=new CloudUi({open:()=>cloudOpen(),ctx:()=>({on:cloudOn(),user:cloudUser(),last:cloudLast,google:cloudGoogleOk(),name:cloudName(),local:loadScores().slice(0,5).map(e=>({...e,who:cloudWho(e.fighter)}))}),act:(a,v)=>cloudAct(a,v)});cloudUi.mount();
-const cloudWho=id=>(CHARACTERS[id]&&CHARACTERS[id].name)||id;
 // Arcade-Durchlauf beendet (core/arcade.js onRun): Bestwert in die Cloud, falls angemeldet (lokal ist er schon gespeichert)
 arcade.onRun=e=>{cloudSubmitScore(e).then(r=>{if(r&&r.state==='ok')padToast('☁ Highscore gesichert'+(r.rank?' · Platz '+r.rank:''),true);else if(r&&(r.state==='offline'||r.state==='error'))padToast('☁ Highscore wird später gesichert',false)}).catch(()=>{})};
 function cloudOpen(view){if(netMatch||intro.active)return;clearInputs();cloudUi.open(view)}

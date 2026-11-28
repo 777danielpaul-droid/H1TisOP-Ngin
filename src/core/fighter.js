@@ -1,4 +1,4 @@
-import{AIR,BARRIER,BOUNCE,COMBO_FINISH,GROUND,MELEE,PHYS,SPAM,STAMINA,WALL_L,WALL_R}from'./config.js';
+import{AIR,BARRIER,BOUNCE,COMBO_FINISH,GROUND,MELEE,PHYS,SPAM,STAMINA,WALL_L,WALL_R,WORLD}from'./config.js';
 import{freshStats}from'./score.js';
 const K1={regen:1,delay:1,empty:1,rest:1};   // Ausdauer-Regler (Menü) – Standardfaktoren, siehe Game.stamTune
 import{Hitbox}from'./hitbox.js';
@@ -268,9 +268,11 @@ export class Fighter{
   {const T0=this.terrain;if(T0&&T0.platforms.length&&this.grounded){const pf=T0.under(this.x,this.y);if(pf&&pf.dx)this.x+=pf.dx}}   // bewegliche Plattform trägt mit
   const px=this.x,py=this.y;this.x+=this.vx;this.y+=this.vy;
   if(M)this.onStage=this.x>=MELEE.pl&&this.x<=MELEE.pr;
-  const A=game.arena;
-  if(this.x<A.l||this.x>A.r){const fast=Math.abs(this.vx),hurt=['hit','airhit','tumble','ko'].includes(this.state);this.x=this.x<A.l?A.l:A.r;
-   if(hurt&&fast>BARRIER.impactV){A.hitWall(game,this,(fast-BARRIER.impactV+1)*BARRIER.impactMul);if(this.x===A.l||this.x===A.r)this.vx=0}} // Aufprall auf die Barriere
+  const A=game.arena,hurt=['hit','airhit','tumble','ko'].includes(this.state);
+  if(!hurt&&(this.x<WORLD.x0||this.x>WORLD.x1)){this.x=this.x<WORLD.x0?WORLD.x0:WORLD.x1;this.vx=0} // Nur steuerbare Figuren werden an der Weltgrenze gehalten; Wegschläge dürfen aus dem Bild fliegen.
+  else if(this.x<A.l||this.x>A.r){const edge=this.x<A.l?A.l:A.r,over=this.x-edge,fast=Math.abs(this.vx);
+   if(hurt){this.x=edge;if(fast>BARRIER.impactV)A.hitWall(game,this,(fast-BARRIER.impactV+1)*BARRIER.impactMul);this.x=edge+over} // Treffer dürfen über die frühere Wandlinie hinausfliegen.
+   else this.x=edge}
   this.ceiling(game,px);
   this.wallHit=false;const T=this.terrain;   // Story-Kanten: eine höhere Ebene ist von unten eine Wand (wallHit = die KI springt dann hinauf)
   if(T&&!M&&this.x!==px){const nx=T.block(px,this.x,this.y);if(nx!==this.x){this.x=nx;this.vx=0;this.wallHit=true}}

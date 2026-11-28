@@ -96,10 +96,24 @@ export function boosterArtVector(g,hud,cx,cy,w,h,col,n,tilt=0){const count=Math.
 
 export const SHOP_PACK_H=118,SHOP_STYLE=[{d:2,c:8},{d:17,c:2},{d:18,c:6}];   // Motiv/Farbe der Packs im Shop (1 / 3 / 5 Booster)
 export const SPECIAL_STYLE={d:1,c:3};   // Pack-Motiv des KORVUS-Spezialpacks (Blitz in Orange-Gold, unterscheidet sich von den Shop-Packs)
+// ---- Glas-Look (einheitlich mit den HTML-Menüs und der Startseite) ----
+// Weichgezeichneter Szenenhintergrund: einmal beim Öffnen aus dem Schnappschuss des Auswahlbildschirms (hud.backdrop) erzeugt (klein skaliert + leichter Blur = billig, läuft in jedem Browser).
+// Ohne frischen Schnappschuss (z. B. Kampf-Ende) bleibt die dunkle Fläche.
+function lootBackdrop(g,hud,u){
+ if(u.bgBlur===undefined){u.bgBlur=false;
+  try{const b=hud.backdrop;if(b&&Date.now()-(hud.backdropAt||0)<400&&typeof document!=='undefined'){const c=document.createElement('canvas');c.width=Math.max(16,Math.round(b.width/10));c.height=Math.max(16,Math.round(b.height/10));const x=c.getContext('2d');x.imageSmoothingQuality='high';if('filter' in x)x.filter='blur(2px) saturate(1.5)';x.drawImage(b,0,0,c.width,c.height);u.bgBlur=c}}catch(e){u.bgBlur=false}}
+ if(u.bgBlur){g.drawImage(u.bgBlur,0,0,W,H);g.fillStyle='rgba(3,8,28,.46)'}else g.fillStyle='rgba(1,5,9,.94)';
+ g.fillRect(0,0,W,H)}
+function glassCard(g,hud,r,on){
+ g.shadowColor=on?'rgba(127,232,255,.85)':'rgba(0,4,20,.55)';g.shadowBlur=on?24:12;g.fillStyle='rgba(8,18,46,.40)';hud.kChamfer(g,r.x,r.y,r.w,r.h,15);g.fill();g.shadowBlur=0;
+ const gl=g.createLinearGradient(r.x,r.y,r.x+r.w,r.y+r.h);gl.addColorStop(0,on?'rgba(255,255,255,.34)':'rgba(255,255,255,.22)');gl.addColorStop(.35,'rgba(150,200,255,.07)');gl.addColorStop(1,on?'rgba(127,232,255,.18)':'rgba(120,160,255,.10)');g.fillStyle=gl;hud.kChamfer(g,r.x,r.y,r.w,r.h,15);g.fill();
+ g.strokeStyle=on?'#ffffff':'rgba(255,255,255,.45)';g.lineWidth=on?1.8:1;hud.kChamfer(g,r.x+1,r.y+1,r.w-2,r.h-2,14);g.stroke();
+ g.strokeStyle='rgba(127,232,255,.22)';g.lineWidth=1;hud.kChamfer(g,r.x+6,r.y+6,r.w-12,r.h-12,10);g.stroke();
+ g.fillStyle='rgba(255,255,255,.55)';g.fillRect(r.x+16,r.y+4,r.w*.34,1.5)}
 export function drawShop(g,hud,u){const sel=u.sel|0;
  SHOP.forEach((o,i)=>{const r=shopCardRect(i),on=i===sel,ok=canBuy(i),col=ok?'#65e5ed':'#536d78',cx=r.x+r.w/2;
   g.save();g.translate(cx,r.y+r.h/2);const sc=on?1.05+.012*Math.sin(u.t*.12):.97;g.scale(sc,sc);g.translate(-cx,-(r.y+r.h/2));g.globalAlpha=on?1:.88;
-  g.shadowColor=on?'#58ddeb':'#000';g.shadowBlur=on?22:10;g.fillStyle='#02070c';hud.kChamfer(g,r.x,r.y,r.w,r.h,15);g.fill();g.shadowBlur=0;const shell=g.createLinearGradient(r.x,r.y,r.x+r.w,r.y+r.h);shell.addColorStop(0,'#647b83');shell.addColorStop(.16,'#172a33');shell.addColorStop(.7,'#050d13');shell.addColorStop(1,'#344b54');g.fillStyle=shell;hud.kChamfer(g,r.x+2,r.y+2,r.w-4,r.h-4,13);g.fill();g.strokeStyle=on?'#9dfaff':'rgba(145,197,205,.42)';g.lineWidth=on?1.8:1;hud.kChamfer(g,r.x+4,r.y+4,r.w-8,r.h-8,11);g.stroke();g.fillStyle='rgba(255,255,255,.18)';g.fillRect(r.x+15,r.y+7,r.w*.3,1.5);g.strokeStyle='rgba(132,217,225,.18)';hud.kChamfer(g,r.x+9,r.y+9,r.w-18,r.h-18,8);g.stroke();
+  glassCard(g,hud,r,on);
   boosterArt(g,hud,cx,r.y+88,r.w<130?64:76,SHOP_PACK_H,ok?'#69e9ef':'#596c83',o.n,on?-.05:0,SHOP_STYLE[i%SHOP_STYLE.length],ok?1:.5);
   hud.txt(g,o.n===1?'1 BOOSTER':o.n+' BOOSTER',cx,r.y+170,r.w<130?16:19,'#ffffff','center',on?col:null);
   if(o.n>1)hud.txt(g,'SPARE '+Math.round((1-o.price/(o.n*SHOP[0].price))*100)+' %',cx,r.y+188,r.w<130?10:11,'#7dff9a','center');
@@ -109,7 +123,7 @@ export function drawShop(g,hud,u){const sel=u.sel|0;
  const figW=shopCardRect(SHOP.length).w-(shopCardRect(SHOP.length).w<130?2:24),figS=groupScale(CHAR_SHOP.map(o=>CHARACTERS[o.id]),figW,128);   // gemeinsamer Maßstab nach den Spiel-Größenverhältnissen (sprites.js, SPRITE_CHARS.rs)
  CHAR_SHOP.forEach((o,j)=>{const i=SHOP.length+j,r=shopCardRect(i),on=i===sel,own=ownsChar(o.id),ok=canBuyChar(o.id),ch=CHARACTERS[o.id],col=own?'#7dff9a':ok?'#65e5ed':'#536d78',cx=r.x+r.w/2;
   g.save();g.translate(cx,r.y+r.h/2);const sc=on?1.05+.012*Math.sin(u.t*.12):.97;g.scale(sc,sc);g.translate(-cx,-(r.y+r.h/2));g.globalAlpha=on?1:.88;
-  g.shadowColor=on?'#58ddeb':'#000';g.shadowBlur=on?22:10;g.fillStyle='#02070c';hud.kChamfer(g,r.x,r.y,r.w,r.h,15);g.fill();g.shadowBlur=0;const shell=g.createLinearGradient(r.x,r.y,r.x+r.w,r.y+r.h);shell.addColorStop(0,'#647b83');shell.addColorStop(.16,'#172a33');shell.addColorStop(.7,'#050d13');shell.addColorStop(1,'#344b54');g.fillStyle=shell;hud.kChamfer(g,r.x+2,r.y+2,r.w-4,r.h-4,13);g.fill();g.strokeStyle=on?'#9dfaff':'rgba(145,197,205,.42)';g.lineWidth=on?1.8:1;hud.kChamfer(g,r.x+4,r.y+4,r.w-8,r.h-8,11);g.stroke();g.fillStyle='rgba(255,255,255,.18)';g.fillRect(r.x+15,r.y+7,r.w*.3,1.5);g.strokeStyle='rgba(132,217,225,.18)';hud.kChamfer(g,r.x+9,r.y+9,r.w-18,r.h-18,8);g.stroke();
+  glassCard(g,hud,r,on);
   g.save();g.shadowColor=ch.glow;g.shadowBlur=on?18:8;if(!(figS&&drawFrameScaled(g,ch,cx,r.y+12+128,figS)))drawFullFrame(g,ch,r.x+(r.w<130?14:30),r.y+12,r.w-(r.w<130?28:60),128);g.restore();
   hud.txt(g,ch.name,cx,r.y+170,r.w<115?14:r.w<130?16:19,'#ffffff','center',on?col:null);
   hud.txt(g,'KÄMPFER FREISCHALTEN',cx,r.y+188,r.w<115?7:r.w<130?8:10,'#9bbcc2','center');
@@ -133,10 +147,10 @@ export function drawZoom(g,hud,u){const z=u&&u.zoom;if(!z)return;u.zt=(u.zt||0)+
  g.translate(W/2,H/2-6);const sc=.82+.18*k;g.scale(sc,sc);g.globalAlpha=k;
  card(g,hud,-w/2,-h/2,w,h,z.col,z.t1,z.t2,z.t3,1,z.id?cardImg(z.id):null);
  g.restore();hud.txt(g,'Klick / ESC / ENTER – schließen',W/2,H-22,14,'#ffffff','center')}
-export function drawLoot(g,hud,u){if(!u||!u.open)return;u.t=(u.t||0)+1;
- g.save();g.globalAlpha=.94;g.fillStyle='#010509ee';g.fillRect(0,0,W,H);g.globalAlpha=1;
+export function drawLoot(g,hud,u){if(!u||!u.open){if(u)u.bgBlur=undefined;return}u.t=(u.t||0)+1;
+ g.save();lootBackdrop(g,hud,u);
  // Vault chassis and recessed glass work surface.
- g.save();hud.kChamfer(g,14,12,W-28,H-24,22);const deck=g.createLinearGradient(0,12,0,H-12);deck.addColorStop(0,'#1b2d35');deck.addColorStop(.12,'#07131a');deck.addColorStop(.82,'#02080d');deck.addColorStop(1,'#182830');g.fillStyle=deck;g.fill();g.strokeStyle='rgba(172,221,226,.54)';g.lineWidth=1;g.stroke();hud.kChamfer(g,21,19,W-42,H-38,17);g.strokeStyle='rgba(91,229,237,.18)';g.stroke();g.fillStyle='#6de6ed';g.fillRect(32,26,90,2);g.fillRect(W-122,H-28,90,2);g.restore();
+ g.save();hud.kChamfer(g,14,12,W-28,H-24,22);const deck=g.createLinearGradient(0,12,0,H-12);deck.addColorStop(0,'rgba(190,225,255,.20)');deck.addColorStop(.12,'rgba(120,160,230,.08)');deck.addColorStop(.82,'rgba(10,20,50,.26)');deck.addColorStop(1,'rgba(150,200,255,.16)');g.fillStyle=deck;g.fill();const spec=g.createLinearGradient(14,12,W*.62,H*.55);spec.addColorStop(0,'rgba(255,255,255,.17)');spec.addColorStop(.45,'rgba(255,255,255,0)');g.fillStyle=spec;g.fill();g.strokeStyle='rgba(255,255,255,.5)';g.lineWidth=1;g.stroke();hud.kChamfer(g,21,19,W-42,H-38,17);g.strokeStyle='rgba(91,229,237,.18)';g.stroke();g.fillStyle='#6de6ed';g.fillRect(32,26,90,2);g.fillRect(W-122,H-28,90,2);g.restore();
  if(u.mode==='reveal'&&u.po){u.po.draw(g,hud,u);g.restore();drawZoom(g,hud,u);return}   // Booster aufreißen (render/packopen.js)
  hud.txt(g,u.mode==='shop'?'XENOS SUPPLY EXCHANGE':u.mode==='sell'?'DATA CARD  EXCHANGE':'REWARD VAULT  /  DATA ARCHIVE',W/2,52,29,'#eaffff','center','#62ddea');hud.lab(g,'ALIEN CONTROL NETWORK  //  SECURE INVENTORY',W/2,72,9,'#6faebb','center',2,null,'700');
  hud.txt(g,`SEALED PACKS  ${LOOT.packs}${LOOT.specials>0?' (davon '+LOOT.specials+' SPEZIAL)':''}   /   CREDITS  ${LOOT.coins}   /   TICKETS  ${LOOT.tickets}   /   DATA CARDS  ${cardsOwned()}/${CARDS.length}`,W/2,96,13,'#9cebf2','center');
@@ -152,7 +166,7 @@ export function drawLoot(g,hud,u){if(!u||!u.open)return;u.t=(u.t||0)+1;
  else{const{cols,cw,ch,gx,y0,rows}=gridGeom(),x0=W/2-(cols*cw+(cols-1)*gx)/2;
   const small=cw<80,sm=u.mode==='sell';
   CARDS.forEach((c,i)=>{const x=x0+(i%cols)*(cw+gx),y=y0+Math.floor(i/cols)*(ch+gx),n=LOOT.cards[c.id]|0,col=RARITY[c.r].c,im=n?cardImg(c.id):null;
-   g.fillStyle='#07131c';g.strokeStyle=n?col:'#31505d';g.lineWidth=1.3;g.fillRect(x,y,cw,ch);g.fillStyle='rgba(255,255,255,.08)';g.fillRect(x+2,y+2,cw-4,2);g.strokeStyle='rgba(150,225,235,.18)';g.strokeRect(x+4,y+4,cw-8,ch-8);
+   g.fillStyle='rgba(12,26,52,.42)';g.strokeStyle=n?col:'rgba(180,215,255,.35)';g.lineWidth=1.3;g.fillRect(x,y,cw,ch);g.fillStyle='rgba(255,255,255,.07)';g.fillRect(x,y,cw,ch*.5);g.fillStyle='rgba(255,255,255,.08)';g.fillRect(x+2,y+2,cw-4,2);g.strokeStyle='rgba(150,225,235,.18)';g.strokeRect(x+4,y+4,cw-8,ch-8);
    if(im){cover(g,im,x,y,cw,ch);const gr=g.createLinearGradient(0,y+ch-40,0,y+ch);gr.addColorStop(0,'#04020a00');gr.addColorStop(1,'#04020aee');g.fillStyle=gr;g.fillRect(x,y+ch-40,cw,40);if(!small)hud.txt(g,c.name,x+cw/2,y+ch-18,10,'#ffffff','center');hud.txt(g,'x'+n,x+cw-(small?10:14),y+(small?11:14),small?9:11,'#ffffff','center',col)}   // kleine Kacheln (viele Karten): Name erst in der Großansicht
    else if(n){const lb=c.s||c.name;hud.txt(g,lb,x+cw/2,y+ch*.38,Math.max(6,Math.min(12,Math.floor(cw*1.7/Math.max(6,lb.length)))),'#ffffff','center');if(!small)hud.txt(g,RARITY[c.r].n,x+cw/2,y+ch*.38+20,9,col,'center');hud.txt(g,'x'+n,x+cw/2,y+ch-(small?9:18),small?9:11,'#aab2e8','center')}
    else hud.txt(g,'?',x+cw/2,y+ch*.6,30,'#2a2a50','center');

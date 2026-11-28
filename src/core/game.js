@@ -15,7 +15,7 @@ export const SUPER_FRAMES=42;   // Länge des Super-Freeze (muss zu hud.flash pa
 // Phasen: intro -> fight -> ko -> result -> (intro | match)
 export class Game{
  constructor(p1,p2){this.p1=p1;this.p2=p2;this.fighters=[p1,p2];this.particles=new ParticleSystem();this.fx=new Effects(this.particles);
-  this.camera=new Camera();this.arena=new Arena();this.stageIndex=0;this.melee=null;this.meleeOn=false;this.meleeStocks=MELEE.stocks;   // melee = Regeln des laufenden Melee-Matches (oder null)
+  this.camera=new Camera();this.camera.fixedZoom=true;this.arena=new Arena();this.stageIndex=0;this.melee=null;this.meleeOn=false;this.meleeStocks=MELEE.stocks;   // normaler Kampf bleibt maßstabsfest; Melee/Hyper dürfen eigene Kamerafahrten nutzen
   this.arcade=null;this.debug=false;this.round=1;this.frame=0;this.flash=0;this.flashColor='#fff';
   this.pops=[];this.kickX=0;this.kickY=0;this.aberr=0;this.impact=null;this.slow=0;this.timeScale=1;this.fin=null;this.finA=0;this.celeb=null;this.particles.onBoom=()=>this.sfx('fw_rocket',{vol:.65,rate:.92+Math.random()*.2});this.story=null;this.dummy={x:0,y:0,state:'idle',grounded:true,hp:1};this.stamPref=false;this.stamForce=null;this.tunePref={regen:1,delay:1,empty:1,rest:1};this.tuneForce=null;this.startRound()}
  // Ausdauer-System an? stamPref = Menü-Einstellung (main.js), stamForce = Online: der Gastgeber bestimmt (null = lokale Einstellung). Aus in Melee und Story.
@@ -108,10 +108,13 @@ export class Game{
   for(const f of this.fighters)f.updateAnim();
   if(combat)this.story.update()}
  // Körper nicht übereinanderlaufen lassen (Wand-sicher)
- separate(a,b){if(a.dead>0||b.dead>0||Math.abs(a.y-b.y)>90)return;if(['knockdown','ko'].includes(a.state)||['knockdown','ko'].includes(b.state))return;
-  const min=48,d=b.x-a.x,ad=Math.abs(d);if(ad>=min)return;const s=d>=0?1:-1,push=(min-ad)/2;
-  a.x-=s*push;b.x+=s*push;
-  const WL=this.arena.l,WR=this.arena.r;for(const f of[a,b]){if(f.x<WL){const o=WL-f.x;f.x=WL;(f===a?b:a).x+=o}if(f.x>WR){const o=f.x-WR;f.x=WR;(f===a?b:a).x-=o}}}
+ separate(a,b){if(a.dead>0||b.dead>0||Math.abs(a.y-b.y)>90)return;
+  const min=48,d=b.x-a.x,ad=Math.abs(d);if(ad>=min)return;const s=d>=0?1:-1,push=min-ad;
+  const ka=['hit','airhit','tumble'].includes(a.state),kb=['hit','airhit','tumble'].includes(b.state);
+  const downA=['knockdown','wakeup','ko','win'].includes(a.state),downB=['knockdown','wakeup','ko','win'].includes(b.state);
+  if(downA&&!downB)b.x+=s*push;else if(downB&&!downA)a.x-=s*push;
+  else if(ka&&!kb)a.x-=s*push;else if(kb&&!ka)b.x+=s*push;else{a.x-=s*push/2;b.x+=s*push/2}
+  const WL=this.arena.l,WR=this.arena.r;for(const f of[a,b]){const fixed=['knockdown','wakeup','ko','win'].includes(f.state),knocked=['hit','airhit','tumble','ko'].includes(f.state);if(f.x<WL&&!fixed&&!knocked){const o=WL-f.x;f.x=WL;(f===a?b:a).x+=o}if(f.x>WR&&!fixed&&!knocked){const o=f.x-WR;f.x=WR;(f===a?b:a).x-=o}}}
  timeUp(){const[a,b]=this.fighters;this.winner=this.melee?meleeWinnerOnTime(this):a.hp>b.hp?a:b.hp>a.hp?b:null;this.timedOut=true;this.endRound()}
  endRound(){if(this.story){this.phase='storyover';this.pf=0;return}
   if(this.winner){const ws=this.winner.sc;if(ws&&!this.melee){ws.hp+=Math.max(0,this.winner.hp)/this.winner.maxHp;ws.time+=Math.max(0,this.timeFrames)/60;if(ws.roundTaken===0)ws.perfect++}   // Punkte: Restleben, Restzeit, Runde ohne Treffer

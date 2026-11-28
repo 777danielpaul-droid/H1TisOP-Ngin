@@ -64,7 +64,7 @@ export function hit(game,a,b,mv,rect,isProj){
  if(launch||air||mv.hard||slam){
   b.juggle=air?b.juggle+1:1;
   if(launch&&mv.relaunch&&air){b.relaunch++;b.juggle=Math.max(1,b.juggle-AIR.relaunchJuggle)}   // zweite Combo-Stufe: Juggle-Punkte zurück
-  let vy=launch?launch.vy*(air?.8:1):-9,vx=launch?launch.vx:3;
+  let vy=launch?launch.vy*(air?.8:1):-9,vx=launch?launch.vx*1.35:3;
   if(!launch&&!mv.hard&&b.pop){const bn=bounceOf(mv,isProj);vy=bn.vy*Math.max(.2,1-(b.floor-b.y)/BOUNCE.cap);vx=bn.vx}   // Treffer im Pop-up: sanfter Nachschub, kein Hochschaukeln
   if(!launch&&!mv.hard&&!b.pop&&air){const J=AIR.juggle,h=b.floor-b.y;   // Juggle: jeder weitere Treffer hebt weniger, ab großer Höhe kaum noch -> kein Verschwinden nach oben
    vy*=Math.max(J.minF,1-J.decay*(b.juggle-1));if(h>J.cap)vy*=Math.max(0,1-(h-J.cap)/110)}
@@ -73,16 +73,15 @@ export function hit(game,a,b,mv,rect,isProj){
   if(slam)vy=slam.vy;
   if(launch||mv.hard||slam)b.launched=true;           // Launcher/harter Treffer: keine Luft-Erholung mehr -> Knockdown bei der Landung
   b.state='airhit';b.stun=b.launched?9999:Math.max(mv.hs,34); // großzügiger Luft-Hitstun für Mehrfach-Combos
-  if(mv.hard){b.state='tumble';vy=11;vx=3.2;b.hard=true}
+  if(mv.hard){b.state='tumble';vy=11;vx=6;b.hard=true}
   if(launch||mv.hard||slam)b.pop=false;
   b.sf=0;b.vx=a.facing*vx;b.vy=vy;b.y=Math.min(b.y,b.floor-1)}
  else{ // Normaler Bodentreffer: Feder-Effekt -> Gegner hüpft in die Luft (Pop-up), Combo geht in der Luft weiter
   const bn=bounceOf(mv,isProj);
-  b.juggle=1;b.pop=true;b.state='airhit';b.sf=0;b.stun=Math.max(mv.hs,34);b.vx=a.facing*bn.vx;b.vy=bn.vy;b.y=Math.min(b.y,b.floor-1);
+  b.juggle=1;b.pop=true;b.state='airhit';b.sf=0;b.stun=Math.max(mv.hs,34);b.vx=a.facing*bn.vx*1.8;b.vy=bn.vy;b.y=Math.min(b.y,b.floor-1);
   game.fx.ps.ring(b.x,b.floor-8,col,48+bn.vy*-3)}
  let broke=false;
  if(pinned&&b.hp>0){const heavy=launch||mv.hard?BARRIER.heavyMul:1;broke=A.hitWall(game,b,mv.dmg*a.dmgMul()*BARRIER.hitMul*heavy)}     // Wand nimmt Schaden; bricht sie, fliegt b hindurch
- if(!air&&pinned&&!broke&&!mv.multi)a.vx=-a.facing*mv.pb;
  if(launch&&!air&&!game.melee){game.fx.launch(b.x,b.floor,col);game.sfx('heavy_hit_whoosh',{vol:.9,rate:.9})}                       // Launcher-Start: Druckwelle + Lichtsäule
  if(launch&&air&&mv.relaunch){game.fx.launch(b.x,b.y,col);game.sfx('heavy_hit_whoosh',{vol:.8,rate:1.1})}   // Sky-Launcher
  if(slam){game.camera.kick(.05);game.kickY+=6}

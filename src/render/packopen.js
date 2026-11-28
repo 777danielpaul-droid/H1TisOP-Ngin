@@ -104,7 +104,7 @@ export class PackOpen{
   return p}
  // ---- Zeichnen ----
  draw(g,hud,u){const n=performance.now();this.update(this._n==null?1:Math.min(3,(n-this._n)/16.6667));this._n=n;const fa=this.a+this.acc,T=fa/60,P=this.ph,k=this.k,cur=P==='show'||P==='out'?this.items[k]:null;
-  g.save();const bg=g.createRadialGradient(480,250,24,480,270,620);bg.addColorStop(0,'#173a45');bg.addColorStop(.3,'#0a1a23');bg.addColorStop(.72,'#030b11');bg.addColorStop(1,'#010407');g.globalAlpha=.98;g.fillStyle=bg;g.fillRect(0,0,W,H);g.globalAlpha=1;
+  g.save();const bg=g.createRadialGradient(480,250,24,480,270,620);bg.addColorStop(0,'#173a45');bg.addColorStop(.3,'#0a1a23');bg.addColorStop(.72,'#030b11');bg.addColorStop(1,'#010407');g.globalAlpha=.5;g.fillStyle=bg;g.fillRect(0,0,W,H);g.globalAlpha=1;
   // Booster tear chamber: concentric reactor rings, dark-chrome side rails and telemetry marks.
   g.save();g.strokeStyle='rgba(112,222,232,.12)';g.lineWidth=1;for(let y=22;y<H;y+=28){g.beginPath();g.moveTo(22,y);g.lineTo(W-22,y);g.stroke()}
   g.strokeStyle='rgba(122,203,212,.22)';g.beginPath();g.ellipse(480,250,340,220,0,0,Math.PI*2);g.stroke();g.beginPath();g.ellipse(480,250,300,190,0,0,Math.PI*2);g.stroke();

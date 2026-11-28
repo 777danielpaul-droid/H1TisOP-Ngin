@@ -116,7 +116,7 @@ export class Hud {
     }
     const c = this.backdropCtx;
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, src.width, src.height); c.drawImage(src, 0, 0);
-    this.backdropW = this.W; this.backdropH = this.H;
+    this.backdropW = this.W; this.backdropH = this.H; this.backdropAt = Date.now();
   }
   backdropBlur(g, x, y, w, h, corner, flip = false, amount = 9) {
     if (!this.backdrop || !this.backdropCtx) return;

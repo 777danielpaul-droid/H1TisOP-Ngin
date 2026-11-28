@@ -74,12 +74,17 @@ export class Backdrop{
   if(m.kind==='video'){const v=m.el;if(v.error||v.readyState<2||!v.videoWidth)return null;m.use=performance.now();if(v.paused&&!(typeof document!=='undefined'&&document.hidden))v.play().catch(()=>{})}
   else if(!m.w())return null;return m}
  has(area,key){return !!this.pick(area,key)}
+ // Wie weit (px) kann die Kamera im Titel-Demo nach links/rechts schwenken, bis der Bildrand erreicht ist? Breite Bilder (z. B. 21:9) werden auf Bildhöhe eingepasst, 16:9 mit 25 % Überstand.
+ panExtent(area,key,W,H){const m=this.pick(area,key);if(!m)return 0;const sw=m.w(),sh=m.h(),k0=Math.max(W/sw,H/sh)*(sw/sh>W/H*1.15?1:1.25);return Math.max(0,(sw*k0-W)/2)}
  // Hintergrund im Bildschirmraum zeichnen (0,0)-(W,H). o.cam = Kamera für leichte Parallaxe (Kampf), o.dimAdd = zusätzliche Abdunklung (Menüs: Lesbarkeit).
  draw(g,W,H,area,o={}){const m=this.pick(area,o.key);if(!m)return false;const sw=m.w(),sh=m.h(),P=this.opts;
   if(P.fit==='contain'){g.fillStyle='#000';g.fillRect(-60,-60,W+120,H+120);const s=Math.min(W/sw,H/sh),dw=sw*s,dh=sh*s;g.drawImage(m.src(),(W-dw)/2,(H-dh)/2,dw,dh)}
+  else if(o.lock&&o.cam&&P.parallax){   // Kampf: Bild liegt wie eine Ebene in der Welt und zoomt mit der Kamera (Drehpunkt = Boden-Mitte) -> der Abstand Spieler↔Hintergrund bleibt bei jedem Zoom identisch; o.lock.pan (-1..1) bildet den Kamerabereich auf die volle Bildbreite ab
+   const c=o.cam,L=o.lock,z=c.z||1,k=Math.max(W/sw,H/sh)*Math.max(1.25,1.06/Math.max(.3,L.zmin||1)),dw=sw*k,dh=sh*k,off=-((dw-W)/2)*(L.pan||0),top0=Math.min((H-dh)/2,L.gy-L.gy/Math.max(.3,L.zmin||1)),yg=(L.gy-c.y)*z+H/2;   // yg = Bildschirmzeile des Weltbodens; k: bei Herauszoomen (Melee) größer, damit das Bild den Schirm weiter füllt
+   g.drawImage(m.src(),bgClamp(W/2-z*dw/2+z*off,Math.min(0,W-dw*z),0),bgClamp(yg+(top0-L.gy)*z,Math.min(0,H-dh*z),0),dw*z,dh*z)}
   else if(o.anchor&&P.parallax&&o.cam){   // Boden-Anker (Startbildschirm): Bild liegt wie eine Ebene in der Welt, Zoom/Kamerahöhe ziehen es mit -> die Füße (Boden-Y o.anchor.wy) bleiben auf gleicher Höhe im Bild
-   const c=o.cam,z=c.z||1,k0=Math.max(W/sw,H/sh)*1.25,dh0=sh*k0,dy=o.anchor.dy||0,fy=(o.anchor.wy+dy-(H-dh0)/2)/dh0,k=k0*Math.max(.8,z),dw=sw*k,dh=sh*k,yf=(o.anchor.wy-c.y)*z+H/2+dy;
-   const dx=bgClamp(-(c.x-W/2)*.04,-(dw-W)/2,(dw-W)/2);g.drawImage(m.src(),(W-dw)/2+dx,bgClamp(yf-fy*dh,H-dh,0),dw,dh)}
+   const c=o.cam,z=c.z||1,k0=Math.max(W/sw,H/sh)*(sw/sh>W/H*1.15?1:1.25),dh0=sh*k0,dy=o.anchor.dy||0,fy=(o.anchor.wy+dy-(H-dh0)/2)/dh0,k=k0*Math.max(.8,z),dw=sw*k,dh=sh*k,yf=(o.anchor.wy-c.y)*z+H/2+dy;
+   const dx=bgClamp(-(c.x-W/2)*(o.anchor.px==null?.04:o.anchor.px),-(dw-W)/2,(dw-W)/2);g.drawImage(m.src(),(W-dw)/2+dx,bgClamp(yf-fy*dh,H-dh,0),dw,dh)}   // anchor.px = Mitbewegung mit der Kamera (1 = fest in der Welt, Standard .04)
   else{const c=o.cam,par=P.parallax&&c,mul=par?Math.max(1.03,1.25*Math.pow(Math.max(.3,c.z||1),.4)):1.04,k=Math.max(W/sw,H/sh)*mul,dw=sw*k,dh=sh*k;
    let dx=0,dy=0;if(par){dx=bgClamp(-(c.x-W/2)*.04,-(dw-W)/2,(dw-W)/2);dy=bgClamp(-(c.y-H/2)*.04,-(dh-H)/2,(dh-H)/2)}
    g.drawImage(m.src(),(W-dw)/2+dx,(H-dh)/2+dy,dw,dh)}
