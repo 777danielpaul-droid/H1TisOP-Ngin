@@ -33,6 +33,7 @@ import{MusicStore,MusicPanel}from'./render/musicpanel.js';
 import{DevConsole}from'./render/devconsole.js';
 import{registerDevCommands}from'./core/devcmds.js';
 import{PackOpen}from'./render/packopen.js';
+import{TouchPad}from'./render/touchpad.js';
 // Einstiegspunkt: Vollbild-Canvas, Eingabe, KI, Game-Loop (fester Schritt) und Pause-Menü (M).
 loadFonts();   // eingebettete Schriften registrieren (Canvas + Menü)
 const $=id=>document.getElementById(id);
@@ -54,7 +55,9 @@ const applyPl=k=>sound.setPlaylist(k,musicStore.items(k),musicStore.on[k],musicS
 const musicUi=new MusicPanel(musicStore,{onOpen:()=>clearInputs(),onClose:()=>{clearInputs();canvas.focus()},onChange:applyPl,now:k=>sound.plNow(k)});musicUi.mount();
 musicStore.init().then(()=>{for(const k of['menu','fight'])applyPl(k);musicUi.refresh()});
 // ---- Entwicklerkonsole (Strg+Alt+D): Eingabezeile + Ausgabebereich, Befehle per devUi.add(). Nicht im Intro, Online-Kampf, Pausenmenü oder bei offenem Panel. Offen = Kampf pausiert. ----
-const devUi=new DevConsole({deny:()=>!!netMatch,blocked:()=>intro.active||shopClip.active||menuOpen||!!netMatch||studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen,onOpen:()=>clearInputs(),onClose:()=>{clearInputs();canvas.focus()}});registerDevCommands(devUi,{game,arcade});devUi.mount();
+const _localHost=(()=>{if(typeof location==='undefined')return true;   // kein Browser (Test-Harness) -> Dev-Hooks an; im echten Browser existiert location immer
+ try{const h=location.hostname;return location.protocol==='file:'||h===''||h==='localhost'||h==='127.0.0.1'||h==='[::1]'||/^(192\.168|10)\./.test(h)}catch(e){return false}})();   // Dev-Werkzeuge nur lokal (Entwicklung/Test), nicht auf dem öffentlichen Host
+const devUi=new DevConsole({deny:()=>!!netMatch,blocked:()=>intro.active||shopClip.active||menuOpen||!!netMatch||studioIsOpen()||bgUi.isOpen||musicUi.isOpen||netUi.isOpen,onOpen:()=>clearInputs(),onClose:()=>{clearInputs();canvas.focus()}});if(_localHost){registerDevCommands(devUi,{game,arcade});devUi.mount()}
 // ---- Sound: Lautstärke/Stumm gemerkt; Audio startet erst nach der ersten Tasten-/Klick-Geste (Browser-Regel) ----
 game.stamPref=load('tf_stam',STAMINA.on?'1':'0')==='1';   // Ausdauer-System: Menü-Schalter (Optionen), gemerkt in localStorage tf_stam
 const sound=new Sound();game.audio=sound;sound.setVolume(+load('tf_volume',.7));sound.setMuted(load('tf_mute','0')==='1');
@@ -453,6 +456,6 @@ function loop(now){if(intro.active){last=now;padMenu(now);sound.music('menu');re
 requestAnimationFrame(loop);
 sound.unlock();sound.music('menu');   // Menümusik schon beim Intro: Audio sofort vorbereiten (Browser geben es frei, sobald sie dürfen, spätestens bei der ersten Taste/Klick)
 intro.start();   // als Letztes: alles ist eingerichtet, das Video startet sofort (kein Startknopf), die Menümusik setzt ein, sobald der Browser Ton erlaubt
+new TouchPad().mount();   // Touch-Steuerung: erscheint nur auf Handy/Tablet (löst dieselben Tasten aus wie die Tastatur)
 // Test-/Debug-Hooks (für e2e-Tests) nur lokal (localhost, Datei, LAN) – auf dem öffentlichen Host sind keine Spiel-Objekte per Browser-Konsole erreichbar
-const _localHost=(()=>{try{const h=location.hostname;return location.protocol==='file:'||h===''||h==='localhost'||h==='127.0.0.1'||h==='[::1]'||/^(192\.168|10)\./.test(h)}catch(e){return false}})();
 if(_localHost){window.__net=()=>netMatch;window.__intro=intro;window.__shopclip=shopClip;window.__music=musicUi;window.__dev=devUi;window.__bgui=bgUi;window.__reveal=lootReveal;window.__lootOpen=lootOpen;window.__renderer=renderer;window.__demo=demo;window.__game=game;window.__arcade=arcade};

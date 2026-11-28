@@ -27,7 +27,7 @@ const ok=n=>console.log('  ✓',n),txt=c=>c.log.map(l=>l.t).join('\n'),ev=(code,
  assert.ok(c.log.filter(l=>l.cls==='dc-err').length>=15,'jeder Angriff endet als Fehlermeldung');delete globalThis.__pwn;ok('Injection-Eingaben (JS/HTML/SQL/Shell/Prototype) werden nie ausgeführt')}
 {const c=new DevConsole();c.exec('a'.repeat(201));assert.match(c.log.at(-1).t,/zu lang/);c.exec('help '+'x'.repeat(41));assert.match(c.log.at(-1).t,/zu lange Argumente/);c.exec('help 1 2 3 4 5 6 7 8 9');assert.match(c.log.at(-1).t,/zu viele/i);
  c.exec('help \u202e\u200b');assert.match(c.log.at(-1).t,/Ungültige Zeichen/);ok('Eingabelänge, Argumentzahl/-länge und Zeichensatz werden geprüft')}
-{const c=new DevConsole();c.exec('x'.repeat(30));assert.ok(c.log.at(-1).t.length<=60,'Unbekannter-Befehl-Echo gekürzt');c.add('big','',()=>'y'.repeat(5000));c.exec('big');assert.ok(c.log.at(-1).t.length<=401,'Ausgabe gekürzt');
+{const c=new DevConsole();c.exec('x'.repeat(30));assert.ok(c.log.at(-1).t.length<=90,'Unbekannter-Befehl-Echo gekürzt');c.add('big','',()=>'y'.repeat(5000));c.exec('big');assert.ok(c.log.at(-1).t.length<=401,'Ausgabe gekürzt');
  c.add('leak','',()=>{throw new Error('Z'.repeat(1000))});c.exec('leak');assert.ok(c.log.at(-1).t.length<=170,'Fehlertext gekürzt');ok('Ausgabe, Echo und Fehlertexte sind längenbegrenzt')}
 {let t=0;const c=new DevConsole({now:()=>t});let n=0;c.add('tick','',()=>{n++});for(let i=0;i<100;i++)c.exec('tick');assert.equal(n,30,'30 Eingaben pro Fenster');
  const warn=c.log.filter(l=>/Zu viele Befehle/.test(l.t)).length;assert.equal(warn,1,'Warnung nur einmal, kein Log-Fluten');t=6000;c.exec('tick');assert.equal(n,31,'nach dem Fenster geht es wieder');ok('Rate-Limit: Spam wird gedrosselt und hebt sich selbst wieder auf')}

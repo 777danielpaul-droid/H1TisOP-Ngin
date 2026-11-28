@@ -15,7 +15,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // ohne I und O (Verwechslung mit 1 / 0)
 export const LIMITS = { maxPayload: 4096, ratePerSec: 400, burst: 600, maxSockets: 600, maxRooms: 300, idleUnpairedMs: 15 * 60 * 1000, heartbeatMs: 20000 };
 
-export function startServer({ port = 3000, host = '0.0.0.0', distDir = path.join(ROOT, 'dist'), quiet = false, limits = {} } = {}) {
+export function startServer({ port = 3000, host = '0.0.0.0', distDir = path.join(ROOT, 'dist'), quiet = false, limits = {}, allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean) } = {}) {
   const LIM = { ...LIMITS, ...limits };   // Tests dürfen die Grenzen anheben (sie rechnen schneller als in Echtzeit)
   const log = quiet ? () => {} : (...a) => console.log('[H!TisOP]', ...a);
   const rooms = new Map();      // code -> { host, guest, born }
@@ -52,7 +52,7 @@ export function startServer({ port = 3000, host = '0.0.0.0', distDir = path.join
         if (req.headers['if-none-match'] === g.tag) { res.writeHead(304, { etag: g.tag }); return res.end(); }
         const ae = String(req.headers['accept-encoding'] || ''), enc = /\bbr\b/.test(ae) ? 'br' : /\bgzip\b/.test(ae) ? 'gzip' : '';
         const body = enc === 'br' ? g.br : enc === 'gzip' ? g.gz : g.raw;
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': body.length, etag: g.tag, 'cache-control': 'no-cache', vary: 'accept-encoding', ...(enc ? { 'content-encoding': enc } : {}) });
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-length': body.length, etag: g.tag, 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', vary: 'accept-encoding', ...(enc ? { 'content-encoding': enc } : {}) });
         return res.end(req.method === 'HEAD' ? undefined : body);
       }
       res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('Nicht gefunden');
@@ -60,7 +60,9 @@ export function startServer({ port = 3000, host = '0.0.0.0', distDir = path.join
   });
 
   // ---------- WebSocket: Raum / Schnellsuche / Relay ----------
-  const wss = new WebSocketServer({ server: http_, path: '/ws', maxPayload: LIM.maxPayload });
+  const wss = new WebSocketServer({ server: http_, path: '/ws', maxPayload: LIM.maxPayload,
+    // Optional: ALLOWED_ORIGINS="https://hit-isop.onrender.com,https://deinname.itch.io" -> fremde Webseiten können den Server nicht als Gratis-Relay nutzen. Ohne Liste (oder ohne Origin-Header, z. B. Tests) wird nichts geprüft.
+    verifyClient: ({ origin }) => !allowedOrigins.length || !origin || allowedOrigins.includes(origin) });
   const send = (s, o) => { if (s.readyState === 1) s.send(typeof o === 'string' ? o : JSON.stringify(o)); };
   const newCode = () => { for (let k = 0; k < 200; k++) { let c = ''; for (let i = 0; i < 4; i++) c += CODE_CHARS[crypto.randomInt(CODE_CHARS.length)]; if (!rooms.has(c)) return c; } return null; };
 
@@ -83,7 +85,7 @@ export function startServer({ port = 3000, host = '0.0.0.0', distDir = path.join
 
   wss.on('connection', (ws, req) => {
     if (socks.size >= LIM.maxSockets) { ws.close(1013, 'voll'); return; }
-    ws.alive = true; ws.peer = null; ws.room = null; ws.role = null; ws.tokens = LIM.burst; ws.tAt = Date.now(); ws.since = Date.now();
+    ws.alive = true; ws.fails = 0; ws.peer = null; ws.room = null; ws.role = null; ws.tokens = LIM.burst; ws.tAt = Date.now(); ws.since = Date.now();
     socks.add(ws);
     ws.on('pong', () => { ws.alive = true; });
     ws.on('message', (data, isBinary) => {
@@ -106,7 +108,7 @@ export function startServer({ port = 3000, host = '0.0.0.0', distDir = path.join
         case 'join': {
           if (ws.peer || ws.room || queue.includes(ws)) return send(ws, { t: 'err', code: 'busy', msg: 'Du bist schon in einem Raum oder in der Suche.' });
           const code = String(m.code || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4), r = rooms.get(code);
-          if (!r || r.host.readyState !== 1) return send(ws, { t: 'err', code: 'noroom', msg: 'Diesen Raum gibt es nicht (mehr).' });
+          if (!r || r.host.readyState !== 1) { if (++ws.fails > 8) { ws.close(1008, 'zu viele Versuche'); return; } return send(ws, { t: 'err', code: 'noroom', msg: 'Diesen Raum gibt es nicht (mehr).' }); }   // Schutz vor Durchprobieren der Raum-Codes
           if (r.guest) return send(ws, { t: 'err', code: 'taken', msg: 'In diesem Raum ist schon jemand.' });
           if (r.host === ws) return;
           r.guest = ws; pair(r.host, ws, code); return;
