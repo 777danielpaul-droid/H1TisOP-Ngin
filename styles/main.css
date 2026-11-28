@@ -645,3 +645,6 @@ select:not(#_) option{background:#07082a;color:#f8fdff}
 #start #acct:hover,#start #acct:focus-visible{color:#fff;box-shadow:0 0 0 1px var(--cy),0 0 16px rgba(127,232,255,.4);outline:none}
 #start #acct.in{color:#fff;box-shadow:0 0 0 1px var(--cy)}
 #start #acct.hidden{display:none}
+.cl-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:380px;margin:6px auto 4px;padding:14px 20px;font-size:18px;min-height:44px;background:#fff!important;color:#1f1f1f!important;font-weight:700}
+.cl-google:hover:not(:disabled){filter:brightness(.94)}.cl-g{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:conic-gradient(#ea4335 0 25%,#fbbc05 0 50%,#34a853 0 75%,#4285f4 0);color:#fff;font:900 14px system-ui;text-shadow:0 0 2px #0008}
+.cl-or{margin:10px 0 4px;opacity:.75}

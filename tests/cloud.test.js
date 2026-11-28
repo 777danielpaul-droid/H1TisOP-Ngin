@@ -8,7 +8,8 @@ globalThis.fetch=async(url,o={})=>{if(!net)throw new Error('offline');const u=ne
  const token=()=>{const t=(h.Authorization||'').replace('Bearer ','');return tokens.get(t)};
  const sess=id=>{const t='tok'+(++clock),r='ref'+clock;tokens.set(t,id);tokens.set(r,id);return{access_token:t,refresh_token:r,expires_in:3600,user:{id,email:users.get(id).email}}};
  if(u.pathname==='/auth/v1/signup'){if([...users.values()].some(x=>x.email===b.email))return J(422,{error_code:'user_already_exists'});if(b.password.length<8)return J(422,{error_code:'weak_password'});const id='u'+(users.size+1);users.set(id,{email:b.email,pw:b.password});return J(200,confirm?{id}:sess(id))}
- if(u.pathname==='/auth/v1/token'){if(u.searchParams.get('grant_type')==='refresh_token'){const id=tokens.get(b.refresh_token);return id?J(200,sess(id)):J(400,{error_code:'refresh_token_not_found'})}
+ if(u.pathname==='/auth/v1/token'){if(u.searchParams.get('grant_type')==='pkce'){const ch=globalThis.__chal;const h=(await import('node:crypto')).createHash('sha256').update(b.code_verifier).digest('base64url');if(b.auth_code!=='gcode'||h!==ch)return J(400,{error_code:'bad_code_verifier'});if(!users.has('ug'))users.set('ug',{email:'g@gmail.com',pw:'-'});return J(200,sess('ug'))}
+  if(u.searchParams.get('grant_type')==='refresh_token'){const id=tokens.get(b.refresh_token);return id?J(200,sess(id)):J(400,{error_code:'refresh_token_not_found'})}
   const id=[...users].find(([,x])=>x.email===b.email&&x.pw===b.password);return id?J(200,sess(id[0])):J(400,{error_code:'invalid_credentials'})}
  if(u.pathname==='/auth/v1/logout')return J(204);
  if(u.pathname==='/rest/v1/savegames'){const uid=token();if(!uid)return J(401,{code:'401'});
@@ -16,10 +17,10 @@ globalThis.fetch=async(url,o={})=>{if(!net)throw new Error('offline');const u=ne
   assert.equal(b.user_id,uid,'RLS: nur eigene Zeile');const r={data:b.data,updated_at:'2026-11-28T10:00:'+String(++clock%60).padStart(2,'0')+'Z'};rows.set(uid,r);return J(201,[r])}
  return J(404,{})};
 const device=()=>{const s=mkStore();globalThis.localStorage=s;return s};
-const{cloudOn,cloudClean,cloudMerge,cloudCanon,cloudCollect,cloudApply,cloudSignUp,cloudSignIn,cloudSignOut,cloudSync,cloudUser,cloudMessage,cloudCheck,CL_KEYS}=await import('../src/core/cloud.js');
+const{cloudGoogleOk,cloudGoogleStart,cloudOAuthReturn,cloudBoot,cloudOn,cloudClean,cloudMerge,cloudCanon,cloudCollect,cloudApply,cloudSignUp,cloudSignIn,cloudSignOut,cloudSync,cloudUser,cloudMessage,cloudCheck,CL_KEYS}=await import('../src/core/cloud.js');
 const loot=o=>JSON.stringify({packs:0,coins:0,cards:{},skins:{},stages:[],items:{},...o});
 // 1) Säubern: keine gefährlichen Schlüssel, nur begrenzte Werte
-const bad=JSON.parse('{"__proto__":{"x":1},"constructor":{"y":1},"coins":-5,"a b":1,"ok":{"n":3.9,"s":"'+'x'.repeat(200)+'"},"f":{"g":function(){}}}');
+const bad=JSON.parse('{"__proto__":{"x":1},"constructor":{"y":1},"coins":-5,"a b":1,"ok":{"n":3.9,"s":"'+'x'.repeat(200)+'"},"f":{"g":null}}');
 const c=cloudClean(bad);assert.equal(Object.getPrototypeOf(c),Object.prototype);assert.equal({}.x,undefined);assert.deepEqual(Object.keys(c).sort(),['coins','f','ok']);assert.equal(c.coins,0);assert.equal(c.ok.n,3);assert.equal(c.ok.s.length,64);
 console.log('  ✓ Cloud-Daten werden gesäubert (kein __proto__, Zahlen/Texte begrenzt)');
 // 2) Zusammenführen
@@ -63,4 +64,19 @@ await cloudSignIn('a@b.de','geheim123');await cloudSync();await cloudSignOut();a
 // 11) Bestätigungs-Mail aktiv: kein Login, aber Hinweis
 confirm=true;r=await cloudSignUp('neu@b.de','geheim123');assert.equal(r.confirm,true);assert.equal(cloudUser(),null);
 console.log('  ✓ Abmelden behält den lokalen Stand; Bestätigungs-Mail wird gemeldet');
+// 12) Google-Anmeldung (PKCE): Weiterleitung, Rückkehr mit Code, Fehlerfälle
+globalThis.location={protocol:'https:',origin:'https://hit-isop.onrender.com',pathname:'/',search:'',hash:'',assign(u){this.last=u}};let hist='';globalThis.history={replaceState(a,b,u){hist=u}};
+const dG=device();assert(!cloudGoogleOk(),'ohne "google":true in der Konfiguration kein Google-Knopf');globalThis.__SUPABASE__={url:'https://test.supabase.co',key:'anon-key',google:true};assert(cloudGoogleOk());
+location.protocol='file:';assert(!cloudGoogleOk(),'als lokale Datei kein Google');await assert.rejects(()=>cloudGoogleStart(),e=>e.code==='nogoogle');location.protocol='https:';
+await cloudGoogleStart();const au=new URL(location.last);assert.equal(au.pathname,'/auth/v1/authorize');assert.equal(au.searchParams.get('provider'),'google');assert.equal(au.searchParams.get('code_challenge_method'),'s256');assert.equal(au.searchParams.get('redirect_to'),'https://hit-isop.onrender.com/');
+globalThis.__chal=au.searchParams.get('code_challenge');assert(dG.getItem('hitisop.cloud.pkce').length>=43,'PKCE-Verifier gespeichert');
+assert.equal(await cloudOAuthReturn(),null,'ohne ?code passiert nichts');
+location.search='?room=ABCD&code=gcode';dG.setItem(CL_KEYS.clears,'4');const o=await cloudOAuthReturn();assert.deepEqual(o,{ok:true});assert.equal(cloudUser().email,'g@gmail.com');assert.equal(hist,'/?room=ABCD','code aus der Adresse entfernt, andere Parameter bleiben');assert.equal(dG.getItem('hitisop.cloud.pkce'),null);
+let bs=await cloudSync();assert.equal(bs.state,'ok');assert.equal(rows.get('ug').data.clears,4,'Spielstand des Google-Kontos wird hochgeladen');
+// fremder ?code ohne eigene Weiterleitung wird ignoriert; Abbruch bei Google; falscher Code
+location.search='?code=gcode';assert.equal(await cloudOAuthReturn(),null);await cloudSignOut();
+await cloudGoogleStart();location.search='?error=access_denied&error_description=denied';assert.deepEqual(await cloudOAuthReturn(),{error:'oauth_denied'});assert.equal(cloudUser(),null);
+await cloudGoogleStart();globalThis.__chal=new URL(location.last).searchParams.get('code_challenge');location.search='?code=falsch';assert.deepEqual(await cloudOAuthReturn(),{error:'oauth_failed'});
+await cloudGoogleStart();globalThis.__chal=new URL(location.last).searchParams.get('code_challenge');location.search='?code=gcode';const bt=await cloudBoot();assert.equal(cloudUser().email,'g@gmail.com');assert.notEqual(bt.oauthError,'oauth_failed');
+console.log('  ✓ Google-Anmeldung: PKCE-Weiterleitung, Code-Tausch, Abbruch/Fehler sauber, Spielstand wird gesichert');
 console.log('Cloud-Tests bestanden');process.exit(0);

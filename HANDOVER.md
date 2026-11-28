@@ -515,3 +515,6 @@ Jeder Boss hat sein eigenes **Level-Paket** (in `src/core/story.js`, `CHAPTERS`)
 - `core/config.js`: `WORLD.x1` 1980 → 3420 (Story-Boss-Arenen reichen bis 2360, das Gebäude bis 3360; vorher war die Story-Kamera bei 1980 gedeckelt). Stage-Hintergrund wird dadurch breiter gecached.
 - **Kamera-Fix (24.11.)**: Das Gebäude wurde zwar gezeichnet, war im Spiel aber nie zu sehen, weil die Story-Kamera nur bis zur Außenwand scrollen durfte (rechter Bildrand = Wand). Jetzt darf sie, solange die Wand heil ist und die Endgegner-Arena aktiv ist (`s.r === finale.x`), `FINALE_VIEW` = 460 px über die Wand hinaus schauen (`core/camera.js`). Nach dem Durchbruch begrenzt wie vorher die Rückwand.
 - Test: `tests/storyfinale.test.js` (Daten, nur Endgegner-Arena, Durchbruch inkl. Grenze/Kamera/Decke/Belohnung, echter Kampf bricht die Wand, Neustart, Zeichnen, Kamera zeigt in allen 5 Kapiteln das Gebäude hinter der Wand).
+
+## Konto & Cloud-Spielstand (Supabase)
+Login + Cloud-Sicherung des Spielstands, siehe `docs/SUPABASE.md`. Code: `src/core/cloud.js`, `src/render/cloudui.js`, `supabase/`, `tools/supabase-setup.mjs` (`./supabase-setup.sh`), Test `tests/cloud.test.js`. Neue Felder in `LOOT`/Unlocks/Skins werden automatisch synchronisiert (Zahlen = Maximum, Listen = Vereinigung beim Zusammenführen). Ohne `supabase.config.json` ist die Funktion unsichtbar/aus.

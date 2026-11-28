@@ -24,7 +24,7 @@ export class CloudUi{
  lock(on){if(this.body)this.body.querySelectorAll('button,input').forEach(x=>x.disabled=!!on)}
  refreshChip(){if(!this.chip)return;const{on,user}=this.o.ctx();this.chip.classList.toggle('hidden',!on);this.chip.classList.toggle('in',!!user);
   this.chip.textContent=user?'☁ '+(user.email.split('@')[0]||'KONTO').slice(0,18).toUpperCase():'☁ ANMELDEN'}
- render(){this.refreshChip();if(!this.isOpen||!this.body)return;const{on,user,last}=this.o.ctx();let h='';
+ render(){this.refreshChip();if(!this.isOpen||!this.body)return;const{on,user,last,google}=this.o.ctx();let h='';
   if(!on)h=`<p class="nt-sub">Der Cloud-Speicher ist in dieser Version noch nicht eingerichtet. Das Setup-Skript (supabase-setup) legt ihn automatisch an.</p><div class="nt-foot"><button data-k="close">Schließen</button></div>`;
   else if(user){const st=last.state==='ok'?'Spielstand ist gesichert ✔':last.state==='offline'?'Gerade keine Verbindung – wird später gesichert.':last.state==='conflict'?'Auf einem anderen Gerät wurde auch gespielt – beim nächsten Start werden beide Stände zusammengeführt.':last.state==='error'?'Abgleich hat nicht geklappt.':'';
    h=`<p class="nt-sub">Angemeldet als <b>${cuEsc(user.email)}</b></p><p class="nt-sub">Booster, Coins, Karten, Farben und Freischaltungen werden automatisch in deinem Konto gesichert und auf jedem Gerät geladen.</p>
@@ -32,6 +32,7 @@ export class CloudUi{
    <p id="cl-msg" class="nt-msg"></p><div class="nt-foot"><button data-k="close">Schließen</button></div>`}
   else{const up=this.tab==='up';
    h=`<p class="nt-sub">Optional: Mit einem Konto bleibt dein Spielstand erhalten und läuft auf jedem Gerät. Ohne Konto spielst du wie bisher.</p>
+   ${google?`<button class="cl-google" data-k="google"><span class="cl-g">G</span>Mit Google anmelden</button><p class="nt-sub cl-or">oder mit E-Mail</p>`:''}
    <div class="cl-tabs"><button data-k="tab" data-v="in" class="${up?'':'on'}">Anmelden</button><button data-k="tab" data-v="up" class="${up?'on':''}">Konto erstellen</button></div>
    <div class="cl-form"><input id="cl-email" type="email" placeholder="E-Mail" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="254">
    <input id="cl-pw" type="password" placeholder="Passwort (mind. 8 Zeichen)" autocomplete="${up?'new-password':'current-password'}" maxlength="72">

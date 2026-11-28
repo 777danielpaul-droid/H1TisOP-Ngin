@@ -3,7 +3,7 @@
 // Der Key ist der ÖFFENTLICHE (anon/publishable) Schlüssel – die Sicherheit kommt von Row Level Security in der Datenbank (supabase/migrations). Nie einen service_role-Key hier eintragen.
 // Abgleich: Hash des zuletzt abgeglichenen Stands (CL_HASH) zeigt, ob lokal etwas geändert wurde; CL_SYNC = updated_at der Cloud-Zeile beim letzten Abgleich.
 //   lokal unverändert -> Cloud-Stand übernehmen · nur lokal geändert -> hochladen · beides geändert (oder erster Abgleich auf diesem Gerät) -> zusammenführen (Zahlen: größerer Wert, Listen: Vereinigung).
-const CL_SESSION='hitisop.cloud.session',CL_SYNC='hitisop.cloud.sync',CL_HASH='hitisop.cloud.hash';
+const CL_PKCE='hitisop.cloud.pkce',CL_SESSION='hitisop.cloud.session',CL_SYNC='hitisop.cloud.sync',CL_HASH='hitisop.cloud.hash';
 export const CL_KEYS={loot:'hitisop.loot',unlocks:'hitisop.unlocks',clears:'hitisop.clears',skins:'hitisop.skins'};
 const clRd=k=>{try{return localStorage.getItem(k)}catch(e){return null}},clWr=(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}},clDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
 const clCfg=()=>{try{const c=globalThis.__SUPABASE__;return c&&typeof c.key==='string'&&c.key&&/^(https:\/\/[a-z0-9-]+\.supabase\.(co|in)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/i.test(String(c.url||''))?c:null}catch(e){return null}};
@@ -88,8 +88,21 @@ async function clSyncOnce(opts){
   const merged=cloudClean(cloudMerge(local,remote));cloudApply(merged);await clPush(tok,uid,cloudCollect());cloudLast={state:'ok',at:Date.now()};return{state:'ok',reload:true}
  }catch(e){return set(e.code==='network'?'offline':'error',{code:e.code})}}
 
-// Beim Spielstart / nach dem Anmelden aufrufen
-export function cloudBoot(){cloudWatch();return cloudSync()}
+// ---- Anmeldung mit Google (OAuth über Supabase, PKCE): nur wenn supabase.config.json "google":true enthält (schreibt supabase-setup) und die Seite über http(s) läuft (nicht als lokale Datei). ----
+export const cloudGoogleOk=()=>{try{const c=clCfg();return!!(c&&c.google&&/^https?:$/.test(location.protocol)&&globalThis.crypto&&crypto.subtle)}catch(e){return false}};
+const clB64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+export async function cloudGoogleStart(){if(!cloudGoogleOk())throw clErr('nogoogle');
+ const v=clB64(crypto.getRandomValues(new Uint8Array(48))),ch=clB64(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)));
+ clWr(CL_PKCE,v);location.assign(clCfg().url+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin+location.pathname)+'&code_challenge='+ch+'&code_challenge_method=s256')}
+// Rückkehr von Google: ?code=… in der Adresse gegen eine Sitzung tauschen (nur wenn wir vorher selbst weitergeleitet haben = Verifier vorhanden). Rückgabe: null | {ok} | {error}
+export async function cloudOAuthReturn(){let q;try{q=new URLSearchParams(location.search)}catch(e){return null}
+ const v=clRd(CL_PKCE),code=q.get('code'),err=q.get('error_description')||q.get('error');if(!v||(!code&&!err))return null;
+ clDel(CL_PKCE);for(const k of['code','error','error_code','error_description'])q.delete(k);
+ try{const s=q.toString();history.replaceState(null,'',location.pathname+(s?'?'+s:'')+location.hash)}catch(e){}
+ if(!code)return{error:'oauth_denied'};
+ try{clStore(await clFetch('/auth/v1/token?grant_type=pkce',{method:'POST',body:{auth_code:code,code_verifier:v}}));return{ok:true}}catch(e){return{error:e.code==='network'?'network':'oauth_failed'}}}
+// Beim Spielstart aufrufen (nimmt auch die Rückkehr von Google entgegen)
+export async function cloudBoot(){cloudWatch();const o=await cloudOAuthReturn(),r=await cloudSync();return o&&o.error?{...r,oauthError:o.error}:r}
 // Spielstand-Schlüssel werden geschrieben -> kurz warten (Änderungen bündeln) und hochladen. Ohne Konto passiert nichts.
 let clTimer=0,clWatching=false;
 export function cloudSoon(ms=3500){if(!clSess())return;clearTimeout(clTimer);clTimer=setTimeout(()=>{cloudSync({live:true})},ms);if(clTimer&&clTimer.unref)clTimer.unref()}
@@ -103,6 +116,6 @@ export function cloudWatch(){if(clWatching)return;clWatching=true;
 const CL_MSG={invalid_credentials:'E-Mail oder Passwort stimmt nicht.',user_already_exists:'Zu dieser E-Mail gibt es schon ein Konto – bitte anmelden.',email_exists:'Zu dieser E-Mail gibt es schon ein Konto – bitte anmelden.',
  weak_password:'Das Passwort ist zu schwach (mindestens 8 Zeichen).',email_not_confirmed:'Bitte zuerst den Link in der Bestätigungs-Mail anklicken.',over_request_rate_limit:'Zu viele Versuche – bitte kurz warten.',over_email_send_rate_limit:'Zu viele E-Mails – bitte später nochmal.',
  signup_disabled:'Neue Konten sind gerade nicht möglich.',validation_failed:'Bitte eine gültige E-Mail-Adresse und ein Passwort eingeben.',network:'Keine Verbindung zum Cloud-Server.',nocfg:'Der Cloud-Speicher ist in dieser Version nicht eingerichtet (supabase-setup ausführen).',
- bad_email:'Bitte eine gültige E-Mail-Adresse eingeben.',bad_pw:'Das Passwort braucht mindestens 8 Zeichen.'};
+ bad_email:'Bitte eine gültige E-Mail-Adresse eingeben.',oauth_denied:'Die Anmeldung mit Google wurde abgebrochen.',oauth_failed:'Die Anmeldung mit Google hat nicht geklappt – bitte nochmal versuchen.',nogoogle:'Google-Anmeldung geht nur online oder über localhost (nicht als lokale Datei).',bad_pw:'Das Passwort braucht mindestens 8 Zeichen.'};
 export const cloudMessage=code=>CL_MSG[code]||'Das hat nicht geklappt ('+(code||'Fehler')+').';
 export const cloudCheck=(email,pw)=>!/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(email)?'bad_email':pw.length<8||pw.length>72?'bad_pw':'';

@@ -16,7 +16,7 @@ import{NetInput,NET,encInput}from'./core/netplay.js';
 import{STAMINA,tuneClamp}from'./core/config.js';
 import{NetUi,netMessage}from'./render/netui.js';
 import{CloudUi}from'./render/cloudui.js';
-import{cloudOn,cloudUser,cloudLast,cloudSignIn,cloudSignUp,cloudSignOut,cloudSync,cloudBoot,cloudMessage,cloudCheck}from'./core/cloud.js';
+import{cloudOn,cloudUser,cloudLast,cloudSignIn,cloudSignUp,cloudSignOut,cloudSync,cloudBoot,cloudMessage,cloudCheck,cloudGoogleOk,cloudGoogleStart}from'./core/cloud.js';
 import{skinCount,skinName}from'./render/skins.js';
 import{THEMES}from'./render/stage.js';
 import{hitDealerOpt}from'./render/storyhud.js';
@@ -279,17 +279,18 @@ const netCat={chars:()=>ROSTER.map(id=>({id,name:CHARACTERS[id].name,desc:CHARAC
  skins:id=>{const sp=CHARACTERS[id]&&CHARACTERS[id].sprites,a=[];for(let i=0;i<skinCount(sp);i++)if(ownsSkin(id,i))a.push({i,name:skinName(sp,i)});return a},
  stages:()=>THEMES.map((T,i)=>({i,name:T.name,open:arcade.stageOpen(i)}))};
 // ---- Konto & Cloud-Spielstand (Supabase): core/cloud.js, Fenster render/cloudui.js. Beim Start/Anmelden wird der Stand abgeglichen; wurde der lokale Stand ersetzt, lädt die Seite einmal neu. ----
-const cloudUi=new CloudUi({open:()=>cloudOpen(),ctx:()=>({on:cloudOn(),user:cloudUser(),last:cloudLast}),act:(a,v)=>cloudAct(a,v)});cloudUi.mount();
+const cloudUi=new CloudUi({open:()=>cloudOpen(),ctx:()=>({on:cloudOn(),user:cloudUser(),last:cloudLast,google:cloudGoogleOk()}),act:(a,v)=>cloudAct(a,v)});cloudUi.mount();
 function cloudOpen(){if(netMatch||intro.active)return;clearInputs();cloudUi.open()}
 async function cloudAct(a,v){
  if(a==='close'){cloudUi.close();canvas.focus();return}
+ if(a==='google'){try{await cloudGoogleStart()}catch(e){return{msg:cloudMessage(e.code),bad:true}}return{msg:'Weiterleitung zu Google …'}}
  if(a==='signout'){await cloudSignOut();return{msg:'Abgemeldet. Dein Spielstand bleibt auf diesem Gerät.'}}
  if(a==='sync'){const r=await cloudSync();if(r.reload){location.reload();return}return{msg:r.state==='ok'?'':cloudMessage(r.state==='offline'?'network':r.code||'error'),bad:r.state!=='ok'}}
  if(a==='signin'||a==='signup'){const bad=cloudCheck(v.email,v.pw);if(bad)return{msg:cloudMessage(bad),bad:true};
   try{if(a==='signup'){const r=await cloudSignUp(v.email,v.pw);if(r.confirm)return{msg:'Fast geschafft: Wir haben dir eine E-Mail geschickt. Link anklicken, dann hier anmelden.'}}else await cloudSignIn(v.email,v.pw)}
   catch(e){return{msg:cloudMessage(e.code),bad:true}}
   const r=await cloudBoot();if(r.reload){location.reload();return}return{msg:''}}}
-cloudBoot().then(r=>{if(r.reload)location.reload();else cloudUi.refreshChip()}).catch(()=>{});
+cloudBoot().then(r=>{if(r.reload)location.reload();else{cloudUi.refreshChip();if(r.oauthError){cloudOpen();cloudUi.say(cloudMessage(r.oauthError),true)}}}).catch(()=>{});
 const netUi=new NetUi({ctx:()=>({client:netClient,match:netMatch,busy:netBusy}),act:(a,v)=>netAct(a,v),cat:netCat});netUi.mount();
 function netOpen(from){netFrom=from;if(from==='start'&&start){startOpen=false;start.classList.add('hidden')}
  if(arcade.state==='select')arcade.setMode('versus');clearInputs();netUi.open(netClient?'':'')}
